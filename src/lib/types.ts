@@ -68,3 +68,29 @@ export interface ScanResponse {
     date: string;
   };
 }
+
+/* ── Activity / Audit types ─────────────────────────────────────────── */
+
+export type ActivityCategory = "user" | "system" | "warning";
+
+export interface ActivityEvent {
+  id: string;
+  ts: string;
+  cat: ActivityCategory;
+  action: string;
+  label: string;
+  detail?: Record<string, unknown>;
+}
+
+export interface ScanMeta {
+  scannedAt: string;
+  scanType: "manual" | "auto";
+  marketOpen: boolean;
+  stockCount: number;
+  triggeredCount: number;
+  staleCount: number;
+  liveCount: number;
+  historicalCount: number;
+  closeWatchSymbols: string[];
+  alertsFired: string[];
+}

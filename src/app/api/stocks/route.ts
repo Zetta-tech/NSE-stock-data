@@ -9,6 +9,7 @@ import {
   markAlertRead,
   markAllAlertsRead,
 } from "@/lib/store";
+import { addActivity } from "@/lib/activity";
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -73,8 +74,9 @@ export async function POST(request: Request) {
         `Added ${parsed.data.name} (${parsed.data.symbol}) to watchlist`,
         { symbol: parsed.data.symbol, name: parsed.data.name },
         'Watchlist',
-        `"${parsed.data.name}" has been added to your watchlist. It will now be included in every scan cycle. You'll receive a breakout alert if its price and volume both exceed recent highs.`,
+        `"${parsed.data.name}" has been added to your watchlist. It will now be included in every scan cycle.`,
       );
+      await addActivity("user", "stock-added", `Added ${parsed.data.symbol} to watchlist`, { symbol: parsed.data.symbol, name: parsed.data.name });
       return NextResponse.json({ watchlist });
     }
 
@@ -86,13 +88,14 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
-      const watchlist = removeFromWatchlist(parsed.data.symbol);
+      const watchlist = await removeFromWatchlist(parsed.data.symbol);
       logger.info(
         `Removed ${parsed.data.symbol} from watchlist`,
         { symbol: parsed.data.symbol },
         'Watchlist',
-        `"${parsed.data.symbol}" has been removed from your watchlist. It will no longer be scanned for breakout signals.`,
+        `"${parsed.data.symbol}" has been removed from your watchlist. It will no longer be scanned.`,
       );
+      await addActivity("user", "stock-removed", `Removed ${parsed.data.symbol} from watchlist`, { symbol: parsed.data.symbol });
       return NextResponse.json({ watchlist });
     }
 
@@ -104,12 +107,19 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
-      const watchlist = toggleCloseWatch(parsed.data.symbol);
+      const watchlist = await toggleCloseWatch(parsed.data.symbol);
+      const isNowWatching = watchlist.find((s) => s.symbol === parsed.data.symbol)?.closeWatch ?? false;
       logger.info(
-        `Toggled Close Watch for ${parsed.data.symbol}`,
-        { symbol: parsed.data.symbol },
+        `${isNowWatching ? 'Starred' : 'Unstarred'} ${parsed.data.symbol} for Close Watch`,
+        { symbol: parsed.data.symbol, closeWatch: isNowWatching },
         'Watchlist',
-        `The "Close Watch" status for ${parsed.data.symbol} has been toggled. Stocks on Close Watch appear in the live ticker at the top of the dashboard and can be scanned separately for quick checks.`,
+        `${parsed.data.symbol} is ${isNowWatching ? 'now on' : 'no longer on'} Close Watch. ${isNowWatching ? 'It will appear in the live ticker and can be auto-scanned.' : ''}`,
+      );
+      await addActivity(
+        "user",
+        isNowWatching ? "closewatch-on" : "closewatch-off",
+        `${isNowWatching ? "Starred" : "Unstarred"} ${parsed.data.symbol} for close watch`,
+        { symbol: parsed.data.symbol, closeWatch: isNowWatching }
       );
       return NextResponse.json({ watchlist });
     }
@@ -134,7 +144,7 @@ export async function POST(request: Request) {
       `Unknown action: "${body?.action || '(none)'}"`,
       { action: body?.action },
       'Watchlist',
-      `The system received a request with an unrecognised action type. This usually indicates a bug in the frontend code or an outdated browser cache. The request was ignored.`,
+      `The system received an unrecognised action type. The request was ignored.`,
     );
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   } catch (error) {
@@ -142,7 +152,7 @@ export async function POST(request: Request) {
       `Watchlist request failed`,
       { error },
       'Watchlist',
-      `A request to modify the watchlist couldn't be processed. This is usually caused by malformed data being sent. No changes were made to your watchlist.`,
+      `A request to modify the watchlist couldn't be processed. No changes were made.`,
     );
     return NextResponse.json(
       { error: "Invalid request body" },
