@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@upstash/redis": "^1.36.2",
     "gsap": "^3.14.2",
     "next": "^14.2.0",
     "react": "^18.3.0",

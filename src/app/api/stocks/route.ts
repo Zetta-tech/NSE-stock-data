@@ -12,12 +12,14 @@ import {
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 10;
 
 export async function GET() {
-  return NextResponse.json({
-    watchlist: getWatchlist(),
-    alerts: getAlerts(),
-  });
+  const [watchlist, alerts] = await Promise.all([
+    getWatchlist(),
+    getAlerts(),
+  ]);
+  return NextResponse.json({ watchlist, alerts });
 }
 
 const addStockSchema = z.object({
@@ -62,7 +64,7 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
-      const watchlist = addToWatchlist({
+      const watchlist = await addToWatchlist({
         symbol: parsed.data.symbol,
         name: parsed.data.name,
         closeWatch: false,
@@ -121,11 +123,11 @@ export async function POST(request: Request) {
         );
       }
       if (parsed.data.alertId) {
-        markAlertRead(parsed.data.alertId);
+        await markAlertRead(parsed.data.alertId);
       } else {
-        markAllAlertsRead();
+        await markAllAlertsRead();
       }
-      return NextResponse.json({ alerts: getAlerts() });
+      return NextResponse.json({ alerts: await getAlerts() });
     }
 
     logger.warn(

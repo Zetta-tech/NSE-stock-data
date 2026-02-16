@@ -3,9 +3,11 @@ import { getWatchlist, getAlerts } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-export default function Home() {
-  const watchlist = getWatchlist();
-  const alerts = getAlerts();
+export default async function Home() {
+  const [watchlist, alerts] = await Promise.all([
+    getWatchlist(),
+    getAlerts(),
+  ]);
 
   return <Dashboard initialWatchlist={watchlist} initialAlerts={alerts} />;
 }

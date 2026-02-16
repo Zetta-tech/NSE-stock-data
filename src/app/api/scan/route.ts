@@ -6,6 +6,7 @@ import { logger } from "@/lib/logger";
 import type { Alert, ScanResponse } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {
@@ -44,14 +45,14 @@ export async function POST(request: Request) {
           triggeredAt: result.scannedAt,
           read: false,
         };
-        addAlert(alert);
+        await addAlert(alert);
         newAlerts.push(alert);
       }
     }
 
     const response: ScanResponse = {
       results,
-      alerts: getAlerts(),
+      alerts: await getAlerts(),
       scannedAt: new Date().toISOString(),
       marketOpen,
       cacheStats: getHistoricalCacheStats(),

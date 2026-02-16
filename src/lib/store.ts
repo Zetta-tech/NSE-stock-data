@@ -1,10 +1,10 @@
 import "server-only";
+import { Redis } from "@upstash/redis";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import type { Alert, WatchlistStock } from "./types";
 
-const DATA_DIR = join(process.cwd(), "data");
-const STATE_FILE = join(DATA_DIR, "state.json");
+/* ── Default watchlist (used on first run) ──────────────────────────── */
 
 const DEFAULT_WATCHLIST: WatchlistStock[] = [
   { symbol: "INFY", name: "Infosys", closeWatch: false },
@@ -14,16 +14,48 @@ const DEFAULT_WATCHLIST: WatchlistStock[] = [
   { symbol: "RELIANCE", name: "Reliance Industries", closeWatch: false },
 ];
 
+/* ── Redis backend (Vercel / production) ────────────────────────────── *
+ * When UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN are set,
+ * all state is stored in Upstash Redis so it persists across
+ * serverless invocations.  On Vercel, enable the Upstash integration
+ * and these env vars are injected automatically.
+ * ──────────────────────────────────────────────────────────────────── */
+
+const WATCHLIST_KEY = "nse:watchlist";
+const ALERTS_KEY = "nse:alerts";
+
+let redisInstance: Redis | null = null;
+let redisChecked = false;
+
+function getRedis(): Redis | null {
+  if (redisChecked) return redisInstance;
+  redisChecked = true;
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (url && token) {
+    redisInstance = new Redis({ url, token });
+  }
+  return redisInstance;
+}
+
+/* ── Filesystem backend (local development) ─────────────────────────── *
+ * Falls back to JSON file persistence when Redis is not configured.
+ * This path is NOT used on Vercel (read-only filesystem).
+ * ──────────────────────────────────────────────────────────────────── */
+
+const DATA_DIR = join(process.cwd(), "data");
+const STATE_FILE = join(DATA_DIR, "state.json");
+
 interface PersistedState {
   watchlist: WatchlistStock[];
   alerts: Alert[];
 }
 
-let watchlist: WatchlistStock[] | null = null;
-let alerts: Alert[] | null = null;
+let memWatchlist: WatchlistStock[] | null = null;
+let memAlerts: Alert[] | null = null;
 
-function ensureLoaded(): void {
-  if (watchlist !== null) return;
+function fsLoad(): void {
+  if (memWatchlist !== null) return;
 
   if (!existsSync(DATA_DIR)) {
     mkdirSync(DATA_DIR, { recursive: true });
@@ -33,32 +65,32 @@ function ensureLoaded(): void {
     try {
       const raw = readFileSync(STATE_FILE, "utf-8");
       const state: PersistedState = JSON.parse(raw);
-      watchlist = Array.isArray(state.watchlist)
+      memWatchlist = Array.isArray(state.watchlist)
         ? state.watchlist.map((s) => ({
             symbol: s.symbol,
             name: s.name,
             closeWatch: s.closeWatch ?? false,
           }))
         : [...DEFAULT_WATCHLIST];
-      alerts = Array.isArray(state.alerts) ? state.alerts : [];
+      memAlerts = Array.isArray(state.alerts) ? state.alerts : [];
       return;
     } catch {
       // corrupted file — fall through to defaults
     }
   }
 
-  watchlist = [...DEFAULT_WATCHLIST];
-  alerts = [];
+  memWatchlist = [...DEFAULT_WATCHLIST];
+  memAlerts = [];
 }
 
-function persist(): void {
+function fsPersist(): void {
   try {
     if (!existsSync(DATA_DIR)) {
       mkdirSync(DATA_DIR, { recursive: true });
     }
     const state: PersistedState = {
-      watchlist: watchlist ?? [],
-      alerts: alerts ?? [],
+      watchlist: memWatchlist ?? [],
+      alerts: memAlerts ?? [],
     };
     writeFileSync(STATE_FILE, JSON.stringify(state, null, 2), "utf-8");
   } catch {
@@ -66,81 +98,127 @@ function persist(): void {
   }
 }
 
-export function getWatchlist(): WatchlistStock[] {
-  ensureLoaded();
-  return [...watchlist!];
-}
+/* ── Internal helpers ───────────────────────────────────────────────── */
 
-export function addToWatchlist(stock: WatchlistStock): WatchlistStock[] {
-  ensureLoaded();
-  if (!watchlist!.find((s) => s.symbol === stock.symbol)) {
-    watchlist!.push({ ...stock, closeWatch: stock.closeWatch ?? false });
-    persist();
+async function loadWatchlist(): Promise<WatchlistStock[]> {
+  const r = getRedis();
+  if (r) {
+    const data = await r.get<WatchlistStock[]>(WATCHLIST_KEY);
+    if (!data) return [...DEFAULT_WATCHLIST];
+    return data.map((s) => ({ ...s, closeWatch: s.closeWatch ?? false }));
   }
-  return getWatchlist();
+  fsLoad();
+  return [...memWatchlist!];
 }
 
-export function removeFromWatchlist(symbol: string): WatchlistStock[] {
-  ensureLoaded();
-  watchlist = watchlist!.filter((s) => s.symbol !== symbol);
-  persist();
-  return getWatchlist();
+async function saveWatchlist(list: WatchlistStock[]): Promise<void> {
+  const r = getRedis();
+  if (r) {
+    await r.set(WATCHLIST_KEY, list);
+    return;
+  }
+  memWatchlist = list;
+  fsPersist();
 }
 
-export function toggleCloseWatch(symbol: string): WatchlistStock[] {
-  ensureLoaded();
-  const stock = watchlist!.find((s) => s.symbol === symbol);
+async function loadAlerts(): Promise<Alert[]> {
+  const r = getRedis();
+  if (r) {
+    return (await r.get<Alert[]>(ALERTS_KEY)) ?? [];
+  }
+  fsLoad();
+  return [...memAlerts!];
+}
+
+async function saveAlerts(list: Alert[]): Promise<void> {
+  const r = getRedis();
+  if (r) {
+    await r.set(ALERTS_KEY, list);
+    return;
+  }
+  memAlerts = list;
+  fsPersist();
+}
+
+/* ── Public API (all async) ─────────────────────────────────────────── */
+
+export async function getWatchlist(): Promise<WatchlistStock[]> {
+  return loadWatchlist();
+}
+
+export async function addToWatchlist(
+  stock: WatchlistStock
+): Promise<WatchlistStock[]> {
+  const list = await loadWatchlist();
+  if (!list.find((s) => s.symbol === stock.symbol)) {
+    list.push({ ...stock, closeWatch: stock.closeWatch ?? false });
+    await saveWatchlist(list);
+  }
+  return list;
+}
+
+export async function removeFromWatchlist(
+  symbol: string
+): Promise<WatchlistStock[]> {
+  const list = (await loadWatchlist()).filter((s) => s.symbol !== symbol);
+  await saveWatchlist(list);
+  return list;
+}
+
+export async function toggleCloseWatch(
+  symbol: string
+): Promise<WatchlistStock[]> {
+  const list = await loadWatchlist();
+  const stock = list.find((s) => s.symbol === symbol);
   if (stock) {
     stock.closeWatch = !stock.closeWatch;
-    persist();
+    await saveWatchlist(list);
   }
-  return getWatchlist();
+  return list;
 }
 
-export function getCloseWatchStocks(): WatchlistStock[] {
-  ensureLoaded();
-  return watchlist!.filter((s) => s.closeWatch);
+export async function getCloseWatchStocks(): Promise<WatchlistStock[]> {
+  return (await loadWatchlist()).filter((s) => s.closeWatch);
 }
 
-export function getAlerts(): Alert[] {
-  ensureLoaded();
-  return [...alerts!].sort(
+export async function getAlerts(): Promise<Alert[]> {
+  const alerts = await loadAlerts();
+  return alerts.sort(
     (a, b) =>
       new Date(b.triggeredAt).getTime() - new Date(a.triggeredAt).getTime()
   );
 }
 
-export function addAlert(alert: Alert): void {
-  ensureLoaded();
-  const existing = alerts!.find(
+export async function addAlert(alert: Alert): Promise<void> {
+  const alerts = await loadAlerts();
+  const existing = alerts.find(
     (a) =>
       a.symbol === alert.symbol &&
       a.triggeredAt.slice(0, 10) === alert.triggeredAt.slice(0, 10)
   );
   if (!existing) {
-    alerts!.push(alert);
-    persist();
+    alerts.push(alert);
+    await saveAlerts(alerts);
   }
 }
 
-export function markAlertRead(id: string): void {
-  ensureLoaded();
-  const alert = alerts!.find((a) => a.id === id);
+export async function markAlertRead(id: string): Promise<void> {
+  const alerts = await loadAlerts();
+  const alert = alerts.find((a) => a.id === id);
   if (alert) {
     alert.read = true;
-    persist();
+    await saveAlerts(alerts);
   }
 }
 
-export function markAllAlertsRead(): void {
-  ensureLoaded();
-  alerts!.forEach((a) => {
+export async function markAllAlertsRead(): Promise<void> {
+  const alerts = await loadAlerts();
+  alerts.forEach((a) => {
     a.read = true;
   });
-  persist();
+  await saveAlerts(alerts);
 }
 
-export function getUnreadAlertCount(): number {
-  ensureLoaded();
-  return alerts!.filter((a) => !a.read).length;
+export async function getUnreadAlertCount(): Promise<number> {
+  return (await loadAlerts()).filter((a) => !a.read).length;
 }
