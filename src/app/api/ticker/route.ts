@@ -15,7 +15,12 @@ export async function GET() {
       return NextResponse.json({ quotes: [], fetchedAt: new Date().toISOString() });
     }
 
-    logger.api(`GET /api/ticker → ${stocks.length} close-watch stocks`, { stockCount: stocks.length }, 'TickerRoute');
+    logger.api(
+      `Refreshing live prices for ${stocks.length} Close Watch stock(s)`,
+      { stockCount: stocks.length },
+      'Live Ticker',
+      `The ticker bar at the top of the dashboard is updating. It's fetching real-time prices for the ${stocks.length} stock(s) you have marked as "Close Watch". This data powers the scrolling ticker display.`,
+    );
 
     const settled = await Promise.allSettled(
       stocks.map(async (s) => {
@@ -37,7 +42,12 @@ export async function GET() {
       .map((r) => (r.status === "fulfilled" ? r.value : null))
       .filter((q): q is TickerQuote => q !== null);
 
-    logger.info(`Ticker fetched ${quotes.length}/${stocks.length} quotes`, { quoteCount: quotes.length, stockCount: stocks.length }, 'TickerRoute');
+    logger.info(
+      `Ticker updated: ${quotes.length} of ${stocks.length} prices received`,
+      { quoteCount: quotes.length, stockCount: stocks.length },
+      'Live Ticker',
+      `Successfully fetched live prices for ${quotes.length} out of ${stocks.length} Close Watch stock(s). ${quotes.length < stocks.length ? `${stocks.length - quotes.length} stock(s) couldn't be fetched — they may be newly listed or the NSE may be temporarily unavailable for those symbols.` : 'All prices are up to date.'}`,
+    );
 
     return NextResponse.json({
       quotes,
@@ -45,7 +55,12 @@ export async function GET() {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Ticker fetch failed";
-    logger.error(`Ticker failed: ${message}`, { error: message }, 'TickerRoute');
+    logger.error(
+      `Ticker refresh failed: ${message}`,
+      { error: message },
+      'Live Ticker',
+      `The live ticker couldn't refresh its price data. Error: "${message}". The ticker will continue showing the last known prices until the next successful refresh.`,
+    );
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
