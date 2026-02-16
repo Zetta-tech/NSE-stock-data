@@ -1,4 +1,4 @@
-import "server-only";
+import { logger } from "./logger";
 import { NseIndia } from "stock-nse-india";
 import type { DayData } from "./types";
 
@@ -67,8 +67,11 @@ export async function getHistoricalData(
   const cached = historicalCache.get(symbol);
 
   if (cached && cached.date === today && cached.days === days) {
+    logger.debug(`Cache Hit: ${symbol} (${days} days)`, { type: 'CACHE_HIT', symbol }, 'NSEClient');
     return cached.data;
   }
+
+  logger.api(`Fetching historical data: ${symbol} (${days} days)`, { startLine: 70, symbol, days }, 'NSEClient');
 
   const nse = getNse();
   const end = new Date();
@@ -76,6 +79,7 @@ export async function getHistoricalData(
   start.setDate(start.getDate() - days * 2);
 
   const raw = await nse.getEquityHistoricalData(symbol, { start, end });
+  logger.debug(`API Success: ${symbol} historical data fetched`, { rawCount: raw.length }, 'NSEClient');
 
   const records = raw.flatMap((entry) => entry.data);
 
@@ -112,8 +116,10 @@ export async function getCurrentDayData(
     const volume =
       tradeInfo.marketDeptOrderBook.tradeInfo.totalTradedVolume;
 
+    logger.debug(`Fetch Success: ${symbol} current data`, { high, volume, close, change }, 'NSEClient');
     return { high, volume, close, change };
-  } catch {
+  } catch (error) {
+    logger.error(`Fetch Error: ${symbol} current data failed`, { error }, 'NSEClient');
     return null;
   }
 }
@@ -127,7 +133,8 @@ export async function getMarketStatus(): Promise<boolean> {
         s.market === "Capital Market" &&
         s.marketStatus.toLowerCase().includes("open")
     );
-  } catch {
+  } catch (error) {
+    logger.error(`Market Status Check Failed`, { error }, 'NSEClient');
     return false;
   }
 }

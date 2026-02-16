@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { scanMultipleStocks } from "@/lib/scanner";
 import { getWatchlist, addAlert, getAlerts } from "@/lib/store";
 import { getMarketStatus, getHistoricalCacheStats } from "@/lib/nse-client";
+import { logger } from "@/lib/logger";
 import type { Alert, ScanResponse } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -12,9 +13,12 @@ export async function POST(request: Request) {
     const useIntraday = body.intraday === true;
 
     const watchlist = getWatchlist();
-    const marketOpen = await getMarketStatus().catch(() => false);
+    logger.api(`POST /api/scan → ${watchlist.length} stocks, intraday=${useIntraday}`, { stockCount: watchlist.length, useIntraday }, 'ScanRoute');
 
+    const scanStart = Date.now();
+    const marketOpen = await getMarketStatus().catch(() => false);
     const results = await scanMultipleStocks(watchlist, useIntraday, marketOpen);
+    const scanDuration = Date.now() - scanStart;
 
     const newAlerts: Alert[] = [];
     for (const result of results) {
@@ -47,10 +51,12 @@ export async function POST(request: Request) {
       cacheStats: getHistoricalCacheStats(),
     };
 
+    logger.info(`Scan complete in ${scanDuration}ms — ${results.length} stocks, ${newAlerts.length} new alerts`, { durationMs: scanDuration, stockCount: results.length, alertCount: newAlerts.length, marketOpen }, 'ScanRoute');
     return NextResponse.json(response);
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Scan failed";
+    logger.error(`Scan failed: ${message}`, { error: message }, 'ScanRoute');
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

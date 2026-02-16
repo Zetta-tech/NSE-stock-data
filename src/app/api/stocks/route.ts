@@ -8,6 +8,7 @@ import {
   markAlertRead,
   markAllAlertsRead,
 } from "@/lib/store";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +57,7 @@ export async function POST(request: Request) {
         symbol: parsed.data.symbol,
         name: parsed.data.name,
       });
+      logger.info(`Watchlist ADD: ${parsed.data.symbol}`, { symbol: parsed.data.symbol, name: parsed.data.name }, 'StocksRoute');
       return NextResponse.json({ watchlist });
     }
 
@@ -68,6 +70,7 @@ export async function POST(request: Request) {
         );
       }
       const watchlist = removeFromWatchlist(parsed.data.symbol);
+      logger.info(`Watchlist REMOVE: ${parsed.data.symbol}`, { symbol: parsed.data.symbol }, 'StocksRoute');
       return NextResponse.json({ watchlist });
     }
 
@@ -87,8 +90,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ alerts: getAlerts() });
     }
 
+    logger.warn(`Unknown action attempted`, { action: body?.action }, 'StocksRoute');
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
-  } catch {
+  } catch (error) {
+    logger.error(`Stocks route error`, { error }, 'StocksRoute');
     return NextResponse.json(
       { error: "Invalid request body" },
       { status: 400 }

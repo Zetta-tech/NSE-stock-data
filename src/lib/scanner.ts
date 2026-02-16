@@ -1,5 +1,6 @@
 import "server-only";
 import { getHistoricalData, getCurrentDayData } from "./nse-client";
+import { logger } from "./logger";
 import type { ScanResult, DayData, DataSource } from "./types";
 
 const LOOKBACK_DAYS = 5;
@@ -94,8 +95,8 @@ export async function scanStock(
         change:
           lastDay.close > 0 && historical.length > 1
             ? ((lastDay.close - historical[historical.length - 2].close) /
-                historical[historical.length - 2].close) *
-              100
+              historical[historical.length - 2].close) *
+            100
             : 0,
       };
       previousDays = historical.slice(-(LOOKBACK_DAYS + 1), -1);
@@ -107,8 +108,14 @@ export async function scanStock(
     // Suppress triggers when data is stale — we can't trust the comparison.
     const triggered = dataSource === "stale" ? false : analysis.triggered;
 
+    if (triggered) {
+      logger.warn(`BREAKOUT: ${symbol} — High +${analysis.highBreakPercent}%, Vol +${analysis.volumeBreakPercent}%`, { symbol, highBreakPercent: analysis.highBreakPercent, volumeBreakPercent: analysis.volumeBreakPercent, dataSource }, 'Scanner');
+    }
+
     return { symbol, name, scannedAt, dataSource, ...analysis, triggered };
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`Scan failed for ${symbol}: ${message}`, { symbol, error: message }, 'Scanner');
     return {
       symbol,
       name,
@@ -140,19 +147,19 @@ export async function scanMultipleStocks(
     r.status === "fulfilled"
       ? r.value
       : {
-          symbol: stocks[i].symbol,
-          name: stocks[i].name,
-          triggered: false,
-          todayHigh: 0,
-          todayVolume: 0,
-          prevMaxHigh: 0,
-          prevMaxVolume: 0,
-          highBreakPercent: 0,
-          volumeBreakPercent: 0,
-          todayClose: 0,
-          todayChange: 0,
-          scannedAt: new Date().toISOString(),
-          dataSource: "historical" as const,
-        }
+        symbol: stocks[i].symbol,
+        name: stocks[i].name,
+        triggered: false,
+        todayHigh: 0,
+        todayVolume: 0,
+        prevMaxHigh: 0,
+        prevMaxVolume: 0,
+        highBreakPercent: 0,
+        volumeBreakPercent: 0,
+        todayClose: 0,
+        todayChange: 0,
+        scannedAt: new Date().toISOString(),
+        dataSource: "historical" as const,
+      }
   );
 }
