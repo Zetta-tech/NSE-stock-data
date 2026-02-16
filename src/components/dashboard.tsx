@@ -5,6 +5,7 @@ import { Header } from "./header";
 import { ScanButton } from "./scan-button";
 import { StockCard } from "./stock-card";
 import { AlertPanel } from "./alert-panel";
+import { TickerPanel } from "./ticker-panel";
 import { AddStockModal } from "./add-stock-modal";
 import type { WatchlistStock, ScanResult, Alert } from "@/lib/types";
 
@@ -251,6 +252,11 @@ export function Dashboard({
             )}
           </div>
         )}
+
+        <TickerPanel
+          hasCloseWatchStocks={closeWatchCount > 0}
+          scanResults={results}
+        />
 
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div>

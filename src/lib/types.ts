@@ -47,6 +47,16 @@ export interface Alert {
   read: boolean;
 }
 
+export interface TickerQuote {
+  symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  high: number;
+  volume: number;
+  fetchedAt: string;
+}
+
 export interface ScanResponse {
   results: ScanResult[];
   alerts: Alert[];

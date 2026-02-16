@@ -138,3 +138,48 @@ export async function getMarketStatus(): Promise<boolean> {
     return false;
   }
 }
+
+export interface NseSearchResult {
+  symbol: string;
+  name: string;
+}
+
+export async function searchStocks(
+  query: string
+): Promise<NseSearchResult[]> {
+  const nse = getNse();
+  try {
+    logger.api(`Searching NSE for "${query}"`, { query }, 'NSEClient');
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data: any = await nse.getDataByEndpoint(
+      `/api/search/autocomplete?q=${encodeURIComponent(query)}`
+    );
+
+    if (!data || !Array.isArray(data.symbols)) {
+      logger.warn(`NSE search returned unexpected shape`, { query, keys: data ? Object.keys(data) : null }, 'NSEClient');
+      return [];
+    }
+
+    // Filter to equity results and map to our shape
+    const results: NseSearchResult[] = data.symbols
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .filter((item: any) => {
+        const type = (item.result_type || item.type || "").toLowerCase();
+        // Accept equity results; exclude derivatives, indices, etc.
+        return type === "stock" || type === "equity" || type === "symbol";
+      })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((item: any) => ({
+        symbol: (item.symbol || "").toUpperCase().trim(),
+        name: item.symbol_info || item.company_name || item.name || item.symbol || "",
+      }))
+      .filter((r: NseSearchResult) => r.symbol.length > 0);
+
+    logger.info(`NSE search "${query}" → ${results.length} equity results`, { query, resultCount: results.length }, 'NSEClient');
+    return results;
+  } catch (error) {
+    logger.error(`NSE search failed for "${query}"`, { query, error }, 'NSEClient');
+    return [];
+  }
+}
