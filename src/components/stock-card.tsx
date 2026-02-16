@@ -10,19 +10,26 @@ export function StockCard({
   onRemove: (symbol: string) => void;
 }) {
   const hasData = result.todayHigh > 0;
-  const highBreaks = hasData && result.todayHigh > result.prevMaxHigh;
-  const volBreaks = hasData && result.todayVolume > result.prevMaxVolume;
+  const isStale = result.dataSource === "stale";
+  const isLive = result.dataSource === "live";
+  const highBreaks = hasData && !isStale && result.todayHigh > result.prevMaxHigh;
+  const volBreaks = hasData && !isStale && result.todayVolume > result.prevMaxVolume;
 
   return (
     <div
       className={`group relative overflow-hidden rounded-2xl border p-5 transition-all duration-300 hover:-translate-y-1 ${
-        result.triggered
-          ? "border-accent/30 card-glow bg-surface-raised"
-          : "border-surface-border bg-surface-raised hover:border-surface-border/80 hover:shadow-xl hover:shadow-black/20"
+        isStale
+          ? "border-warn/30 bg-surface-raised"
+          : result.triggered
+            ? "border-accent/30 card-glow bg-surface-raised"
+            : "border-surface-border bg-surface-raised hover:border-surface-border/80 hover:shadow-xl hover:shadow-black/20"
       }`}
     >
-      {result.triggered && (
+      {result.triggered && !isStale && (
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/60 to-transparent" />
+      )}
+      {isStale && (
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-warn/60 to-transparent" />
       )}
 
       <button
@@ -53,6 +60,19 @@ export function StockCard({
                 <span className="inline-flex items-center gap-1 rounded-md bg-accent/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent">
                   <span className="h-1 w-1 rounded-full bg-accent animate-pulse" />
                   Breakout
+                </span>
+              )}
+              {isLive && (
+                <span className="inline-flex items-center gap-1 rounded-md bg-accent/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent/70">
+                  Live
+                </span>
+              )}
+              {isStale && (
+                <span className="inline-flex items-center gap-1 rounded-md bg-warn/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-warn">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                    <path d="M12 9v4M12 17h.01" />
+                  </svg>
+                  Stale
                 </span>
               )}
             </div>
@@ -109,7 +129,15 @@ export function StockCard({
         </div>
       )}
 
-      {hasData && (
+      {hasData && isStale && (
+        <div className="mt-4 rounded-lg border border-warn/20 bg-warn/[0.06] px-3 py-2">
+          <p className="text-[11px] font-medium text-warn">
+            Live data unavailable — showing last historical candle. Breakout detection paused for this stock.
+          </p>
+        </div>
+      )}
+
+      {hasData && !isStale && (
         <div className="mt-4 flex gap-2">
           <StatusPill active={highBreaks} label="High Break" />
           <StatusPill active={volBreaks} label="Vol Break" />

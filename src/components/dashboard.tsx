@@ -97,6 +97,7 @@ export function Dashboard({
   }, []);
 
   const triggeredCount = results.filter((r) => r.triggered).length;
+  const staleCount = results.filter((r) => r.dataSource === "stale").length;
   const scannedCount = results.length;
 
   return (
@@ -110,7 +111,7 @@ export function Dashboard({
 
       <main className="mx-auto max-w-7xl px-6 py-8">
         {scannedCount > 0 && (
-          <div className="mb-8 grid grid-cols-3 gap-3 animate-fade-in">
+          <div className={`mb-8 grid gap-3 animate-fade-in ${staleCount > 0 ? "grid-cols-4" : "grid-cols-3"}`}>
             <StatCard
               label="Stocks Scanned"
               value={scannedCount.toString()}
@@ -141,6 +142,18 @@ export function Dashboard({
                 </svg>
               }
             />
+            {staleCount > 0 && (
+              <StatCard
+                label="Stale Data"
+                value={staleCount.toString()}
+                warning
+                icon={
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  </svg>
+                }
+              />
+            )}
           </div>
         )}
 
@@ -212,6 +225,7 @@ export function Dashboard({
                       todayClose: 0,
                       todayChange: 0,
                       scannedAt: "",
+                      dataSource: "historical",
                     }
                   }
                   onRemove={removeStock}
@@ -257,25 +271,35 @@ function StatCard({
   value,
   icon,
   accent,
+  warning,
 }: {
   label: string;
   value: string;
   icon: React.ReactNode;
   accent?: boolean;
+  warning?: boolean;
 }) {
   return (
     <div className={`flex items-center gap-3 rounded-xl border p-4 transition-colors ${
-      accent
-        ? "border-accent/20 bg-accent/[0.04]"
-        : "border-surface-border bg-surface-raised"
+      warning
+        ? "border-warn/20 bg-warn/[0.04]"
+        : accent
+          ? "border-accent/20 bg-accent/[0.04]"
+          : "border-surface-border bg-surface-raised"
     }`}>
       <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg ${
-        accent ? "bg-accent/15 text-accent" : "bg-surface-overlay text-text-muted"
+        warning
+          ? "bg-warn/15 text-warn"
+          : accent
+            ? "bg-accent/15 text-accent"
+            : "bg-surface-overlay text-text-muted"
       }`}>
         {icon}
       </div>
       <div>
-        <p className={`text-xl font-bold tabular-nums tracking-tight ${accent ? "text-accent" : ""}`}>
+        <p className={`text-xl font-bold tabular-nums tracking-tight ${
+          warning ? "text-warn" : accent ? "text-accent" : ""
+        }`}>
           {value}
         </p>
         <p className="text-[11px] text-text-muted">{label}</p>
