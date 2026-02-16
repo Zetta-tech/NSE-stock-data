@@ -5,10 +5,11 @@ import { logger } from "@/lib/logger";
 import type { TickerQuote } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 30;
 
 export async function GET() {
   try {
-    const stocks = getCloseWatchStocks();
+    const stocks = await getCloseWatchStocks();
 
     if (stocks.length === 0) {
       return NextResponse.json({ quotes: [], fetchedAt: new Date().toISOString() });

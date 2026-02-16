@@ -3,6 +3,7 @@ import { searchStocks } from "@/lib/nse-client";
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 15;
 
 export async function GET(request: NextRequest) {
   try {

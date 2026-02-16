@@ -12,12 +12,14 @@ import {
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 10;
 
 export async function GET() {
-  return NextResponse.json({
-    watchlist: getWatchlist(),
-    alerts: getAlerts(),
-  });
+  const [watchlist, alerts] = await Promise.all([
+    getWatchlist(),
+    getAlerts(),
+  ]);
+  return NextResponse.json({ watchlist, alerts });
 }
 
 const addStockSchema = z.object({
@@ -62,7 +64,7 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
-      const watchlist = addToWatchlist({
+      const watchlist = await addToWatchlist({
         symbol: parsed.data.symbol,
         name: parsed.data.name,
         closeWatch: false,
@@ -79,7 +81,7 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
-      const watchlist = removeFromWatchlist(parsed.data.symbol);
+      const watchlist = await removeFromWatchlist(parsed.data.symbol);
       logger.info(`Watchlist REMOVE: ${parsed.data.symbol}`, { symbol: parsed.data.symbol }, 'StocksRoute');
       return NextResponse.json({ watchlist });
     }
@@ -92,7 +94,7 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
-      const watchlist = toggleCloseWatch(parsed.data.symbol);
+      const watchlist = await toggleCloseWatch(parsed.data.symbol);
       logger.info(`CloseWatch TOGGLE: ${parsed.data.symbol}`, { symbol: parsed.data.symbol }, 'StocksRoute');
       return NextResponse.json({ watchlist });
     }
@@ -106,11 +108,11 @@ export async function POST(request: Request) {
         );
       }
       if (parsed.data.alertId) {
-        markAlertRead(parsed.data.alertId);
+        await markAlertRead(parsed.data.alertId);
       } else {
-        markAllAlertsRead();
+        await markAllAlertsRead();
       }
-      return NextResponse.json({ alerts: getAlerts() });
+      return NextResponse.json({ alerts: await getAlerts() });
     }
 
     logger.warn(`Unknown action attempted`, { action: body?.action }, 'StocksRoute');

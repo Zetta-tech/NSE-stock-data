@@ -10,7 +10,8 @@ export interface LogEntry {
     context?: string; // e.g. 'nse-client', 'api-route'
 }
 
-// In-memory store (Note: will reset on server restart/redeploy)
+/* In-memory log buffer — ephemeral on serverless (resets on cold start).
+ * Console output still reaches Vercel's log drain for production debugging. */
 const MAX_LOGS = 1000;
 let logs: LogEntry[] = [];
 

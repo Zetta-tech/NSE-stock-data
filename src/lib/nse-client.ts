@@ -2,6 +2,9 @@ import { logger } from "./logger";
 import { NseIndia } from "stock-nse-india";
 import type { DayData } from "./types";
 
+/* Singleton per Lambda invocation.  On Vercel each cold start creates a
+ * fresh instance (new cookies, empty cache).  Warm invocations reuse
+ * the existing instance, which is ideal for NseIndia's session handling. */
 let nseInstance: NseIndia | null = null;
 
 function getNse(): NseIndia {
@@ -30,6 +33,8 @@ interface HistoricalCacheEntry {
   data: DayData[];
 }
 
+/* Per-invocation cache — reduces redundant NSE calls within a single
+ * request or warm Lambda.  Resets on cold start, which is acceptable. */
 const historicalCache = new Map<string, HistoricalCacheEntry>();
 
 function todayDateString(): string {
