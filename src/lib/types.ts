@@ -12,6 +12,8 @@ export interface DayData {
   volume: number;
 }
 
+export type DataSource = "live" | "historical" | "stale";
+
 export interface ScanResult {
   symbol: string;
   name: string;
@@ -25,6 +27,7 @@ export interface ScanResult {
   todayClose: number;
   todayChange: number;
   scannedAt: string;
+  dataSource: DataSource;
 }
 
 export interface Alert {

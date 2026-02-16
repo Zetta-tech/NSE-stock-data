@@ -1,13 +1,13 @@
 import "server-only";
 import { getHistoricalData, getCurrentDayData } from "./nse-client";
-import type { ScanResult, DayData } from "./types";
+import type { ScanResult, DayData, DataSource } from "./types";
 
 const LOOKBACK_DAYS = 5;
 
 function analyzeBreakout(
   today: { high: number; volume: number; close: number; change: number },
   previousDays: DayData[]
-): Omit<ScanResult, "symbol" | "name" | "scannedAt"> {
+): Omit<ScanResult, "symbol" | "name" | "scannedAt" | "dataSource"> {
   const prevMaxHigh = Math.max(...previousDays.map((d) => d.high));
   const prevMaxVolume = Math.max(...previousDays.map((d) => d.volume));
 
@@ -37,7 +37,8 @@ function analyzeBreakout(
 export async function scanStock(
   symbol: string,
   name: string,
-  useIntraday: boolean = false
+  useIntraday: boolean = false,
+  marketOpen: boolean = false
 ): Promise<ScanResult> {
   const scannedAt = new Date().toISOString();
 
@@ -57,6 +58,7 @@ export async function scanStock(
       change: number;
     };
     let previousDays: DayData[];
+    let dataSource: DataSource;
 
     if (useIntraday) {
       const liveDayData = await getCurrentDayData(symbol);
@@ -64,7 +66,9 @@ export async function scanStock(
       if (liveDayData && liveDayData.high > 0) {
         todayData = liveDayData;
         previousDays = historical.slice(-LOOKBACK_DAYS);
+        dataSource = "live";
       } else {
+        // Live fetch failed — behaviour depends on whether market is open.
         const lastDay = historical[historical.length - 1];
         todayData = {
           high: lastDay.high,
@@ -76,6 +80,10 @@ export async function scanStock(
           -(LOOKBACK_DAYS + 1),
           -1
         );
+
+        // Market open → data is stale (could miss real breakout).
+        // Market closed → historical fallback is the correct behaviour.
+        dataSource = marketOpen ? "stale" : "historical";
       }
     } else {
       const lastDay = historical[historical.length - 1];
@@ -91,11 +99,15 @@ export async function scanStock(
             : 0,
       };
       previousDays = historical.slice(-(LOOKBACK_DAYS + 1), -1);
+      dataSource = "historical";
     }
 
     const analysis = analyzeBreakout(todayData, previousDays);
 
-    return { symbol, name, scannedAt, ...analysis };
+    // Suppress triggers when data is stale — we can't trust the comparison.
+    const triggered = dataSource === "stale" ? false : analysis.triggered;
+
+    return { symbol, name, scannedAt, dataSource, ...analysis, triggered };
   } catch (error) {
     return {
       symbol,
@@ -110,16 +122,18 @@ export async function scanStock(
       todayClose: 0,
       todayChange: 0,
       scannedAt,
+      dataSource: "historical",
     };
   }
 }
 
 export async function scanMultipleStocks(
   stocks: { symbol: string; name: string }[],
-  useIntraday: boolean = false
+  useIntraday: boolean = false,
+  marketOpen: boolean = false
 ): Promise<ScanResult[]> {
   const results = await Promise.allSettled(
-    stocks.map((s) => scanStock(s.symbol, s.name, useIntraday))
+    stocks.map((s) => scanStock(s.symbol, s.name, useIntraday, marketOpen))
   );
 
   return results.map((r, i) =>
@@ -138,6 +152,7 @@ export async function scanMultipleStocks(
           todayClose: 0,
           todayChange: 0,
           scannedAt: new Date().toISOString(),
+          dataSource: "historical" as const,
         }
   );
 }

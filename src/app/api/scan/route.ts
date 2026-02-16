@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     const watchlist = getWatchlist();
     const marketOpen = await getMarketStatus().catch(() => false);
 
-    const results = await scanMultipleStocks(watchlist, useIntraday);
+    const results = await scanMultipleStocks(watchlist, useIntraday, marketOpen);
 
     const newAlerts: Alert[] = [];
     for (const result of results) {
