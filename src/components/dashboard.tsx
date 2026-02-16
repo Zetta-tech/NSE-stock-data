@@ -305,7 +305,14 @@ export function Dashboard({
           <div className="flex items-center gap-2">
             {closeWatchCount > 0 && (
               <button
-                onClick={() => setAutoCheckActive(!autoCheckActive)}
+                onClick={() => {
+                  const next = !autoCheckActive;
+                  setAutoCheckActive(next);
+                  reportAction(
+                    next ? "autocheck-started" : "autocheck-stopped",
+                    next ? "Started auto-check (30s interval)" : "Stopped auto-check"
+                  );
+                }}
                 className={`flex items-center gap-1.5 rounded-lg border px-3.5 py-2.5 text-xs font-medium transition-all duration-200 ${
                   autoCheckActive
                     ? "border-amber-400/30 bg-amber-400/10 text-amber-400"
@@ -339,7 +346,14 @@ export function Dashboard({
               onScan={runScan}
               loading={scanning}
               intraday={intraday}
-              onToggleIntraday={() => setIntraday(!intraday)}
+              onToggleIntraday={() => {
+                const next = !intraday;
+                setIntraday(next);
+                reportAction(
+                  next ? "intraday-on" : "intraday-off",
+                  next ? "Switched to intraday mode" : "Switched to historical mode"
+                );
+              }}
             />
           </div>
         </div>
@@ -453,6 +467,15 @@ function StatCard({
       </div>
     </div>
   );
+}
+
+/* Fire-and-forget activity reporter for client-side user actions */
+function reportAction(action: string, label: string, detail?: Record<string, unknown>) {
+  fetch("/api/activity", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ cat: "user", action, label, detail }),
+  }).catch(() => {});
 }
 
 const NOTIFY_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes

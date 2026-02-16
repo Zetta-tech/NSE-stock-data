@@ -1,7 +1,7 @@
 import "server-only";
-import { Redis } from "@upstash/redis";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
+import { getRedis } from "./redis";
 import type { Alert, WatchlistStock } from "./types";
 
 /* ── Default watchlist (used on first run) ──────────────────────────── */
@@ -14,29 +14,8 @@ const DEFAULT_WATCHLIST: WatchlistStock[] = [
   { symbol: "RELIANCE", name: "Reliance Industries", closeWatch: false },
 ];
 
-/* ── Redis backend (Vercel / production) ────────────────────────────── *
- * When UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN are set,
- * all state is stored in Upstash Redis so it persists across
- * serverless invocations.  On Vercel, enable the Upstash integration
- * and these env vars are injected automatically.
- * ──────────────────────────────────────────────────────────────────── */
-
 const WATCHLIST_KEY = "nse:watchlist";
 const ALERTS_KEY = "nse:alerts";
-
-let redisInstance: Redis | null = null;
-let redisChecked = false;
-
-function getRedis(): Redis | null {
-  if (redisChecked) return redisInstance;
-  redisChecked = true;
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (url && token) {
-    redisInstance = new Redis({ url, token });
-  }
-  return redisInstance;
-}
 
 /* ── Filesystem backend (local development) ─────────────────────────── *
  * Falls back to JSON file persistence when Redis is not configured.

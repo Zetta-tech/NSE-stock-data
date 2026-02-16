@@ -1,545 +1,598 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import gsap from 'gsap';
 import type { LogEntry, LogLevel } from '@/lib/logger';
+import type { ActivityEvent, ActivityCategory, ScanMeta } from '@/lib/types';
 
-/* ─── Stat Card ──────────────────────────────────────────────────────── */
-/**
- * Displays a single metric in the stats grid at the top of the console.
- * Each card surfaces a key health indicator at a glance.
- */
-function StatCard({
-    label,
-    value,
-    icon,
-    color,
-    subtext,
-}: {
-    label: string;
-    value: string | number;
-    icon: string;
-    color: string;
-    subtext?: string;
-}) {
-    return (
-        <div className="bg-surface-raised border border-surface-border rounded-xl p-5 flex items-start gap-4 group hover:border-opacity-60 transition-all duration-300">
-            <div
-                className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg shrink-0 ${color}`}
-            >
-                {icon}
-            </div>
-            <div className="min-w-0">
-                <p className="text-xs text-text-muted uppercase tracking-wider font-medium mb-1">
-                    {label}
-                </p>
-                <p className="text-2xl font-bold text-text-primary tabular-nums leading-none">
-                    {value}
-                </p>
-                {subtext && (
-                    <p className="text-[11px] text-text-muted mt-1.5">{subtext}</p>
-                )}
-            </div>
-        </div>
-    );
+/* ═══════════════════════════════════════════════════════════════════════
+ * Types
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+interface SystemState {
+  market: { open: boolean };
+  watchlist: { total: number; closeWatch: number; closeWatchSymbols: string[] };
+  alerts: { total: number; unread: number };
+  scan: ScanMeta | null;
+  cache: { size: number; symbols: string[]; date: string };
+  serverTime: string;
 }
 
-/* ─── Context Descriptions ───────────────────────────────────────────── */
-/**
- * Maps each subsystem context to a short, jargon-free explanation
- * shown as a tooltip when hovering the context badge.
- */
-const CONTEXT_DESCRIPTIONS: Record<string, string> = {
-    'NSE Data Service': 'Handles all communication with the National Stock Exchange (fetching prices, historical data, and search results).',
-    'Stock Scanner': 'Analyzes each stock to detect breakout signals — situations where both price and volume exceed recent highs.',
-    'Scan API': 'The system endpoint that triggers a scan cycle and returns results to the dashboard.',
-    'Stock Search': 'Handles requests to find new stock symbols and company names from the NSE database.',
-    'Watchlist': 'Manages your saved stocks, including adding, removing, and toggling focus for the live ticker.',
-    'Live Ticker': 'The background service that keeps the dashboard ticker bar updated with real-time price movements.',
+type TimelineFilter = 'all' | ActivityCategory;
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * Action icons & category styling
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+const CAT_STYLES: Record<ActivityCategory, { border: string; bg: string; text: string; label: string }> = {
+  user:    { border: 'border-blue-500/25',    bg: 'bg-blue-500/10',    text: 'text-blue-400',    label: 'User' },
+  system:  { border: 'border-emerald-500/25', bg: 'bg-emerald-500/10', text: 'text-emerald-400', label: 'System' },
+  warning: { border: 'border-amber-500/25',   bg: 'bg-amber-500/10',   text: 'text-amber-400',   label: 'Warning' },
 };
 
-/* ─── JSON Modal ─────────────────────────────────────────────────────── */
-function JsonModal({
-    data,
-    onClose,
-}: {
-    data: any;
-    onClose: () => void;
-}) {
-    const ref = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        function handleKey(e: KeyboardEvent) {
-            if (e.key === 'Escape') onClose();
-        }
-        window.addEventListener('keydown', handleKey);
-        return () => window.removeEventListener('keydown', handleKey);
-    }, [onClose]);
-
-    return (
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in-fast"
-            onClick={onClose}
-        >
-            <div
-                ref={ref}
-                className="bg-surface border border-surface-border rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden shadow-2xl animate-scale-in flex flex-col"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <div className="flex justify-between items-center px-5 py-3.5 border-b border-surface-border bg-surface-raised">
-                    <div className="flex items-center gap-2">
-                        <span className="text-accent text-sm">{'{ }'}</span>
-                        <span className="font-semibold text-text-primary text-sm">
-                            Log Payload
-                        </span>
-                    </div>
-                    <button
-                        className="w-7 h-7 rounded-md flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-surface-overlay transition-colors text-xs"
-                        onClick={onClose}
-                    >
-                        ✕
-                    </button>
-                </div>
-                <div className="p-5 overflow-auto scrollbar-thin bg-surface/50">
-                    <pre className="text-xs text-text-secondary whitespace-pre-wrap font-mono leading-relaxed">
-                        {JSON.stringify(data, null, 2)}
-                    </pre>
-                </div>
-            </div>
-        </div>
-    );
+function ActionIcon({ action }: { action: string }) {
+  const cls = 'w-3.5 h-3.5';
+  switch (action) {
+    case 'scan-manual':
+      return <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>;
+    case 'scan-auto':
+      return <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.5 2v6h-6"/><path d="M2.5 22v-6h6"/><path d="M2.5 11.5a10 10 0 0 1 18.1-4.5"/><path d="M21.5 12.5a10 10 0 0 1-18.1 4.5"/></svg>;
+    case 'alert-fired':
+      return <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>;
+    case 'stock-added':
+      return <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>;
+    case 'stock-removed':
+      return <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>;
+    case 'closewatch-on':
+      return <svg className={cls} viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>;
+    case 'closewatch-off':
+      return <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>;
+    case 'autocheck-started':
+      return <svg className={cls} viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>;
+    case 'autocheck-stopped':
+      return <svg className={cls} viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>;
+    case 'intraday-on': case 'intraday-off':
+      return <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="5" width="22" height="14" rx="7"/><circle cx={action === 'intraday-on' ? '16' : '8'} cy="12" r="3"/></svg>;
+    case 'data-stale':
+      return <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>;
+    case 'scan-error':
+      return <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>;
+    default:
+      return <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>;
+  }
 }
 
-/* ─── Level Badge ────────────────────────────────────────────────────── */
-/**
- * Visual styles for each log level so severity is immediately
- * recognisable by colour, even at a glance.
- */
-const LEVEL_STYLES: Record<LogLevel, string> = {
-    INFO: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
-    WARN: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-    ERROR: 'text-red-400 bg-red-500/10 border-red-500/20',
-    DEBUG: 'text-slate-400 bg-slate-500/10 border-slate-500/20',
-    API: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+/* ═══════════════════════════════════════════════════════════════════════
+ * Time formatting
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const secs = Math.floor(diff / 1000);
+  if (secs < 10) return 'just now';
+  if (secs < 60) return `${secs}s ago`;
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * State Card Component
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+function StateCard({ label, children, accent, warning }: {
+  label: string;
+  children: React.ReactNode;
+  accent?: boolean;
+  warning?: boolean;
+}) {
+  return (
+    <div className={`rounded-xl border p-4 transition-all duration-300 ${
+      warning ? 'border-amber-500/20 bg-amber-500/[0.04]' :
+      accent ? 'border-accent/20 bg-accent/[0.04]' :
+      'border-surface-border bg-surface-raised'
+    }`}>
+      <p className="text-[10px] uppercase tracking-wider font-semibold text-text-muted mb-2">{label}</p>
+      {children}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * Data Health Bar
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+function DataHealthBar({ live, historical, stale }: { live: number; historical: number; stale: number }) {
+  const total = live + historical + stale;
+  if (total === 0) return <span className="text-xs text-text-muted">No scan data</span>;
+  const pLive = (live / total) * 100;
+  const pHist = (historical / total) * 100;
+  const pStale = (stale / total) * 100;
+  return (
+    <div>
+      <div className="flex h-2 w-full overflow-hidden rounded-full bg-surface-overlay">
+        {pLive > 0 && <div className="bg-emerald-400 transition-all duration-500" style={{ width: `${pLive}%` }} />}
+        {pHist > 0 && <div className="bg-blue-400 transition-all duration-500" style={{ width: `${pHist}%` }} />}
+        {pStale > 0 && <div className="bg-amber-400 transition-all duration-500" style={{ width: `${pStale}%` }} />}
+      </div>
+      <div className="mt-1.5 flex gap-3 text-[10px] text-text-muted">
+        {live > 0 && <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />{live} live</span>}
+        {historical > 0 && <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-blue-400" />{historical} hist</span>}
+        {stale > 0 && <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" />{stale} stale</span>}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * Timeline Entry
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+function TimelineEntry({ event, expanded, onToggle, supportMode }: {
+  event: ActivityEvent;
+  expanded: boolean;
+  onToggle: () => void;
+  supportMode: boolean;
+}) {
+  const cat = CAT_STYLES[event.cat];
+  const isError = event.action === 'scan-error' || event.action === 'data-stale';
+
+  return (
+    <div
+      className={`timeline-entry group relative flex gap-3 rounded-lg border px-3.5 py-3 transition-all duration-200 cursor-pointer hover:bg-surface-overlay/30 ${
+        isError ? 'border-amber-500/15 bg-amber-500/[0.02]' : 'border-surface-border/60 bg-surface-raised/50'
+      }`}
+      onClick={onToggle}
+    >
+      {/* Left: icon + line */}
+      <div className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg ${cat.bg} ${cat.text}`}>
+        <ActionIcon action={event.action} />
+      </div>
+
+      {/* Center: content */}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 mb-0.5">
+          <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider border ${cat.border} ${cat.bg} ${cat.text}`}>
+            {cat.label}
+          </span>
+          <span className="text-[10px] text-text-muted font-mono tabular-nums">
+            {formatTime(event.ts)}
+          </span>
+          <span className="text-[10px] text-text-muted/50">
+            {timeAgo(event.ts)}
+          </span>
+        </div>
+        <p className="text-xs text-text-primary leading-relaxed">{event.label}</p>
+
+        {/* Expandable detail */}
+        {expanded && event.detail && supportMode && (
+          <div className="mt-2 rounded-md border border-surface-border bg-surface/60 p-2.5">
+            <pre className="text-[10px] text-text-secondary font-mono whitespace-pre-wrap leading-relaxed">
+              {JSON.stringify(event.detail, null, 2)}
+            </pre>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * Logs Table (Support Mode only)
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+const LOG_LEVEL_STYLES: Record<LogLevel, string> = {
+  INFO:  'text-blue-400 bg-blue-500/10 border-blue-500/20',
+  WARN:  'text-amber-400 bg-amber-500/10 border-amber-500/20',
+  ERROR: 'text-red-400 bg-red-500/10 border-red-500/20',
+  DEBUG: 'text-slate-400 bg-slate-500/10 border-slate-500/20',
+  API:   'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
 };
 
-/** Human-readable labels for each log level. */
-const LEVEL_LABELS: Record<LogLevel, string> = {
-    INFO: 'Info',
-    WARN: 'Warning',
-    ERROR: 'Error',
-    DEBUG: 'Debug',
-    API: 'API Call',
-};
+function LogsTable({ logs, loading }: { logs: LogEntry[]; loading: boolean }) {
+  const [filter, setFilter] = useState<LogLevel | 'ALL'>('ALL');
+  const [search, setSearch] = useState('');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
-const LEVEL_ICONS: Record<LogLevel, string> = {
-    INFO: 'ℹ',
-    WARN: '⚠',
-    ERROR: '✕',
-    DEBUG: '⚙',
-    API: '↗',
-};
+  const filtered = useMemo(() => logs.filter((l) => {
+    if (filter !== 'ALL' && l.level !== filter) return false;
+    if (search && !l.message.toLowerCase().includes(search.toLowerCase()) && !(l.context || '').toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  }), [logs, filter, search]);
 
-/* ─── Main Dashboard ─────────────────────────────────────────────────── */
+  const counts: Record<string, number> = { ALL: logs.length, API: 0, ERROR: 0, WARN: 0, INFO: 0, DEBUG: 0 };
+  logs.forEach((l) => counts[l.level]++);
+
+  return (
+    <div className="rounded-2xl border border-surface-border bg-surface-raised overflow-hidden">
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center px-5 py-4 border-b border-surface-border">
+        <div className="flex gap-1.5 flex-wrap">
+          {(['ALL', 'API', 'ERROR', 'WARN', 'INFO', 'DEBUG'] as const).map((lvl) => (
+            <button key={lvl} onClick={() => setFilter(lvl)}
+              className={`px-2 py-0.5 rounded text-[10px] font-semibold border transition-all ${
+                filter === lvl ? 'bg-text-primary text-surface border-text-primary' : 'bg-surface-raised text-text-muted border-surface-border hover:text-text-secondary'
+              }`}>{lvl} <span className="opacity-50">{counts[lvl]}</span></button>
+          ))}
+        </div>
+        <div className="relative flex-1 max-w-xs ml-auto">
+          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter logs..."
+            className="w-full bg-surface border border-surface-border rounded-lg px-3 py-1.5 text-xs text-text-primary placeholder:text-text-muted/60 focus:outline-none focus:border-accent/40" />
+        </div>
+      </div>
+
+      <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+        <table className="w-full text-left text-sm">
+          <thead className="sticky top-0 bg-surface-raised z-10">
+            <tr className="border-b border-surface-border text-[10px] uppercase tracking-wider text-text-muted font-semibold">
+              <th className="px-4 py-2.5 w-[120px]">Time</th>
+              <th className="px-4 py-2.5 w-[70px]">Level</th>
+              <th className="px-4 py-2.5 w-[110px]">Context</th>
+              <th className="px-4 py-2.5">Message</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-surface-border/40">
+            {loading && logs.length === 0 ? (
+              <tr><td colSpan={4} className="px-4 py-12 text-center text-text-muted text-xs">Loading...</td></tr>
+            ) : filtered.length === 0 ? (
+              <tr><td colSpan={4} className="px-4 py-12 text-center text-text-muted text-xs">No logs match</td></tr>
+            ) : filtered.slice(0, 200).map((log) => (
+              <tr key={log.id} className={`cursor-default ${log.level === 'ERROR' ? 'bg-red-500/[0.03]' : log.level === 'WARN' ? 'bg-amber-500/[0.02]' : 'hover:bg-surface-overlay/20'}`}
+                onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}>
+                <td className="px-4 py-2 font-mono text-[10px] text-text-muted whitespace-nowrap">
+                  {new Date(log.timestamp).toLocaleTimeString('en-US', { hour12: false })}
+                </td>
+                <td className="px-4 py-2">
+                  <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold border ${LOG_LEVEL_STYLES[log.level]}`}>{log.level}</span>
+                </td>
+                <td className="px-4 py-2 text-[10px] text-text-secondary font-mono">{log.context || '—'}</td>
+                <td className="px-4 py-2 text-[10px] text-text-primary font-mono">
+                  <span className="break-words">{log.message}</span>
+                  {expandedId === log.id && log.data && (
+                    <pre className="mt-1.5 p-2 rounded bg-surface/60 border border-surface-border text-[9px] text-text-secondary whitespace-pre-wrap">{JSON.stringify(log.data, null, 2)}</pre>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="px-4 py-2 border-t border-surface-border text-[10px] text-text-muted">
+        {filtered.length} of {logs.length} logs
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * Main Dev Dashboard
+ * ═══════════════════════════════════════════════════════════════════════ */
+
 export default function DevDashboard() {
-    const [logs, setLogs] = useState<LogEntry[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [filterLevel, setFilterLevel] = useState<LogLevel | 'ALL'>('ALL');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [autoRefresh, setAutoRefresh] = useState(true);
-    const [modalData, setModalData] = useState<any>(null);
-    const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  // Data
+  const [state, setState] = useState<SystemState | null>(null);
+  const [events, setEvents] = useState<ActivityEvent[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [logsLoading, setLogsLoading] = useState(true);
 
-    const fetchLogs = useCallback(async () => {
-        try {
-            const res = await fetch('/api/logs?limit=500');
-            const data = await res.json();
-            if (data.success) setLogs(data.logs);
-        } catch (err) {
-            console.error('Failed to fetch logs:', err);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+  // UI
+  const [supportMode, setSupportMode] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [timelineFilter, setTimelineFilter] = useState<TimelineFilter>('all');
+  const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
 
-    const clearLogs = async () => {
-        await fetch('/api/logs', { method: 'DELETE' });
-        setLogs([]);
-    };
+  // Refs for GSAP
+  const timelineRef = useRef<HTMLDivElement>(null);
+  const stateCardsRef = useRef<HTMLDivElement>(null);
+  const prevEventCountRef = useRef(0);
 
-    useEffect(() => {
-        fetchLogs();
-        if (autoRefresh) {
-            const interval = setInterval(fetchLogs, 2500);
-            return () => clearInterval(interval);
-        }
-    }, [autoRefresh, fetchLogs]);
+  // ── Support mode from URL or localStorage ───────────────────────────
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const fromUrl = params.get('support') === 'true' || params.get('support') === '1';
+    const fromStorage = localStorage.getItem('nse-support-mode') === '1';
+    if (fromUrl || fromStorage) {
+      setSupportMode(true);
+      if (fromUrl) localStorage.setItem('nse-support-mode', '1');
+    }
+  }, []);
 
-    /* ── Derived data ─────────────────────────────────────────────────── */
-    const filteredLogs = logs.filter((log) => {
-        const matchLevel = filterLevel === 'ALL' || log.level === filterLevel;
-        const matchSearch =
-            !searchQuery ||
-            log.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (log.context || '').toLowerCase().includes(searchQuery.toLowerCase());
-        return matchLevel && matchSearch;
-    });
+  useEffect(() => {
+    localStorage.setItem('nse-support-mode', supportMode ? '1' : '0');
+  }, [supportMode]);
 
-    const counts: Record<string, number> = {
-        ALL: logs.length,
-        API: 0,
-        ERROR: 0,
-        WARN: 0,
-        INFO: 0,
-        DEBUG: 0,
-    };
-    logs.forEach((l) => counts[l.level]++);
+  // ── Data fetching ───────────────────────────────────────────────────
+  const fetchAll = useCallback(async () => {
+    try {
+      const [stateRes, activityRes] = await Promise.all([
+        fetch('/api/state'),
+        fetch('/api/activity?limit=100'),
+      ]);
+      const [stateData, activityData] = await Promise.all([
+        stateRes.json(),
+        activityRes.json(),
+      ]);
+      setState(stateData);
+      setEvents(activityData.events || []);
+    } catch {
+      // silently fail
+    }
+  }, []);
 
-    const latestScan = logs.find(
-        (l) => l.context === 'Scan API' && l.level === 'INFO'
-    );
+  const fetchLogs = useCallback(async () => {
+    try {
+      const res = await fetch('/api/logs?limit=500');
+      const data = await res.json();
+      if (data.success) setLogs(data.logs);
+    } catch { /* */ }
+    finally { setLogsLoading(false); }
+  }, []);
 
-    return (
-        <div className="min-h-screen bg-surface text-text-primary font-body">
-            {/* ── Top bar ──────────────────────────────────────────────────── */}
-            <header className="sticky top-0 z-40 bg-surface/80 backdrop-blur-xl border-b border-surface-border">
-                <div className="max-w-[1600px] mx-auto px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent text-sm font-bold">
-                            {'</>'}
-                        </div>
-                        <div>
-                            <h1 className="text-lg font-bold tracking-tight text-text-primary leading-tight">
-                                Developer Console
-                            </h1>
-                            <p className="text-[11px] text-text-muted">
-                                System telemetry · API logs · Scanner alerts
-                            </p>
-                            <p className="text-[10px] text-text-muted/50 mt-0.5">
-                                Hover over any row to see a plain-English explanation
-                            </p>
-                        </div>
-                    </div>
+  useEffect(() => {
+    fetchAll();
+    if (supportMode) fetchLogs();
+  }, [fetchAll, fetchLogs, supportMode]);
 
-                    <div className="flex items-center gap-3">
-                        {/* Auto-refresh toggle */}
-                        <button
-                            onClick={() => setAutoRefresh(!autoRefresh)}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-200 ${autoRefresh
-                                ? 'bg-accent/10 border-accent/20 text-accent'
-                                : 'bg-surface-raised border-surface-border text-text-muted'
-                                }`}
-                        >
-                            <span
-                                className={`w-1.5 h-1.5 rounded-full ${autoRefresh ? 'bg-accent animate-pulse' : 'bg-text-muted'
-                                    }`}
-                            />
-                            Live
-                        </button>
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const interval = setInterval(() => {
+      fetchAll();
+      if (supportMode) fetchLogs();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [autoRefresh, fetchAll, fetchLogs, supportMode]);
 
-                        <button
-                            onClick={fetchLogs}
-                            className="px-3 py-1.5 bg-surface-raised hover:bg-surface-overlay border border-surface-border rounded-lg text-xs font-medium transition-colors"
-                        >
-                            ↻ Refresh
-                        </button>
+  // ── GSAP entrance animations ────────────────────────────────────────
+  useEffect(() => {
+    if (stateCardsRef.current) {
+      gsap.fromTo(
+        stateCardsRef.current.children,
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.35, stagger: 0.06, ease: 'power2.out' }
+      );
+    }
+  }, [state !== null]); // eslint-disable-line react-hooks/exhaustive-deps
 
-                        <button
-                            onClick={clearLogs}
-                            className="px-3 py-1.5 bg-red-500/8 hover:bg-red-500/15 text-red-400 border border-red-500/20 rounded-lg text-xs font-medium transition-colors"
-                        >
-                            Clear
-                        </button>
+  // Animate new timeline entries
+  useEffect(() => {
+    if (!timelineRef.current) return;
+    const entries = timelineRef.current.querySelectorAll('.timeline-entry');
+    const newCount = events.length;
+    const added = newCount - prevEventCountRef.current;
+    if (added > 0 && prevEventCountRef.current > 0) {
+      const newEntries = Array.from(entries).slice(0, Math.min(added, 5));
+      gsap.fromTo(newEntries, { opacity: 0, x: -12 }, { opacity: 1, x: 0, duration: 0.3, stagger: 0.05, ease: 'power2.out' });
+    } else if (prevEventCountRef.current === 0 && entries.length > 0) {
+      gsap.fromTo(entries, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.3, stagger: 0.03, ease: 'power2.out' });
+    }
+    prevEventCountRef.current = newCount;
+  }, [events]);
 
-                        <a
-                            href="/"
-                            className="px-3 py-1.5 bg-surface-raised hover:bg-surface-overlay border border-surface-border rounded-lg text-xs font-medium text-text-secondary transition-colors"
-                        >
-                            ← Dashboard
-                        </a>
-                    </div>
-                </div>
-            </header>
+  // ── Filtered events ─────────────────────────────────────────────────
+  const filteredEvents = useMemo(() =>
+    timelineFilter === 'all' ? events : events.filter((e) => e.cat === timelineFilter),
+    [events, timelineFilter]
+  );
 
-            <main className="max-w-[1600px] mx-auto px-6 py-6 space-y-6">
-                {/* ── Stats Grid ─────────────────────────────────────────────── */}
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    <StatCard
-                        label="Total Logs"
-                        value={logs.length}
-                        icon="📋"
-                        color="bg-blue-500/10"
-                        subtext={`${filteredLogs.length} shown`}
-                    />
-                    <StatCard
-                        label="API Calls"
-                        value={counts.API}
-                        icon="↗"
-                        color="bg-emerald-500/10"
-                    />
-                    <StatCard
-                        label="Errors"
-                        value={counts.ERROR}
-                        icon="✕"
-                        color="bg-red-500/10"
-                        subtext={
-                            counts.ERROR > 0
-                                ? 'Needs attention'
-                                : 'All clear'
-                        }
-                    />
-                    <StatCard
-                        label="Warnings"
-                        value={counts.WARN}
-                        icon="⚠"
-                        color="bg-amber-500/10"
-                    />
-                    <StatCard
-                        label="Last Scan"
-                        value={
-                            latestScan
-                                ? new Date(latestScan.timestamp).toLocaleTimeString()
-                                : '—'
-                        }
-                        icon="🔍"
-                        color="bg-violet-500/10"
-                        subtext={
-                            latestScan?.data?.durationMs
-                                ? `${latestScan.data.durationMs}ms · ${latestScan.data.stockCount} stocks`
-                                : undefined
-                        }
-                    />
-                </div>
+  const catCounts = useMemo(() => {
+    const c = { all: events.length, user: 0, system: 0, warning: 0 };
+    events.forEach((e) => c[e.cat]++);
+    return c;
+  }, [events]);
 
-                {/* ── Toolbar: Filters + Search ──────────────────────────────── */}
-                <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-                    {/* Level filters */}
-                    <div className="flex gap-1.5 flex-wrap">
-                        {(
-                            ['ALL', 'API', 'ERROR', 'WARN', 'INFO', 'DEBUG'] as const
-                        ).map((lvl) => {
-                            const isActive = filterLevel === lvl;
-                            const count = counts[lvl];
-                            return (
-                                <button
-                                    key={lvl}
-                                    onClick={() => setFilterLevel(lvl)}
-                                    className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-all duration-200 flex items-center gap-1.5 ${isActive
-                                        ? 'bg-text-primary text-surface border-text-primary shadow-sm'
-                                        : 'bg-surface-raised text-text-muted border-surface-border hover:text-text-secondary hover:border-text-muted'
-                                        }`}
-                                >
-                                    {lvl}
-                                    <span
-                                        className={`text-[9px] tabular-nums ${isActive ? 'opacity-60' : 'opacity-40'
-                                            }`}
-                                    >
-                                        {count}
-                                    </span>
-                                </button>
-                            );
-                        })}
-                    </div>
+  // ── Scan metadata shortcuts ─────────────────────────────────────────
+  const scan = state?.scan;
+  const hasStale = (scan?.staleCount ?? 0) > 0;
 
-                    {/* Search */}
-                    <div className="relative flex-1 max-w-md ml-auto">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-xs">
-                            🔎
-                        </span>
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search logs by message or context…"
-                            className="w-full bg-surface-raised border border-surface-border rounded-lg pl-8 pr-3 py-2 text-xs text-text-primary placeholder:text-text-muted/60 focus:outline-none focus:border-accent/40 focus:ring-1 focus:ring-accent/20 transition-all"
-                        />
-                        {searchQuery && (
-                            <button
-                                onClick={() => setSearchQuery('')}
-                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary text-xs"
-                            >
-                                ✕
-                            </button>
-                        )}
-                    </div>
-                </div>
+  return (
+    <div className="min-h-screen bg-surface text-text-primary font-body">
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-40 bg-surface/80 backdrop-blur-xl border-b border-surface-border">
+        <div className="max-w-[1400px] mx-auto px-6 py-3.5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent text-sm font-bold">
+              {'</>'}
+            </div>
+            <div>
+              <h1 className="text-base font-bold tracking-tight leading-tight">Developer Console</h1>
+              <p className="text-[10px] text-text-muted">Activity timeline · System state · Audit trail</p>
+            </div>
+          </div>
 
-                {/* ── Logs Table ─────────────────────────────────────────────── */}
-                <div className="bg-surface-raised border border-surface-border rounded-2xl overflow-hidden shadow-xl">
-                    <div className="overflow-x-auto scrollbar-thin">
-                        <table className="w-full text-left text-sm">
-                            <thead>
-                                <tr className="border-b border-surface-border text-[11px] uppercase tracking-wider text-text-muted font-semibold">
-                                    <th className="px-5 py-3.5 w-[140px]">When</th>
-                                    <th className="px-5 py-3.5 w-[90px]">Severity</th>
-                                    <th className="px-5 py-3.5 w-[160px]">Source</th>
-                                    <th className="px-5 py-3.5">What Happened</th>
-                                    <th className="px-5 py-3.5 w-[90px] text-right">Details</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-surface-border/60">
-                                {loading && logs.length === 0 ? (
-                                    <tr>
-                                        <td
-                                            colSpan={5}
-                                            className="px-5 py-16 text-center text-text-muted"
-                                        >
-                                            <div className="flex flex-col items-center gap-3">
-                                                <div className="w-8 h-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
-                                                <span className="text-xs">Loading logs…</span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ) : filteredLogs.length === 0 ? (
-                                    <tr>
-                                        <td
-                                            colSpan={5}
-                                            className="px-5 py-16 text-center text-text-muted"
-                                        >
-                                            <div className="flex flex-col items-center gap-2">
-                                                <span className="text-3xl opacity-30">📭</span>
-                                                <span className="text-xs">
-                                                    {searchQuery
-                                                        ? 'No logs match your search'
-                                                        : 'No logs recorded yet. Run a scan to see activity.'}
-                                                </span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    filteredLogs.map((log, i) => {
-                                        const isExpanded = expandedRow === log.id;
-                                        return (
-                                            <tr
-                                                key={log.id}
-                                                className={`group transition-colors duration-150 cursor-default ${log.level === 'ERROR'
-                                                    ? 'bg-red-500/[0.03] hover:bg-red-500/[0.06]'
-                                                    : log.level === 'WARN'
-                                                        ? 'bg-amber-500/[0.02] hover:bg-amber-500/[0.04]'
-                                                        : 'hover:bg-surface-overlay/30'
-                                                    }`}
-                                                style={{
-                                                    animationDelay: `${Math.min(i * 15, 300)}ms`,
-                                                }}
-                                                onClick={() =>
-                                                    setExpandedRow(isExpanded ? null : log.id)
-                                                }
-                                            >
-                                                {/* Timestamp */}
-                                                <td className="px-5 py-3 font-mono text-xs whitespace-nowrap text-text-muted">
-                                                    {new Date(log.timestamp).toLocaleTimeString(
-                                                        'en-US',
-                                                        { hour12: false }
-                                                    )}
-                                                    <span className="text-[10px] opacity-40 ml-0.5">
-                                                        .
-                                                        {new Date(log.timestamp)
-                                                            .getMilliseconds()
-                                                            .toString()
-                                                            .padStart(3, '0')}
-                                                    </span>
-                                                </td>
+          <div className="flex items-center gap-2">
+            {/* Support mode toggle */}
+            <button
+              onClick={() => setSupportMode(!supportMode)}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold border transition-all duration-200 ${
+                supportMode
+                  ? 'bg-violet-500/10 border-violet-500/20 text-violet-400'
+                  : 'bg-surface-raised border-surface-border text-text-muted hover:text-text-secondary'
+              }`}
+              title="Toggle support mode for debug details"
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+              </svg>
+              Support
+            </button>
 
-                                                {/* Level badge */}
-                                                <td className="px-5 py-3">
-                                                    <span
-                                                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border cursor-help ${LEVEL_STYLES[log.level]
-                                                            }`}
-                                                        title={`${LEVEL_LABELS[log.level]} — ${log.level === 'ERROR' ? 'A failure occurred' : log.level === 'WARN' ? 'Something unusual was detected' : log.level === 'API' ? 'An outgoing API call was made' : log.level === 'DEBUG' ? 'Low-level diagnostic detail' : 'General informational event'}`}
-                                                    >
-                                                        <span className="text-[9px]">
-                                                            {LEVEL_ICONS[log.level]}
-                                                        </span>
-                                                        {log.level}
-                                                    </span>
-                                                </td>
+            {/* Live toggle */}
+            <button
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold border transition-all duration-200 ${
+                autoRefresh
+                  ? 'bg-accent/10 border-accent/20 text-accent'
+                  : 'bg-surface-raised border-surface-border text-text-muted'
+              }`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${autoRefresh ? 'bg-accent animate-pulse' : 'bg-text-muted'}`} />
+              Live
+            </button>
 
-                                                {/* Context / Source */}
-                                                <td className="px-5 py-3 text-xs">
-                                                    {log.context ? (
-                                                        <span
-                                                            className="bg-surface-overlay/60 px-2 py-1 rounded text-[11px] text-text-secondary cursor-help inline-block"
-                                                            title={CONTEXT_DESCRIPTIONS[log.context] || `Events from the "${log.context}" subsystem.`}
-                                                        >
-                                                            {log.context}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="opacity-20">—</span>
-                                                    )}
-                                                </td>
+            <button onClick={fetchAll}
+              className="px-2.5 py-1.5 bg-surface-raised hover:bg-surface-overlay border border-surface-border rounded-lg text-[10px] font-semibold transition-colors">
+              Refresh
+            </button>
 
-                                                {/* Message + Description */}
-                                                <td className="px-5 py-3 text-xs text-text-primary leading-relaxed">
-                                                    {/* Technical summary */}
-                                                    <span className="font-mono break-words">{log.message}</span>
-
-                                                    {/* Human-friendly description (always visible when present) */}
-                                                    {log.description && (
-                                                        <p className="mt-1.5 text-[11px] leading-relaxed text-text-muted/80 font-sans break-words">
-                                                            {log.description}
-                                                        </p>
-                                                    )}
-
-                                                    {/* Inline expanded raw data (toggled by row click) */}
-                                                    {isExpanded && log.data && (
-                                                        <div className="mt-2 p-3 bg-surface/60 rounded-lg border border-surface-border text-[11px] text-text-secondary font-mono animate-fade-in">
-                                                            <p className="text-[10px] uppercase tracking-wider text-text-muted mb-2 font-sans font-semibold">Raw Data Payload</p>
-                                                            <pre className="whitespace-pre-wrap leading-relaxed">
-                                                                {JSON.stringify(log.data, null, 2)}
-                                                            </pre>
-                                                        </div>
-                                                    )}
-                                                </td>
-
-                                                {/* Data action */}
-                                                <td className="px-5 py-3 text-right">
-                                                    {log.data ? (
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setModalData(log.data);
-                                                            }}
-                                                            className="text-[10px] uppercase font-bold tracking-wider text-accent/70 hover:text-accent transition-colors"
-                                                        >
-                                                            {'{ } JSON'}
-                                                        </button>
-                                                    ) : (
-                                                        <span className="text-text-muted opacity-15">
-                                                            —
-                                                        </span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {/* Footer bar */}
-                    {filteredLogs.length > 0 && (
-                        <div className="px-5 py-3 border-t border-surface-border bg-surface-overlay/20 flex items-center justify-between text-[11px] text-text-muted">
-                            <span>
-                                Showing <strong className="text-text-secondary">{filteredLogs.length}</strong> of{' '}
-                                <strong className="text-text-secondary">{logs.length}</strong> logs
-                            </span>
-                            <span>
-                                {autoRefresh && (
-                                    <span className="flex items-center gap-1.5">
-                                        <span className="w-1 h-1 rounded-full bg-accent animate-pulse" />
-                                        Polling every 2.5s
-                                    </span>
-                                )}
-                            </span>
-                        </div>
-                    )}
-                </div>
-            </main>
-
-            {/* ── JSON Modal ─────────────────────────────────────────────── */}
-            {modalData && (
-                <JsonModal data={modalData} onClose={() => setModalData(null)} />
-            )}
+            <a href="/"
+              className="px-2.5 py-1.5 bg-surface-raised hover:bg-surface-overlay border border-surface-border rounded-lg text-[10px] font-semibold text-text-secondary transition-colors">
+              Dashboard
+            </a>
+          </div>
         </div>
-    );
+      </header>
+
+      <main className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">
+        {/* ── Current State Panel ───────────────────────────────────────── */}
+        <section>
+          <h2 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-3">Current State</h2>
+          <div ref={stateCardsRef} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {/* Market */}
+            <StateCard label="Market">
+              {state ? (
+                <div className="flex items-center gap-2">
+                  <span className={`h-2.5 w-2.5 rounded-full ${state.market.open ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]' : 'bg-red-400'}`} />
+                  <span className={`text-sm font-bold ${state.market.open ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {state.market.open ? 'OPEN' : 'CLOSED'}
+                  </span>
+                </div>
+              ) : <span className="text-xs text-text-muted">Loading...</span>}
+            </StateCard>
+
+            {/* Last Scan */}
+            <StateCard label="Last Scan">
+              {scan ? (
+                <div>
+                  <p className="text-sm font-bold tabular-nums">{formatTime(scan.scannedAt)}</p>
+                  <span className={`inline-flex mt-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                    scan.scanType === 'auto'
+                      ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                      : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                  }`}>{scan.scanType}</span>
+                </div>
+              ) : <span className="text-xs text-text-muted">No scans yet</span>}
+            </StateCard>
+
+            {/* Close Watch */}
+            <StateCard label="Close Watch" accent={!!state && state.watchlist.closeWatch > 0}>
+              {state ? (
+                <div>
+                  <p className="text-sm font-bold tabular-nums">{state.watchlist.closeWatch} <span className="text-text-muted font-normal">of {state.watchlist.total}</span></p>
+                  {state.watchlist.closeWatch > 0 && (
+                    <p className="mt-1 text-[10px] text-text-muted truncate" title={state.watchlist.closeWatchSymbols.join(', ')}>
+                      {state.watchlist.closeWatchSymbols.join(', ')}
+                    </p>
+                  )}
+                </div>
+              ) : <span className="text-xs text-text-muted">Loading...</span>}
+            </StateCard>
+
+            {/* Data Health */}
+            <StateCard label="Data Health" warning={hasStale}>
+              {scan ? (
+                <DataHealthBar live={scan.liveCount} historical={scan.historicalCount} stale={scan.staleCount} />
+              ) : <span className="text-xs text-text-muted">No scan data</span>}
+            </StateCard>
+
+            {/* Alerts */}
+            <StateCard label="Alerts" accent={!!state && state.alerts.unread > 0}>
+              {state ? (
+                <div>
+                  <p className="text-sm font-bold tabular-nums">
+                    {state.alerts.unread > 0 ? (
+                      <><span className="text-accent">{state.alerts.unread}</span> <span className="text-text-muted font-normal">unread</span></>
+                    ) : (
+                      <span className="text-text-muted font-normal">0 unread</span>
+                    )}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-text-muted">{state.alerts.total} total</p>
+                </div>
+              ) : <span className="text-xs text-text-muted">Loading...</span>}
+            </StateCard>
+
+            {/* Cache */}
+            <StateCard label="Cache">
+              {state ? (
+                <div>
+                  <p className="text-sm font-bold tabular-nums">{state.cache.size} <span className="text-text-muted font-normal">entries</span></p>
+                  <p className="mt-0.5 text-[10px] text-text-muted">{state.cache.date}</p>
+                </div>
+              ) : <span className="text-xs text-text-muted">Loading...</span>}
+            </StateCard>
+          </div>
+        </section>
+
+        {/* ── Activity Timeline ─────────────────────────────────────────── */}
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-text-muted">Activity Timeline</h2>
+            <div className="flex gap-1.5">
+              {(['all', 'user', 'system', 'warning'] as const).map((f) => {
+                const isActive = timelineFilter === f;
+                const count = catCounts[f];
+                const label = f === 'all' ? 'All' : CAT_STYLES[f as ActivityCategory].label;
+                return (
+                  <button key={f} onClick={() => setTimelineFilter(f)}
+                    className={`px-2 py-0.5 rounded text-[10px] font-semibold border transition-all ${
+                      isActive ? 'bg-text-primary text-surface border-text-primary' : 'bg-surface-raised text-text-muted border-surface-border hover:text-text-secondary'
+                    }`}>
+                    {label} <span className="opacity-50">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div ref={timelineRef} className="space-y-1.5 max-h-[600px] overflow-y-auto pr-1 scrollbar-thin">
+            {filteredEvents.length === 0 ? (
+              <div className="rounded-xl border border-surface-border bg-surface-raised px-6 py-12 text-center">
+                <p className="text-xs text-text-muted">No activity recorded yet. Use the main dashboard to trigger some events.</p>
+              </div>
+            ) : filteredEvents.map((event) => (
+              <TimelineEntry
+                key={event.id}
+                event={event}
+                expanded={expandedEvent === event.id}
+                onToggle={() => setExpandedEvent(expandedEvent === event.id ? null : event.id)}
+                supportMode={supportMode}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* ── Support Mode: Raw Logs ────────────────────────────────────── */}
+        {supportMode && (
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-violet-400">
+                <span className="inline-flex items-center gap-1.5">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                  </svg>
+                  Raw Logs (Support Mode)
+                </span>
+              </h2>
+              <button onClick={async () => { await fetch('/api/logs', { method: 'DELETE' }); setLogs([]); }}
+                className="px-2 py-1 bg-red-500/8 hover:bg-red-500/15 text-red-400 border border-red-500/20 rounded text-[10px] font-semibold transition-colors">
+                Clear
+              </button>
+            </div>
+            <LogsTable logs={logs} loading={logsLoading} />
+          </section>
+        )}
+
+        {/* ── Footer ────────────────────────────────────────────────────── */}
+        <div className="flex items-center justify-between pt-2 pb-4 text-[10px] text-text-muted/40">
+          <span>Server: {state?.serverTime ? formatTime(state.serverTime) : '...'}</span>
+          <span>{supportMode ? 'Support mode active' : 'Tip: add ?support=true to URL for debug details'}</span>
+        </div>
+      </main>
+    </div>
+  );
 }
