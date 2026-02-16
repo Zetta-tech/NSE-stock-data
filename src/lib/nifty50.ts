@@ -1,6 +1,6 @@
 import type { WatchlistStock } from "./types";
 
-export const NIFTY_50_STOCKS: WatchlistStock[] = [
+export const NIFTY_50_STOCKS: WatchlistStock[] = ([
   { symbol: "ADANIPORTS", name: "Adani Ports & SEZ" },
   { symbol: "APOLLOHOSP", name: "Apollo Hospitals" },
   { symbol: "ASIANPAINT", name: "Asian Paints" },
@@ -51,4 +51,4 @@ export const NIFTY_50_STOCKS: WatchlistStock[] = [
   { symbol: "WIPRO", name: "Wipro" },
   { symbol: "HAL", name: "Hindustan Aeronautics" },
   { symbol: "SHRIRAMFIN", name: "Shriram Finance" },
-];
+] as { symbol: string; name: string }[]).map((s) => ({ ...s, closeWatch: false }));

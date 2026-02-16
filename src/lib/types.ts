@@ -1,6 +1,7 @@
 export interface WatchlistStock {
   symbol: string;
   name: string;
+  closeWatch: boolean;
 }
 
 export interface DayData {

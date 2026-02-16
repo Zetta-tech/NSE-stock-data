@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { scanMultipleStocks } from "@/lib/scanner";
-import { getWatchlist, addAlert, getAlerts } from "@/lib/store";
+import { getWatchlist, getCloseWatchStocks, addAlert, getAlerts } from "@/lib/store";
 import { getMarketStatus, getHistoricalCacheStats } from "@/lib/nse-client";
 import { logger } from "@/lib/logger";
 import type { Alert, ScanResponse } from "@/lib/types";
@@ -11,9 +11,10 @@ export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
     const useIntraday = body.intraday === true;
+    const closeWatchOnly = body.closeWatchOnly === true;
 
-    const watchlist = getWatchlist();
-    logger.api(`POST /api/scan → ${watchlist.length} stocks, intraday=${useIntraday}`, { stockCount: watchlist.length, useIntraday }, 'ScanRoute');
+    const watchlist = closeWatchOnly ? getCloseWatchStocks() : getWatchlist();
+    logger.api(`POST /api/scan → ${watchlist.length} stocks, intraday=${useIntraday}, closeWatchOnly=${closeWatchOnly}`, { stockCount: watchlist.length, useIntraday, closeWatchOnly }, 'ScanRoute');
 
     const scanStart = Date.now();
     const marketOpen = await getMarketStatus().catch(() => false);
