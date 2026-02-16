@@ -1,5 +1,7 @@
 "use client";
 
+import { useRef, useEffect } from "react";
+import gsap from "gsap";
 import type { ScanResult } from "@/lib/types";
 
 export function StockCard({
@@ -13,31 +15,92 @@ export function StockCard({
   closeWatch: boolean;
   onToggleCloseWatch: (symbol: string) => void;
 }) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const starRef = useRef<HTMLButtonElement>(null);
+  const borderRef = useRef<HTMLDivElement>(null);
+  const prevCloseWatch = useRef(closeWatch);
+
   const hasData = result.todayHigh > 0;
   const isStale = result.dataSource === "stale";
   const isLive = result.dataSource === "live";
   const highBreaks = hasData && !isStale && result.todayHigh > result.prevMaxHigh;
   const volBreaks = hasData && !isStale && result.todayVolume > result.prevMaxVolume;
 
+  // Animate star toggle transitions
+  useEffect(() => {
+    if (prevCloseWatch.current === closeWatch) return;
+    prevCloseWatch.current = closeWatch;
+
+    if (!cardRef.current || !starRef.current) return;
+
+    if (closeWatch) {
+      // Star ON: pulse the star + flash the card border
+      gsap.fromTo(
+        starRef.current,
+        { scale: 0.5, rotation: -30 },
+        { scale: 1, rotation: 0, duration: 0.4, ease: "back.out(2)" }
+      );
+      gsap.fromTo(
+        cardRef.current,
+        { boxShadow: "0 0 0 2px rgba(251, 191, 36, 0.5), 0 0 20px rgba(251, 191, 36, 0.15)" },
+        { boxShadow: "0 0 0 1px rgba(251, 191, 36, 0.2), 0 0 0px rgba(251, 191, 36, 0)", duration: 0.8, ease: "power2.out" }
+      );
+    } else {
+      // Star OFF: shrink + fade
+      gsap.fromTo(
+        starRef.current,
+        { scale: 1.3 },
+        { scale: 1, duration: 0.3, ease: "power2.out" }
+      );
+    }
+  }, [closeWatch]);
+
+  // Entrance animation
+  useEffect(() => {
+    if (!cardRef.current) return;
+    gsap.fromTo(
+      cardRef.current,
+      { opacity: 0, y: 12 },
+      { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }
+    );
+  }, []);
+
   return (
     <div
+      ref={cardRef}
       className={`group relative overflow-hidden rounded-2xl border p-5 transition-all duration-300 hover:-translate-y-1 ${
         isStale
           ? "border-warn/30 bg-surface-raised"
           : result.triggered
             ? "border-accent/30 card-glow bg-surface-raised"
-            : "border-surface-border bg-surface-raised hover:border-surface-border/80 hover:shadow-xl hover:shadow-black/20"
+            : closeWatch
+              ? "border-amber-400/25 bg-surface-raised hover:shadow-xl hover:shadow-amber-400/5"
+              : "border-surface-border bg-surface-raised hover:border-surface-border/80 hover:shadow-xl hover:shadow-black/20"
       }`}
     >
+      {/* Top edge highlight */}
       {result.triggered && !isStale && (
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/60 to-transparent" />
       )}
       {isStale && (
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-warn/60 to-transparent" />
       )}
+      {closeWatch && !result.triggered && !isStale && (
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/50 to-transparent" />
+      )}
 
+      {/* Left amber strip for close-watch stocks */}
+      {closeWatch && (
+        <div
+          ref={borderRef}
+          className="absolute inset-y-0 left-0 w-[3px] rounded-l-2xl bg-gradient-to-b from-amber-400/70 via-amber-400/40 to-amber-400/10"
+        />
+      )}
+
+      {/* Action buttons */}
       <div className="absolute right-3 top-3 flex items-center gap-1">
         <button
+          ref={starRef}
           onClick={() => onToggleCloseWatch(result.symbol)}
           className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-200 ${
             closeWatch
@@ -74,7 +137,9 @@ export function StockCard({
             className={`flex h-10 w-10 items-center justify-center rounded-xl text-xs font-bold transition-colors ${
               result.triggered
                 ? "bg-accent/15 text-accent"
-                : "bg-surface-overlay text-text-secondary"
+                : closeWatch
+                  ? "bg-amber-400/10 text-amber-400"
+                  : "bg-surface-overlay text-text-secondary"
             }`}
           >
             {result.symbol.slice(0, 2)}
@@ -82,6 +147,14 @@ export function StockCard({
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-semibold tracking-tight">{result.symbol}</h3>
+              {closeWatch && !result.triggered && (
+                <span className="inline-flex items-center gap-0.5 rounded-md bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-400/80">
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                  Watching
+                </span>
+              )}
               {result.triggered && (
                 <span className="inline-flex items-center gap-1 rounded-md bg-accent/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent">
                   <span className="h-1 w-1 rounded-full bg-accent animate-pulse" />
@@ -172,6 +245,9 @@ export function StockCard({
 
       {result.triggered && (
         <div className="pointer-events-none absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-accent/[0.04] blur-2xl animate-glow-pulse" />
+      )}
+      {closeWatch && !result.triggered && (
+        <div className="pointer-events-none absolute -bottom-8 -right-8 h-24 w-24 rounded-full bg-amber-400/[0.03] blur-2xl" />
       )}
     </div>
   );
