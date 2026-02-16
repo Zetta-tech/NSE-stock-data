@@ -4,6 +4,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { LogEntry, LogLevel } from '@/lib/logger';
 
 /* ─── Stat Card ──────────────────────────────────────────────────────── */
+/**
+ * Displays a single metric in the stats grid at the top of the console.
+ * Each card surfaces a key health indicator at a glance.
+ */
 function StatCard({
     label,
     value,
@@ -38,6 +42,20 @@ function StatCard({
         </div>
     );
 }
+
+/* ─── Context Descriptions ───────────────────────────────────────────── */
+/**
+ * Maps each subsystem context to a short, jargon-free explanation
+ * shown as a tooltip when hovering the context badge.
+ */
+const CONTEXT_DESCRIPTIONS: Record<string, string> = {
+    'NSE Data Service': 'Handles all communication with the National Stock Exchange (fetching prices, historical data, and search results).',
+    'Stock Scanner': 'Analyzes each stock to detect breakout signals — situations where both price and volume exceed recent highs.',
+    'Scan API': 'The system endpoint that triggers a scan cycle and returns results to the dashboard.',
+    'Stock Search': 'Handles requests to find new stock symbols and company names from the NSE database.',
+    'Watchlist': 'Manages your saved stocks, including adding, removing, and toggling focus for the live ticker.',
+    'Live Ticker': 'The background service that keeps the dashboard ticker bar updated with real-time price movements.',
+};
 
 /* ─── JSON Modal ─────────────────────────────────────────────────────── */
 function JsonModal({
@@ -92,12 +110,25 @@ function JsonModal({
 }
 
 /* ─── Level Badge ────────────────────────────────────────────────────── */
+/**
+ * Visual styles for each log level so severity is immediately
+ * recognisable by colour, even at a glance.
+ */
 const LEVEL_STYLES: Record<LogLevel, string> = {
     INFO: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
     WARN: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
     ERROR: 'text-red-400 bg-red-500/10 border-red-500/20',
     DEBUG: 'text-slate-400 bg-slate-500/10 border-slate-500/20',
     API: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+};
+
+/** Human-readable labels for each log level. */
+const LEVEL_LABELS: Record<LogLevel, string> = {
+    INFO: 'Info',
+    WARN: 'Warning',
+    ERROR: 'Error',
+    DEBUG: 'Debug',
+    API: 'API Call',
 };
 
 const LEVEL_ICONS: Record<LogLevel, string> = {
@@ -164,7 +195,7 @@ export default function DevDashboard() {
     logs.forEach((l) => counts[l.level]++);
 
     const latestScan = logs.find(
-        (l) => l.context === 'ScanRoute' && l.level === 'INFO'
+        (l) => l.context === 'Scan API' && l.level === 'INFO'
     );
 
     return (
@@ -181,7 +212,10 @@ export default function DevDashboard() {
                                 Developer Console
                             </h1>
                             <p className="text-[11px] text-text-muted">
-                                System telemetry · API logs · Scanner events
+                                System telemetry · API logs · Scanner alerts
+                            </p>
+                            <p className="text-[10px] text-text-muted/50 mt-0.5">
+                                Hover over any row to see a plain-English explanation
                             </p>
                         </div>
                     </div>
@@ -191,8 +225,8 @@ export default function DevDashboard() {
                         <button
                             onClick={() => setAutoRefresh(!autoRefresh)}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-200 ${autoRefresh
-                                    ? 'bg-accent/10 border-accent/20 text-accent'
-                                    : 'bg-surface-raised border-surface-border text-text-muted'
+                                ? 'bg-accent/10 border-accent/20 text-accent'
+                                : 'bg-surface-raised border-surface-border text-text-muted'
                                 }`}
                         >
                             <span
@@ -290,8 +324,8 @@ export default function DevDashboard() {
                                     key={lvl}
                                     onClick={() => setFilterLevel(lvl)}
                                     className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-all duration-200 flex items-center gap-1.5 ${isActive
-                                            ? 'bg-text-primary text-surface border-text-primary shadow-sm'
-                                            : 'bg-surface-raised text-text-muted border-surface-border hover:text-text-secondary hover:border-text-muted'
+                                        ? 'bg-text-primary text-surface border-text-primary shadow-sm'
+                                        : 'bg-surface-raised text-text-muted border-surface-border hover:text-text-secondary hover:border-text-muted'
                                         }`}
                                 >
                                     {lvl}
@@ -335,11 +369,11 @@ export default function DevDashboard() {
                         <table className="w-full text-left text-sm">
                             <thead>
                                 <tr className="border-b border-surface-border text-[11px] uppercase tracking-wider text-text-muted font-semibold">
-                                    <th className="px-5 py-3.5 w-[140px]">Time</th>
-                                    <th className="px-5 py-3.5 w-[80px]">Level</th>
-                                    <th className="px-5 py-3.5 w-[130px]">Context</th>
-                                    <th className="px-5 py-3.5">Message</th>
-                                    <th className="px-5 py-3.5 w-[90px] text-right">Data</th>
+                                    <th className="px-5 py-3.5 w-[140px]">When</th>
+                                    <th className="px-5 py-3.5 w-[90px]">Severity</th>
+                                    <th className="px-5 py-3.5 w-[160px]">Source</th>
+                                    <th className="px-5 py-3.5">What Happened</th>
+                                    <th className="px-5 py-3.5 w-[90px] text-right">Details</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-surface-border/60">
@@ -378,10 +412,10 @@ export default function DevDashboard() {
                                             <tr
                                                 key={log.id}
                                                 className={`group transition-colors duration-150 cursor-default ${log.level === 'ERROR'
-                                                        ? 'bg-red-500/[0.03] hover:bg-red-500/[0.06]'
-                                                        : log.level === 'WARN'
-                                                            ? 'bg-amber-500/[0.02] hover:bg-amber-500/[0.04]'
-                                                            : 'hover:bg-surface-overlay/30'
+                                                    ? 'bg-red-500/[0.03] hover:bg-red-500/[0.06]'
+                                                    : log.level === 'WARN'
+                                                        ? 'bg-amber-500/[0.02] hover:bg-amber-500/[0.04]'
+                                                        : 'hover:bg-surface-overlay/30'
                                                     }`}
                                                 style={{
                                                     animationDelay: `${Math.min(i * 15, 300)}ms`,
@@ -408,8 +442,9 @@ export default function DevDashboard() {
                                                 {/* Level badge */}
                                                 <td className="px-5 py-3">
                                                     <span
-                                                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border ${LEVEL_STYLES[log.level]
+                                                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border cursor-help ${LEVEL_STYLES[log.level]
                                                             }`}
+                                                        title={`${LEVEL_LABELS[log.level]} — ${log.level === 'ERROR' ? 'A failure occurred' : log.level === 'WARN' ? 'Something unusual was detected' : log.level === 'API' ? 'An outgoing API call was made' : log.level === 'DEBUG' ? 'Low-level diagnostic detail' : 'General informational event'}`}
                                                     >
                                                         <span className="text-[9px]">
                                                             {LEVEL_ICONS[log.level]}
@@ -418,10 +453,13 @@ export default function DevDashboard() {
                                                     </span>
                                                 </td>
 
-                                                {/* Context */}
-                                                <td className="px-5 py-3 text-xs text-text-secondary font-mono">
+                                                {/* Context / Source */}
+                                                <td className="px-5 py-3 text-xs">
                                                     {log.context ? (
-                                                        <span className="bg-surface-overlay/60 px-1.5 py-0.5 rounded text-[11px]">
+                                                        <span
+                                                            className="bg-surface-overlay/60 px-2 py-1 rounded text-[11px] text-text-secondary cursor-help inline-block"
+                                                            title={CONTEXT_DESCRIPTIONS[log.context] || `Events from the "${log.context}" subsystem.`}
+                                                        >
                                                             {log.context}
                                                         </span>
                                                     ) : (
@@ -429,12 +467,22 @@ export default function DevDashboard() {
                                                     )}
                                                 </td>
 
-                                                {/* Message */}
-                                                <td className="px-5 py-3 text-xs text-text-primary leading-relaxed font-mono">
-                                                    <span className="break-words">{log.message}</span>
-                                                    {/* Inline expanded data */}
+                                                {/* Message + Description */}
+                                                <td className="px-5 py-3 text-xs text-text-primary leading-relaxed">
+                                                    {/* Technical summary */}
+                                                    <span className="font-mono break-words">{log.message}</span>
+
+                                                    {/* Human-friendly description (always visible when present) */}
+                                                    {log.description && (
+                                                        <p className="mt-1.5 text-[11px] leading-relaxed text-text-muted/80 font-sans break-words">
+                                                            {log.description}
+                                                        </p>
+                                                    )}
+
+                                                    {/* Inline expanded raw data (toggled by row click) */}
                                                     {isExpanded && log.data && (
                                                         <div className="mt-2 p-3 bg-surface/60 rounded-lg border border-surface-border text-[11px] text-text-secondary font-mono animate-fade-in">
+                                                            <p className="text-[10px] uppercase tracking-wider text-text-muted mb-2 font-sans font-semibold">Raw Data Payload</p>
                                                             <pre className="whitespace-pre-wrap leading-relaxed">
                                                                 {JSON.stringify(log.data, null, 2)}
                                                             </pre>

@@ -67,11 +67,21 @@ export async function getHistoricalData(
   const cached = historicalCache.get(symbol);
 
   if (cached && cached.date === today && cached.days === days) {
-    logger.debug(`Cache Hit: ${symbol} (${days} days)`, { type: 'CACHE_HIT', symbol }, 'NSEClient');
+    logger.debug(
+      `Cache hit: ${symbol} (${days} days)`,
+      { type: 'CACHE_HIT', symbol },
+      'NSE Data Service',
+      `No network call needed — we already have today's price history for ${symbol}. The cached data covers the last ${days} trading days and is still valid because the date hasn't changed.`,
+    );
     return cached.data;
   }
 
-  logger.api(`Fetching historical data: ${symbol} (${days} days)`, { startLine: 70, symbol, days }, 'NSEClient');
+  logger.api(
+    `Fetching historical data: ${symbol} (${days} days)`,
+    { symbol, days },
+    'NSE Data Service',
+    `Calling the NSE India API to download the last ${days} trading days of price & volume data for ${symbol}. This data is needed to check whether today's numbers are unusually high compared to recent history.`,
+  );
 
   const nse = getNse();
   const end = new Date();
@@ -79,7 +89,12 @@ export async function getHistoricalData(
   start.setDate(start.getDate() - days * 2);
 
   const raw = await nse.getEquityHistoricalData(symbol, { start, end });
-  logger.debug(`API Success: ${symbol} historical data fetched`, { rawCount: raw.length }, 'NSEClient');
+  logger.debug(
+    `API response received: ${symbol} — ${raw.length} record(s)`,
+    { rawCount: raw.length },
+    'NSE Data Service',
+    `The NSE API responded successfully for ${symbol}. We received ${raw.length} raw data chunk(s) which will be sorted by date before analysis.`,
+  );
 
   const records = raw.flatMap((entry) => entry.data);
 
@@ -116,10 +131,20 @@ export async function getCurrentDayData(
     const volume =
       tradeInfo.marketDeptOrderBook.tradeInfo.totalTradedVolume;
 
-    logger.debug(`Fetch Success: ${symbol} current data`, { high, volume, close, change }, 'NSEClient');
+    logger.debug(
+      `Live data received: ${symbol} — ₹${close} (${change >= 0 ? '+' : ''}${change.toFixed(2)}%)`,
+      { high, volume, close, change },
+      'NSE Data Service',
+      `Successfully fetched real-time intraday data for ${symbol}. Current price is ₹${close} with a ${change >= 0 ? 'gain' : 'loss'} of ${Math.abs(change).toFixed(2)}% today. Today's high so far is ₹${high} on volume of ${volume.toLocaleString()} shares.`,
+    );
     return { high, volume, close, change };
   } catch (error) {
-    logger.error(`Fetch Error: ${symbol} current data failed`, { error }, 'NSEClient');
+    logger.error(
+      `Live data fetch failed: ${symbol}`,
+      { error },
+      'NSE Data Service',
+      `Could not retrieve real-time price data for ${symbol} from the NSE. The scanner will fall back to the most recent end-of-day closing data instead. This often happens outside of market hours (9:15 AM – 3:30 PM IST).`,
+    );
     return null;
   }
 }
@@ -134,7 +159,12 @@ export async function getMarketStatus(): Promise<boolean> {
         s.marketStatus.toLowerCase().includes("open")
     );
   } catch (error) {
-    logger.error(`Market Status Check Failed`, { error }, 'NSEClient');
+    logger.error(
+      `Market status check failed`,
+      { error },
+      'NSE Data Service',
+      `Unable to determine whether the Indian stock market is currently open. The system will assume the market is closed and use end-of-day data. This is usually caused by an NSE website timeout.`,
+    );
     return false;
   }
 }
@@ -149,7 +179,12 @@ export async function searchStocks(
 ): Promise<NseSearchResult[]> {
   const nse = getNse();
   try {
-    logger.api(`Searching NSE for "${query}"`, { query }, 'NSEClient');
+    logger.api(
+      `Searching NSE for "${query}"`,
+      { query },
+      'NSE Data Service',
+      `Looking up stock symbols on the NSE that match the search term "${query}". Results are filtered to only show equities (no derivatives or indices).`,
+    );
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: any = await nse.getDataByEndpoint(
@@ -157,7 +192,12 @@ export async function searchStocks(
     );
 
     if (!data || !Array.isArray(data.symbols)) {
-      logger.warn(`NSE search returned unexpected shape`, { query, keys: data ? Object.keys(data) : null }, 'NSEClient');
+      logger.warn(
+        `NSE search returned unexpected data format`,
+        { query, keys: data ? Object.keys(data) : null },
+        'NSE Data Service',
+        `The NSE search API responded, but the data format was different from what we expected. This might mean NSE changed their API. No results will be shown for this search.`,
+      );
       return [];
     }
 
@@ -176,10 +216,20 @@ export async function searchStocks(
       }))
       .filter((r: NseSearchResult) => r.symbol.length > 0);
 
-    logger.info(`NSE search "${query}" → ${results.length} equity results`, { query, resultCount: results.length }, 'NSEClient');
+    logger.info(
+      `Search "${query}" → ${results.length} result(s)`,
+      { query, resultCount: results.length },
+      'NSE Data Service',
+      `Found ${results.length} stock(s) matching "${query}" on the National Stock Exchange. ${results.length === 0 ? 'Try a different keyword or check the spelling.' : `Top match: ${results[0].name} (${results[0].symbol}).`}`,
+    );
     return results;
   } catch (error) {
-    logger.error(`NSE search failed for "${query}"`, { query, error }, 'NSEClient');
+    logger.error(
+      `NSE search failed for "${query}"`,
+      { query, error },
+      'NSE Data Service',
+      `The search request to NSE for "${query}" couldn't be completed. This is typically a temporary network issue with NSE's servers. Try again in a few seconds.`,
+    );
     return [];
   }
 }

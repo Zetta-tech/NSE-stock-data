@@ -109,13 +109,23 @@ export async function scanStock(
     const triggered = dataSource === "stale" ? false : analysis.triggered;
 
     if (triggered) {
-      logger.warn(`BREAKOUT: ${symbol} — High +${analysis.highBreakPercent}%, Vol +${analysis.volumeBreakPercent}%`, { symbol, highBreakPercent: analysis.highBreakPercent, volumeBreakPercent: analysis.volumeBreakPercent, dataSource }, 'Scanner');
+      logger.warn(
+        `BREAKOUT: ${symbol} — High +${analysis.highBreakPercent}%, Vol +${analysis.volumeBreakPercent}%`,
+        { symbol, highBreakPercent: analysis.highBreakPercent, volumeBreakPercent: analysis.volumeBreakPercent, dataSource },
+        'Stock Scanner',
+        `🚨 ${name} (${symbol}) is showing unusual activity! Today's highest price is ${analysis.highBreakPercent}% above the highest price of the last ${LOOKBACK_DAYS} trading days, AND trading volume is up ${analysis.volumeBreakPercent}% beyond its recent peak. This combination of a new price high with surging volume is a classic "breakout" signal that may indicate the start of a strong upward move.`,
+      );
     }
 
     return { symbol, name, scannedAt, dataSource, ...analysis, triggered };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    logger.error(`Scan failed for ${symbol}: ${message}`, { symbol, error: message }, 'Scanner');
+    logger.error(
+      `Scan failed for ${symbol}: ${message}`,
+      { symbol, error: message },
+      'Stock Scanner',
+      `We were unable to analyze ${name} (${symbol}). Reason: "${message}". This stock will be skipped for this scan cycle. Common causes include insufficient trading history (newly listed stocks) or a temporary NSE API outage.`,
+    );
     return {
       symbol,
       name,
