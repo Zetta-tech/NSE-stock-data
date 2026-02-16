@@ -11,10 +11,65 @@ function getNse(): NseIndia {
   return nseInstance;
 }
 
+/* ── Historical-data cache ────────────────────────────────────────────
+ * Key:   stock symbol (e.g. "INFY")
+ * Value: { date: "YYYY-MM-DD", days: requested lookback, data: DayData[] }
+ *
+ * A cached entry is valid when:
+ *   1. The calendar date (IST) hasn't changed since the entry was stored
+ *   2. The requested `days` parameter matches (different scans could ask
+ *      for different lookback windows)
+ *
+ * This avoids redundant NSE API calls when the same symbol is scanned
+ * multiple times in a single day (e.g. a 50-symbol watchlist scanned
+ * several times).
+ */
+interface HistoricalCacheEntry {
+  date: string;
+  days: number;
+  data: DayData[];
+}
+
+const historicalCache = new Map<string, HistoricalCacheEntry>();
+
+function todayDateString(): string {
+  // Use IST (UTC+5:30) so the cache rolls over at Indian midnight,
+  // matching NSE's trading-day boundary.
+  return new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+  )
+    .toISOString()
+    .slice(0, 10);
+}
+
+export function getHistoricalCacheStats(): {
+  size: number;
+  symbols: string[];
+  date: string;
+} {
+  const today = todayDateString();
+  const validEntries: [string, HistoricalCacheEntry][] = [];
+  historicalCache.forEach((v, k) => {
+    if (v.date === today) validEntries.push([k, v]);
+  });
+  return {
+    size: validEntries.length,
+    symbols: validEntries.map(([k]) => k),
+    date: today,
+  };
+}
+
 export async function getHistoricalData(
   symbol: string,
   days: number = 10
 ): Promise<DayData[]> {
+  const today = todayDateString();
+  const cached = historicalCache.get(symbol);
+
+  if (cached && cached.date === today && cached.days === days) {
+    return cached.data;
+  }
+
   const nse = getNse();
   const end = new Date();
   const start = new Date();
@@ -24,7 +79,7 @@ export async function getHistoricalData(
 
   const records = raw.flatMap((entry) => entry.data);
 
-  return records
+  const data = records
     .map((r) => ({
       date: r.mtimestamp,
       high: r.chTradeHighPrice,
@@ -34,6 +89,10 @@ export async function getHistoricalData(
       volume: r.chTotTradedQty,
     }))
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  historicalCache.set(symbol, { date: today, days, data });
+
+  return data;
 }
 
 export async function getCurrentDayData(
