@@ -33,6 +33,9 @@ export function Dashboard({
   const autoCheckTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoCheckRunningRef = useRef(false);
 
+  // 5-minute cooldown per symbol for browser notifications
+  const notifyCooldownRef = useRef<Map<string, number>>(new Map());
+
   const closeWatchCount = watchlist.filter((s) => s.closeWatch).length;
 
   const runScan = useCallback(async () => {
@@ -51,7 +54,10 @@ export function Dashboard({
       setLastScan(data.scannedAt);
 
       if (data.alerts.some((a: Alert) => !a.read)) {
-        notifyBreakout(data.results.filter((r: ScanResult) => r.triggered));
+        notifyBreakout(
+          data.results.filter((r: ScanResult) => r.triggered),
+          notifyCooldownRef.current
+        );
       }
     } catch {
       // scan failed silently — results stay as-is
@@ -108,7 +114,7 @@ export function Dashboard({
       prevTriggeredRef.current = currentTriggered;
 
       if (newlyTriggered.length > 0) {
-        notifyBreakout(newlyTriggered);
+        notifyBreakout(newlyTriggered, notifyCooldownRef.current);
       }
     } catch {
       // auto-check failed silently
@@ -348,11 +354,7 @@ export function Dashboard({
           {watchlist.map((stock, i) => {
             const result = results.find((r) => r.symbol === stock.symbol);
             return (
-              <div
-                key={stock.symbol}
-                className="animate-fade-in"
-                style={{ animationDelay: `${i * 60}ms` }}
-              >
+              <div key={stock.symbol}>
                 <StockCard
                   result={
                     result || {
@@ -453,7 +455,12 @@ function StatCard({
   );
 }
 
-function notifyBreakout(triggered: ScanResult[]) {
+const NOTIFY_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+
+function notifyBreakout(
+  triggered: ScanResult[],
+  cooldownMap: Map<string, number>
+) {
   if (
     typeof window === "undefined" ||
     !("Notification" in window) ||
@@ -462,7 +469,13 @@ function notifyBreakout(triggered: ScanResult[]) {
     return;
   }
 
+  const now = Date.now();
+
   for (const stock of triggered) {
+    const lastNotified = cooldownMap.get(stock.symbol) ?? 0;
+    if (now - lastNotified < NOTIFY_COOLDOWN_MS) continue;
+
+    cooldownMap.set(stock.symbol, now);
     new Notification(`Breakout: ${stock.symbol}`, {
       body: `High \u20B9${stock.todayHigh.toLocaleString("en-IN")} (prev max \u20B9${stock.prevMaxHigh.toLocaleString("en-IN")})\nVol ${formatVol(stock.todayVolume)} (prev max ${formatVol(stock.prevMaxVolume)})`,
       icon: "/favicon.ico",
