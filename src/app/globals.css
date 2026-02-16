@@ -152,6 +152,24 @@ body {
     0 0 48px -12px rgba(0, 212, 170, 0.06);
 }
 
+@keyframes tickerFlashUp {
+  0% { background-color: rgba(0, 212, 170, 0.15); }
+  100% { background-color: transparent; }
+}
+
+@keyframes tickerFlashDown {
+  0% { background-color: rgba(239, 68, 68, 0.15); }
+  100% { background-color: transparent; }
+}
+
+.ticker-flash-up {
+  animation: tickerFlashUp 1.2s ease-out forwards;
+}
+
+.ticker-flash-down {
+  animation: tickerFlashDown 1.2s ease-out forwards;
+}
+
 .glass {
   background: rgba(18, 21, 28, 0.8);
   backdrop-filter: blur(16px) saturate(180%);
