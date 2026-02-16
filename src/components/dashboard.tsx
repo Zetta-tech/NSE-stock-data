@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Header } from "./header";
 import { ScanButton } from "./scan-button";
 import { StockCard } from "./stock-card";
@@ -23,6 +23,16 @@ export function Dashboard({
   const [modalOpen, setModalOpen] = useState(false);
   const [marketOpen, setMarketOpen] = useState(false);
   const [lastScan, setLastScan] = useState<string | null>(null);
+  const [autoCheckActive, setAutoCheckActive] = useState(false);
+  const [lastAutoCheck, setLastAutoCheck] = useState<string | null>(null);
+
+  // Track which symbols were triggered on the previous auto-check cycle
+  // so we only alert on transitions (not-triggered → triggered).
+  const prevTriggeredRef = useRef<Set<string>>(new Set());
+  const autoCheckTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoCheckRunningRef = useRef(false);
+
+  const closeWatchCount = watchlist.filter((s) => s.closeWatch).length;
 
   const runScan = useCallback(async () => {
     setScanning(true);
@@ -48,6 +58,91 @@ export function Dashboard({
       setScanning(false);
     }
   }, [intraday]);
+
+  // Close Watch auto-check: scan only starred stocks every 30s
+  const runCloseWatchCheck = useCallback(async () => {
+    if (autoCheckRunningRef.current) return;
+    autoCheckRunningRef.current = true;
+    try {
+      const res = await fetch("/api/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intraday: true, closeWatchOnly: true }),
+      });
+      const data = await res.json();
+      if (data.error) return;
+
+      // Merge close-watch results into existing results
+      setResults((prev) => {
+        const updated = [...prev];
+        for (const cwResult of data.results as ScanResult[]) {
+          const idx = updated.findIndex((r) => r.symbol === cwResult.symbol);
+          if (idx >= 0) {
+            updated[idx] = cwResult;
+          } else {
+            updated.push(cwResult);
+          }
+        }
+        return updated;
+      });
+
+      setAlerts(data.alerts);
+      setMarketOpen(data.marketOpen);
+      setLastAutoCheck(data.scannedAt);
+
+      // Alert dedup: only notify on transitions from not-triggered → triggered
+      const prevSet = prevTriggeredRef.current;
+      const currentTriggered = new Set<string>();
+      const newlyTriggered: ScanResult[] = [];
+
+      for (const r of data.results as ScanResult[]) {
+        if (r.triggered) {
+          currentTriggered.add(r.symbol);
+          if (!prevSet.has(r.symbol)) {
+            newlyTriggered.push(r);
+          }
+        }
+      }
+
+      prevTriggeredRef.current = currentTriggered;
+
+      if (newlyTriggered.length > 0) {
+        notifyBreakout(newlyTriggered);
+      }
+    } catch {
+      // auto-check failed silently
+    } finally {
+      autoCheckRunningRef.current = false;
+    }
+  }, []);
+
+  // Start/stop auto-check based on conditions
+  useEffect(() => {
+    const shouldRun = autoCheckActive && closeWatchCount > 0;
+
+    if (shouldRun) {
+      // Run immediately on activation, then every 30s
+      runCloseWatchCheck();
+      autoCheckTimerRef.current = setInterval(runCloseWatchCheck, 30_000);
+    }
+
+    return () => {
+      if (autoCheckTimerRef.current) {
+        clearInterval(autoCheckTimerRef.current);
+        autoCheckTimerRef.current = null;
+      }
+    };
+  }, [autoCheckActive, closeWatchCount, runCloseWatchCheck]);
+
+  const toggleCloseWatch = useCallback(async (symbol: string) => {
+    const res = await fetch("/api/stocks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "toggleCloseWatch", symbol }),
+    });
+    const data = await res.json();
+    if (data.watchlist) setWatchlist(data.watchlist);
+  }, []);
 
   const addStock = useCallback(async (symbol: string, name: string) => {
     const res = await fetch("/api/stocks", {
@@ -164,19 +259,61 @@ export function Dashboard({
               <span className="rounded-lg bg-surface-overlay px-2 py-0.5 text-xs font-medium tabular-nums text-text-muted">
                 {watchlist.length}
               </span>
+              {closeWatchCount > 0 && (
+                <span className="flex items-center gap-1 rounded-lg bg-amber-400/10 px-2 py-0.5 text-xs font-medium tabular-nums text-amber-400">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                  {closeWatchCount}
+                </span>
+              )}
             </div>
-            {lastScan && (
-              <p className="mt-1.5 flex items-center gap-1.5 text-xs text-text-muted">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 16 14" />
-                </svg>
-                Last scan {new Date(lastScan).toLocaleTimeString("en-IN")}
-              </p>
-            )}
+            <div className="mt-1.5 flex items-center gap-3">
+              {lastScan && (
+                <p className="flex items-center gap-1.5 text-xs text-text-muted">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                  Last scan {new Date(lastScan).toLocaleTimeString("en-IN")}
+                </p>
+              )}
+              {autoCheckActive && lastAutoCheck && (
+                <p className="flex items-center gap-1.5 text-xs text-amber-400/70">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-amber-400" />
+                  </span>
+                  Auto-check {new Date(lastAutoCheck).toLocaleTimeString("en-IN")}
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
+            {closeWatchCount > 0 && (
+              <button
+                onClick={() => setAutoCheckActive(!autoCheckActive)}
+                className={`flex items-center gap-1.5 rounded-lg border px-3.5 py-2.5 text-xs font-medium transition-all duration-200 ${
+                  autoCheckActive
+                    ? "border-amber-400/30 bg-amber-400/10 text-amber-400"
+                    : "border-surface-border bg-surface-raised text-text-secondary hover:border-amber-400/30 hover:text-amber-400"
+                }`}
+                title={autoCheckActive ? "Stop auto-checking starred stocks" : "Auto-check starred stocks every 30s"}
+              >
+                {autoCheckActive ? (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <rect x="6" y="4" width="4" height="16" />
+                    <rect x="14" y="4" width="4" height="16" />
+                  </svg>
+                ) : (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                )}
+                {autoCheckActive ? "Watching" : "Auto Watch"}
+              </button>
+            )}
             <button
               onClick={() => setModalOpen(true)}
               className="flex items-center gap-1.5 rounded-lg border border-dashed border-surface-border px-3.5 py-2.5 text-xs font-medium text-text-secondary transition-all duration-200 hover:border-accent/30 hover:bg-accent/[0.04] hover:text-accent"
@@ -229,6 +366,8 @@ export function Dashboard({
                     }
                   }
                   onRemove={removeStock}
+                  closeWatch={stock.closeWatch}
+                  onToggleCloseWatch={toggleCloseWatch}
                 />
               </div>
             );

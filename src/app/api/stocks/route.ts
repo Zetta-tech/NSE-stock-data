@@ -4,6 +4,7 @@ import {
   getWatchlist,
   addToWatchlist,
   removeFromWatchlist,
+  toggleCloseWatch,
   getAlerts,
   markAlertRead,
   markAllAlertsRead,
@@ -36,6 +37,14 @@ const removeStockSchema = z.object({
     .transform((s) => s.toUpperCase().trim()),
 });
 
+const toggleCloseWatchSchema = z.object({
+  action: z.literal("toggleCloseWatch"),
+  symbol: z
+    .string()
+    .min(1)
+    .transform((s) => s.toUpperCase().trim()),
+});
+
 const markReadSchema = z.object({
   action: z.literal("markRead"),
   alertId: z.string().optional(),
@@ -56,6 +65,7 @@ export async function POST(request: Request) {
       const watchlist = addToWatchlist({
         symbol: parsed.data.symbol,
         name: parsed.data.name,
+        closeWatch: false,
       });
       logger.info(`Watchlist ADD: ${parsed.data.symbol}`, { symbol: parsed.data.symbol, name: parsed.data.name }, 'StocksRoute');
       return NextResponse.json({ watchlist });
@@ -71,6 +81,19 @@ export async function POST(request: Request) {
       }
       const watchlist = removeFromWatchlist(parsed.data.symbol);
       logger.info(`Watchlist REMOVE: ${parsed.data.symbol}`, { symbol: parsed.data.symbol }, 'StocksRoute');
+      return NextResponse.json({ watchlist });
+    }
+
+    if (body.action === "toggleCloseWatch") {
+      const parsed = toggleCloseWatchSchema.safeParse(body);
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: parsed.error.flatten() },
+          { status: 400 }
+        );
+      }
+      const watchlist = toggleCloseWatch(parsed.data.symbol);
+      logger.info(`CloseWatch TOGGLE: ${parsed.data.symbol}`, { symbol: parsed.data.symbol }, 'StocksRoute');
       return NextResponse.json({ watchlist });
     }
 

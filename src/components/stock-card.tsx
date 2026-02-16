@@ -5,9 +5,13 @@ import type { ScanResult } from "@/lib/types";
 export function StockCard({
   result,
   onRemove,
+  closeWatch,
+  onToggleCloseWatch,
 }: {
   result: ScanResult;
   onRemove: (symbol: string) => void;
+  closeWatch: boolean;
+  onToggleCloseWatch: (symbol: string) => void;
 }) {
   const hasData = result.todayHigh > 0;
   const isStale = result.dataSource === "stale";
@@ -32,17 +36,39 @@ export function StockCard({
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-warn/60 to-transparent" />
       )}
 
-      <button
-        onClick={() => onRemove(result.symbol)}
-        className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-lg text-text-muted opacity-0 transition-all duration-200 hover:bg-danger-muted hover:text-danger group-hover:opacity-100"
-        aria-label={`Remove ${result.symbol}`}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M18 6 6 18M6 6l12 12" />
-        </svg>
-      </button>
+      <div className="absolute right-3 top-3 flex items-center gap-1">
+        <button
+          onClick={() => onToggleCloseWatch(result.symbol)}
+          className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-200 ${
+            closeWatch
+              ? "text-amber-400 opacity-100 hover:bg-amber-400/15"
+              : "text-text-muted opacity-0 hover:bg-surface-overlay hover:text-amber-400 group-hover:opacity-100"
+          }`}
+          aria-label={`${closeWatch ? "Remove from" : "Add to"} close watch`}
+          title={closeWatch ? "Remove from Close Watch" : "Add to Close Watch"}
+        >
+          {closeWatch ? (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+          )}
+        </button>
+        <button
+          onClick={() => onRemove(result.symbol)}
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-text-muted opacity-0 transition-all duration-200 hover:bg-danger-muted hover:text-danger group-hover:opacity-100"
+          aria-label={`Remove ${result.symbol}`}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
 
-      <div className="flex items-start justify-between pr-6">
+      <div className="flex items-start justify-between pr-16">
         <div className="flex items-center gap-3">
           <div
             className={`flex h-10 w-10 items-center justify-center rounded-xl text-xs font-bold transition-colors ${
