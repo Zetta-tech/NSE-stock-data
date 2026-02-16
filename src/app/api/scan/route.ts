@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { scanMultipleStocks } from "@/lib/scanner";
 import { getWatchlist, addAlert, getAlerts } from "@/lib/store";
-import { getMarketStatus } from "@/lib/nse-client";
+import { getMarketStatus, getHistoricalCacheStats } from "@/lib/nse-client";
 import type { Alert, ScanResponse } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +44,7 @@ export async function POST(request: Request) {
       alerts: getAlerts(),
       scannedAt: new Date().toISOString(),
       marketOpen,
+      cacheStats: getHistoricalCacheStats(),
     };
 
     return NextResponse.json(response);

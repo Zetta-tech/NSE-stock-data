@@ -48,4 +48,9 @@ export interface ScanResponse {
   alerts: Alert[];
   scannedAt: string;
   marketOpen: boolean;
+  cacheStats?: {
+    size: number;
+    symbols: string[];
+    date: string;
+  };
 }
