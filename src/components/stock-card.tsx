@@ -15,47 +15,57 @@ export function StockCard({
 
   return (
     <div
-      className={`group relative rounded-xl border p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg ${
+      className={`group relative overflow-hidden rounded-2xl border p-5 transition-all duration-300 hover:-translate-y-1 ${
         result.triggered
-          ? "border-accent/40 bg-accent-muted/40 shadow-accent/5 shadow-lg"
-          : "border-surface-border bg-surface-raised hover:border-surface-border/80"
+          ? "border-accent/30 card-glow bg-surface-raised"
+          : "border-surface-border bg-surface-raised hover:border-surface-border/80 hover:shadow-xl hover:shadow-black/20"
       }`}
     >
+      {result.triggered && (
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/60 to-transparent" />
+      )}
+
       <button
         onClick={() => onRemove(result.symbol)}
-        className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-md text-text-muted opacity-0 transition-all hover:bg-danger-muted hover:text-danger group-hover:opacity-100"
+        className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-lg text-text-muted opacity-0 transition-all duration-200 hover:bg-danger-muted hover:text-danger group-hover:opacity-100"
+        aria-label={`Remove ${result.symbol}`}
       >
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M18 6 6 18M6 6l12 12" />
         </svg>
       </button>
 
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="text-base font-semibold">{result.symbol}</h3>
-            {result.triggered && (
-              <span className="rounded-md bg-accent/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent">
-                Breakout
-              </span>
-            )}
+      <div className="flex items-start justify-between pr-6">
+        <div className="flex items-center gap-3">
+          <div
+            className={`flex h-10 w-10 items-center justify-center rounded-xl text-xs font-bold transition-colors ${
+              result.triggered
+                ? "bg-accent/15 text-accent"
+                : "bg-surface-overlay text-text-secondary"
+            }`}
+          >
+            {result.symbol.slice(0, 2)}
           </div>
-          <p className="mt-0.5 text-xs text-text-muted">{result.name}</p>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold tracking-tight">{result.symbol}</h3>
+              {result.triggered && (
+                <span className="inline-flex items-center gap-1 rounded-md bg-accent/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent">
+                  <span className="h-1 w-1 rounded-full bg-accent animate-pulse" />
+                  Breakout
+                </span>
+              )}
+            </div>
+            <p className="mt-0.5 text-xs text-text-muted">{result.name}</p>
+          </div>
         </div>
         {hasData && (
           <div className="text-right">
-            <p className="text-base font-semibold tabular-nums">
-              ₹{result.todayClose.toLocaleString("en-IN")}
+            <p className="text-lg font-bold tabular-nums tracking-tight">
+              &#x20B9;{result.todayClose.toLocaleString("en-IN")}
             </p>
             <p
-              className={`text-xs font-medium tabular-nums ${
+              className={`text-xs font-semibold tabular-nums ${
                 result.todayChange >= 0 ? "text-accent" : "text-danger"
               }`}
             >
@@ -67,70 +77,108 @@ export function StockCard({
       </div>
 
       {hasData ? (
-        <div className="mt-4 space-y-3">
-          <MetricRow
+        <div className="mt-5 space-y-4">
+          <MetricBar
             label="High"
-            today={`₹${result.todayHigh.toLocaleString("en-IN")}`}
-            prev={`₹${result.prevMaxHigh.toLocaleString("en-IN")}`}
+            todayVal={result.todayHigh}
+            prevVal={result.prevMaxHigh}
+            todayStr={`\u20B9${result.todayHigh.toLocaleString("en-IN")}`}
+            prevStr={`\u20B9${result.prevMaxHigh.toLocaleString("en-IN")}`}
             breakPercent={result.highBreakPercent}
             breaks={highBreaks}
           />
-          <MetricRow
+          <MetricBar
             label="Volume"
-            today={formatVolume(result.todayVolume)}
-            prev={formatVolume(result.prevMaxVolume)}
+            todayVal={result.todayVolume}
+            prevVal={result.prevMaxVolume}
+            todayStr={formatVolume(result.todayVolume)}
+            prevStr={formatVolume(result.prevMaxVolume)}
             breakPercent={result.volumeBreakPercent}
             breaks={volBreaks}
           />
         </div>
       ) : (
-        <div className="mt-4 rounded-lg bg-surface-overlay/50 px-3 py-4 text-center text-xs text-text-muted">
-          No data available. Run a scan to fetch data.
+        <div className="mt-5 flex items-center justify-center rounded-xl border border-dashed border-surface-border bg-surface-overlay/30 px-3 py-6">
+          <div className="text-center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto mb-2 text-text-muted">
+              <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+              <polyline points="16 7 22 7 22 13" />
+            </svg>
+            <p className="text-xs text-text-muted">Run a scan to fetch data</p>
+          </div>
         </div>
       )}
 
       {hasData && (
-        <div className="mt-3 flex gap-1.5">
+        <div className="mt-4 flex gap-2">
           <StatusPill active={highBreaks} label="High Break" />
           <StatusPill active={volBreaks} label="Vol Break" />
         </div>
+      )}
+
+      {result.triggered && (
+        <div className="pointer-events-none absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-accent/[0.04] blur-2xl animate-glow-pulse" />
       )}
     </div>
   );
 }
 
-function MetricRow({
+function MetricBar({
   label,
-  today,
-  prev,
+  todayVal,
+  prevVal,
+  todayStr,
+  prevStr,
   breakPercent,
   breaks,
 }: {
   label: string;
-  today: string;
-  prev: string;
+  todayVal: number;
+  prevVal: number;
+  todayStr: string;
+  prevStr: string;
   breakPercent: number;
   breaks: boolean;
 }) {
+  const maxVal = Math.max(todayVal, prevVal) * 1.1;
+  const todayPct = maxVal > 0 ? (todayVal / maxVal) * 100 : 0;
+  const prevPct = maxVal > 0 ? (prevVal / maxVal) * 100 : 0;
+
   return (
-    <div className="flex items-center justify-between text-xs">
-      <span className="text-text-muted w-14">{label}</span>
-      <div className="flex items-center gap-3">
-        <div className="text-right">
-          <span className="text-text-secondary">Today </span>
-          <span className={`font-medium tabular-nums ${breaks ? "text-accent" : "text-text-primary"}`}>
-            {today}
+    <div>
+      <div className="mb-1.5 flex items-center justify-between text-xs">
+        <span className="font-medium text-text-secondary">{label}</span>
+        <div className="flex items-center gap-2">
+          <span className={`tabular-nums font-semibold ${breaks ? "text-accent" : "text-text-primary"}`}>
+            {todayStr}
           </span>
+          <span className="text-text-muted">vs</span>
+          <span className="tabular-nums text-text-muted">{prevStr}</span>
+          {breaks && (
+            <span className="rounded-md bg-accent/15 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-accent">
+              +{breakPercent.toFixed(1)}%
+            </span>
+          )}
         </div>
-        <span className="text-text-muted">vs</span>
-        <div className="text-right">
-          <span className="text-text-secondary">5d Max </span>
-          <span className="font-medium tabular-nums text-text-primary">{prev}</span>
-        </div>
+      </div>
+      <div className="relative h-2 overflow-hidden rounded-full bg-surface-overlay">
+        <div
+          className="absolute inset-y-0 left-0 rounded-full bg-surface-border/60 transition-all duration-700"
+          style={{ width: `${prevPct}%` }}
+        />
+        <div
+          className={`absolute inset-y-0 left-0 rounded-full animate-bar-fill ${
+            breaks
+              ? "bg-gradient-to-r from-accent/80 to-accent"
+              : "bg-text-muted/40"
+          }`}
+          style={{ "--bar-width": `${todayPct}%` } as React.CSSProperties}
+        />
         {breaks && (
-          <span className="rounded bg-accent-muted px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-accent">
-            +{breakPercent.toFixed(1)}%
-          </span>
+          <div
+            className="absolute inset-y-0 left-0 rounded-full bg-accent/30 blur-sm animate-bar-fill"
+            style={{ "--bar-width": `${todayPct}%` } as React.CSSProperties}
+          />
         )}
       </div>
     </div>
@@ -140,13 +188,18 @@ function MetricRow({
 function StatusPill({ active, label }: { active: boolean; label: string }) {
   return (
     <span
-      className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-        active
-          ? "bg-accent-muted text-accent"
-          : "bg-surface-overlay text-text-muted"
+      className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors ${
+        active ? "bg-accent/10 text-accent" : "bg-surface-overlay text-text-muted"
       }`}
     >
-      {active ? "✓" : "—"} {label}
+      {active ? (
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      ) : (
+        <span className="text-[8px]">&mdash;</span>
+      )}
+      {label}
     </span>
   );
 }
