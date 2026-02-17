@@ -11,7 +11,7 @@ export function AlertPanel({ alerts }: { alerts: Alert[] }) {
   if (recentAlerts.length === 0) return null;
 
   return (
-    <section className="mt-10">
+    <section className="mt-10 rounded-2xl border border-surface-border bg-surface-raised/60 p-4">
       <div className="mb-4 flex items-center gap-3">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent/10">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
@@ -19,14 +19,15 @@ export function AlertPanel({ alerts }: { alerts: Alert[] }) {
           </svg>
         </div>
         <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
-          Recent Breakout Alerts
+          Alert Receipts
         </h2>
+        <p className="text-[11px] text-text-muted">What triggered and when</p>
         <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-bold tabular-nums text-accent">
           {recentAlerts.length}
         </span>
         <div className="flex-1 border-t border-surface-border/40" />
       </div>
-      <div className="overflow-hidden rounded-2xl border border-surface-border bg-surface-raised">
+      <div className="overflow-hidden rounded-xl border border-surface-border/80 bg-surface-raised">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

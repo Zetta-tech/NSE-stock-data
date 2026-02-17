@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import gsap from "gsap";
 import { Header } from "./header";
 import { ScanButton } from "./scan-button";
 import { StockCard } from "./stock-card";
@@ -26,6 +27,7 @@ export function Dashboard({
   const [lastScan, setLastScan] = useState<string | null>(null);
   const [autoCheckActive, setAutoCheckActive] = useState(false);
   const [lastAutoCheck, setLastAutoCheck] = useState<string | null>(null);
+  const [nowTs, setNowTs] = useState(Date.now());
 
   // Track which symbols were triggered on the previous auto-check cycle
   // so we only alert on transitions (not-triggered → triggered).
@@ -35,8 +37,17 @@ export function Dashboard({
 
   // 5-minute cooldown per symbol for browser notifications
   const notifyCooldownRef = useRef<Map<string, number>>(new Map());
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const closeWatchCount = watchlist.filter((s) => s.closeWatch).length;
+  const closeWatchStocks = useMemo(
+    () => watchlist.filter((stock) => stock.closeWatch),
+    [watchlist]
+  );
+  const regularStocks = useMemo(
+    () => watchlist.filter((stock) => !stock.closeWatch),
+    [watchlist]
+  );
 
   const runScan = useCallback(async () => {
     setScanning(true);
@@ -141,6 +152,22 @@ export function Dashboard({
     };
   }, [autoCheckActive, closeWatchCount, runCloseWatchCheck]);
 
+  useEffect(() => {
+    if (!autoCheckActive) return;
+    const timer = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [autoCheckActive]);
+
+  useEffect(() => {
+    const cards = Array.from(cardRefs.current.values());
+    if (cards.length === 0) return;
+    gsap.fromTo(
+      cards,
+      { y: 8, opacity: 0.65 },
+      { y: 0, opacity: 1, duration: 0.35, ease: "power2.out", stagger: 0.02 }
+    );
+  }, [watchlist]);
+
   const toggleCloseWatch = useCallback(async (symbol: string) => {
     const res = await fetch("/api/stocks", {
       method: "POST",
@@ -200,7 +227,9 @@ export function Dashboard({
 
   const triggeredCount = results.filter((r) => r.triggered).length;
   const staleCount = results.filter((r) => r.dataSource === "stale").length;
+  const liveCount = results.filter((r) => r.dataSource === "live").length;
   const scannedCount = results.length;
+  const nextCheckSeconds = autoCheckActive ? Math.max(0, 30 - (Math.floor(nowTs / 1000) % 30)) : null;
 
   return (
     <div className="min-h-screen">
@@ -212,6 +241,21 @@ export function Dashboard({
       />
 
       <main className="mx-auto max-w-7xl px-6 py-8">
+        <div className="mb-7 grid gap-3 rounded-2xl border border-surface-border bg-surface-raised/70 p-3 sm:grid-cols-2 lg:grid-cols-4">
+          <StatusStripPill label="Market" value={marketOpen ? "Open" : "Closed"} tone={marketOpen ? "live" : "muted"} />
+          <StatusStripPill label="Mode" value={intraday ? "Intraday" : "Daily"} tone={intraday ? "live" : "muted"} />
+          <StatusStripPill
+            label="Auto-check"
+            value={autoCheckActive ? `Active · ${nextCheckSeconds}s` : "Paused"}
+            tone={autoCheckActive ? "watch" : "muted"}
+          />
+          <StatusStripPill
+            label="Data Feed"
+            value={scannedCount === 0 ? "Awaiting first scan" : `${liveCount} live · ${staleCount} stale`}
+            tone={staleCount > 0 ? "warn" : "live"}
+          />
+        </div>
+
         {scannedCount > 0 && (
           <div className={`mb-8 grid gap-3 animate-fade-in ${staleCount > 0 ? "grid-cols-4" : "grid-cols-3"}`}>
             <StatCard
@@ -364,39 +408,73 @@ export function Dashboard({
           </div>
         )}
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {watchlist.map((stock, i) => {
-            const result = results.find((r) => r.symbol === stock.symbol);
-            return (
-              <div key={stock.symbol}>
-                <StockCard
-                  result={
-                    result || {
-                      symbol: stock.symbol,
-                      name: stock.name,
-                      triggered: false,
-                      todayHigh: 0,
-                      todayVolume: 0,
-                      prevMaxHigh: 0,
-                      prevMaxVolume: 0,
-                      highBreakPercent: 0,
-                      volumeBreakPercent: 0,
-                      todayClose: 0,
-                      todayChange: 0,
-                      scannedAt: "",
-                      dataSource: "historical",
-                    }
-                  }
-                  onRemove={removeStock}
-                  closeWatch={stock.closeWatch}
-                  onToggleCloseWatch={toggleCloseWatch}
-                />
-              </div>
-            );
-          })}
-        </div>
+        <section className="mt-6">
+          <SectionTitle
+            title="Close Watch"
+            subtitle="Your priority symbols, always monitored first"
+            count={closeWatchStocks.length}
+            tone="watch"
+          />
+          {closeWatchStocks.length > 0 ? (
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {closeWatchStocks.map((stock) => (
+                <div
+                  key={stock.symbol}
+                  ref={(el) => {
+                    if (el) cardRefs.current.set(stock.symbol, el);
+                    else cardRefs.current.delete(stock.symbol);
+                  }}
+                >
+                  <StockCard
+                    result={toStockResult(stock.symbol, stock.name, results)}
+                    onRemove={removeStock}
+                    closeWatch={stock.closeWatch}
+                    onToggleCloseWatch={toggleCloseWatch}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-4 rounded-2xl border border-dashed border-amber-400/30 bg-amber-400/[0.04] px-5 py-6 text-sm text-amber-300/80">
+              Star stocks to pin them here for constant close-watch visibility.
+            </div>
+          )}
+        </section>
 
         <AlertPanel alerts={alerts} />
+
+        <section className="mt-10">
+          <SectionTitle
+            title="All Watchlist Stocks"
+            subtitle="Secondary queue for broader monitoring"
+            count={regularStocks.length}
+            tone="default"
+          />
+          {regularStocks.length > 0 ? (
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {regularStocks.map((stock) => (
+                <div
+                  key={stock.symbol}
+                  ref={(el) => {
+                    if (el) cardRefs.current.set(stock.symbol, el);
+                    else cardRefs.current.delete(stock.symbol);
+                  }}
+                >
+                  <StockCard
+                    result={toStockResult(stock.symbol, stock.name, results)}
+                    onRemove={removeStock}
+                    closeWatch={stock.closeWatch}
+                    onToggleCloseWatch={toggleCloseWatch}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-4 rounded-2xl border border-surface-border bg-surface-raised px-5 py-6 text-sm text-text-muted">
+              All stocks are currently in Close Watch.
+            </div>
+          )}
+        </section>
 
         {results.length > 0 && triggeredCount === 0 && (
           <div className="mt-10 overflow-hidden rounded-2xl border border-surface-border bg-surface-raised px-6 py-10 text-center">
@@ -424,6 +502,90 @@ export function Dashboard({
         currentSymbols={watchlist.map((s) => s.symbol)}
       />
     </div>
+  );
+}
+
+
+function SectionTitle({
+  title,
+  subtitle,
+  count,
+  tone,
+}: {
+  title: string;
+  subtitle: string;
+  count: number;
+  tone: "watch" | "default";
+}) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-2">
+      <div>
+        <div className="flex items-center gap-2">
+          <h3 className="text-lg font-semibold tracking-tight text-text-primary">{title}</h3>
+          <span
+            className={`rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums ${
+              tone === "watch"
+                ? "bg-amber-400/15 text-amber-300"
+                : "bg-surface-overlay text-text-secondary"
+            }`}
+          >
+            {count}
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-text-muted">{subtitle}</p>
+      </div>
+      <div className="h-px flex-1 self-center bg-surface-border/50" />
+    </div>
+  );
+}
+
+function StatusStripPill({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "live" | "warn" | "watch" | "muted";
+}) {
+  const toneClass =
+    tone === "live"
+      ? "border-accent/30 bg-accent/[0.06] text-accent"
+      : tone === "warn"
+        ? "border-warn/30 bg-warn/[0.08] text-warn"
+        : tone === "watch"
+          ? "border-amber-400/30 bg-amber-400/[0.08] text-amber-300"
+          : "border-surface-border bg-surface-overlay/40 text-text-secondary";
+
+  return (
+    <div className={`rounded-xl border px-3 py-2 ${toneClass}`}>
+      <p className="text-[10px] uppercase tracking-wider text-text-muted">{label}</p>
+      <p className="mt-0.5 text-sm font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function toStockResult(
+  symbol: string,
+  name: string,
+  results: ScanResult[]
+): ScanResult {
+  return (
+    results.find((item) => item.symbol === symbol) || {
+      symbol,
+      name,
+      triggered: false,
+      todayHigh: 0,
+      todayVolume: 0,
+      prevMaxHigh: 0,
+      prevMaxVolume: 0,
+      highBreakPercent: 0,
+      volumeBreakPercent: 0,
+      todayClose: 0,
+      todayChange: 0,
+      scannedAt: "",
+      dataSource: "historical",
+    }
   );
 }
 
