@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { TickerQuote, ScanResult } from "@/lib/types";
 
-const TICKER_INTERVAL = 10_000; // 10s
+const TICKER_INTERVAL = 10_000;
 
 export function TickerPanel({
   hasCloseWatchStocks,
@@ -28,7 +28,7 @@ export function TickerPanel({
       const data = await res.json();
       if (data.error || !data.quotes) return;
 
-      const newQuotes = data.quotes as TickerQuote[];
+      const newQuotes = (data.quotes as TickerQuote[]).slice(0, 5);
 
       // Detect price changes for flash effect
       const newFlashes = new Map<string, "up" | "down">();
@@ -90,10 +90,10 @@ export function TickerPanel({
   );
 
   return (
-    <div className="mb-8 animate-fade-in">
-      <div className="overflow-hidden rounded-2xl border border-surface-border bg-surface-raised">
+    <div className="mb-7 animate-fade-in">
+      <div className="overflow-hidden rounded-xl border border-surface-border bg-surface-raised">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-surface-border px-5 py-3">
+        <div className="flex items-center justify-between border-b border-surface-border px-4 py-2.5">
           <div className="flex items-center gap-2.5">
             <div className="flex items-center gap-1.5">
               {active ? (
@@ -104,7 +104,7 @@ export function TickerPanel({
               ) : (
                 <span className="inline-flex h-2 w-2 rounded-full bg-text-muted/40" />
               )}
-              <span className="text-sm font-semibold tracking-tight">
+              <span className="text-xs font-semibold tracking-tight">
                 Live Ticker
               </span>
             </div>
@@ -151,7 +151,7 @@ export function TickerPanel({
                 return (
                   <div
                     key={q.symbol}
-                    className={`relative flex min-w-[180px] flex-1 flex-col gap-1 px-5 py-4 transition-colors duration-300 ${
+                    className={`relative flex min-w-[170px] flex-1 flex-col gap-1 px-4 py-3 transition-colors duration-300 ${
                       i > 0 ? "border-l border-surface-border" : ""
                     } ${
                       flash === "up"
@@ -173,7 +173,7 @@ export function TickerPanel({
                       )}
                     </div>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-lg font-bold tabular-nums tracking-tight">
+                      <span className="text-base font-bold tabular-nums tracking-tight">
                         &#x20B9;{q.price.toLocaleString("en-IN")}
                       </span>
                       <span
@@ -198,14 +198,14 @@ export function TickerPanel({
               })}
             </div>
           ) : (
-            <div className="px-5 py-6 text-center text-xs text-text-muted">
+            <div className="px-4 py-4 text-center text-xs text-text-muted">
               Fetching live quotes...
             </div>
           )
         ) : (
-          <div className="px-5 py-6 text-center">
+          <div className="px-4 py-4 text-center">
             <p className="text-xs text-text-muted">
-              Press Start to stream live prices for your starred stocks
+              Press Start to stream live prices for up to 5 Close Watch stocks
             </p>
           </div>
         )}

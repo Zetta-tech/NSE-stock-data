@@ -10,6 +10,8 @@ export function AlertPanel({ alerts }: { alerts: Alert[] }) {
 
   if (recentAlerts.length === 0) return null;
 
+  const todayAlerts = recentAlerts.slice(0, 5);
+
   return (
     <section className="mt-10 rounded-2xl border border-surface-border bg-surface-raised/60 p-4">
       <div className="mb-4 flex items-center gap-3">
@@ -60,33 +62,15 @@ export function AlertPanel({ alerts }: { alerts: Alert[] }) {
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3.5 text-right font-medium tabular-nums text-accent">
-                    &#x20B9;{alert.todayHigh.toLocaleString("en-IN")}
-                  </td>
-                  <td className="px-4 py-3.5 text-right tabular-nums text-text-secondary">
-                    &#x20B9;{alert.prevMaxHigh.toLocaleString("en-IN")}
-                  </td>
+                  <td className="px-4 py-3.5 text-right font-medium tabular-nums text-accent">&#x20B9;{alert.todayHigh.toLocaleString("en-IN")}</td>
+                  <td className="px-4 py-3.5 text-right tabular-nums text-text-secondary">&#x20B9;{alert.prevMaxHigh.toLocaleString("en-IN")}</td>
                   <td className="px-4 py-3.5 text-right">
-                    <span className="inline-flex items-center gap-1 rounded-md bg-accent/10 px-2 py-0.5 text-xs font-bold tabular-nums text-accent">
-                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                        <polyline points="18 15 12 9 6 15" />
-                      </svg>
-                      {alert.highBreakPercent.toFixed(1)}%
-                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-md bg-accent/10 px-2 py-0.5 text-xs font-bold tabular-nums text-accent">{alert.highBreakPercent.toFixed(1)}%</span>
                   </td>
-                  <td className="px-4 py-3.5 text-right font-medium tabular-nums text-accent">
-                    {formatVolume(alert.todayVolume)}
-                  </td>
-                  <td className="px-4 py-3.5 text-right tabular-nums text-text-secondary">
-                    {formatVolume(alert.prevMaxVolume)}
-                  </td>
+                  <td className="px-4 py-3.5 text-right font-medium tabular-nums text-accent">{formatVolume(alert.todayVolume)}</td>
+                  <td className="px-4 py-3.5 text-right tabular-nums text-text-secondary">{formatVolume(alert.prevMaxVolume)}</td>
                   <td className="px-4 py-3.5 text-right">
-                    <span className="inline-flex items-center gap-1 rounded-md bg-accent/10 px-2 py-0.5 text-xs font-bold tabular-nums text-accent">
-                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                        <polyline points="18 15 12 9 6 15" />
-                      </svg>
-                      {alert.volumeBreakPercent.toFixed(1)}%
-                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-md bg-accent/10 px-2 py-0.5 text-xs font-bold tabular-nums text-accent">{alert.volumeBreakPercent.toFixed(1)}%</span>
                   </td>
                   <td className="px-4 py-3.5 text-right text-xs text-text-muted">
                     {new Date(alert.triggeredAt).toLocaleString("en-IN", {
