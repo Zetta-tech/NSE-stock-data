@@ -2,25 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&f[]=jetbrains-mono@400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 
 :root {
-  --surface: #0b0d11;
-  --surface-raised: #12151c;
-  --surface-overlay: #1a1e2a;
-  --surface-border: #252a3a;
-  --accent: #00d4aa;
-  --accent-hover: #00e8bc;
-  --accent-dim: #00a888;
-  --accent-muted: rgba(0, 212, 170, 0.10);
-  --accent-glow: rgba(0, 212, 170, 0.15);
+  --surface: #111214;
+  --surface-raised: #171719;
+  --surface-overlay: #1d1f24;
+  --surface-border: #2a2d34;
+  --accent: #bdfd00;
+  --accent-hover: #d1ff4b;
+  --accent-dim: #87b600;
+  --accent-muted: rgba(189, 253, 0, 0.12);
+  --accent-glow: rgba(189, 253, 0, 0.18);
   --danger: #ef4444;
   --danger-muted: rgba(239, 68, 68, 0.12);
   --warn: #f59e0b;
   --warn-muted: rgba(245, 158, 11, 0.12);
-  --text-primary: #edf0f5;
-  --text-secondary: #9ca3af;
-  --text-muted: #5c6370;
+  --text-primary: #ffffff;
+  --text-secondary: #c4c7d1;
+  --text-muted: #8a8f9c;
 }
 
 * {
@@ -34,11 +34,11 @@ html {
 body {
   background: var(--surface);
   background-image:
-    radial-gradient(ellipse 80% 60% at 50% -20%, rgba(0, 212, 170, 0.04) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 40% at 100% 0%, rgba(0, 100, 200, 0.03) 0%, transparent 60%);
+    radial-gradient(ellipse 80% 60% at 50% -20%, rgba(189, 253, 0, 0.05) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 40% at 100% 0%, rgba(9, 5, 13, 0.28) 0%, transparent 60%);
   background-attachment: fixed;
   color: var(--text-primary);
-  font-family: "General Sans", system-ui, sans-serif;
+  font-family: "Manrope", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -130,7 +130,7 @@ body {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(0, 212, 170, 0.06) 50%,
+    rgba(189, 253, 0, 0.06) 50%,
     transparent 100%
   );
   background-size: 200% 100%;
@@ -147,13 +147,13 @@ body {
 
 .card-glow {
   box-shadow:
-    0 0 0 1px rgba(0, 212, 170, 0.15),
-    0 4px 24px -4px rgba(0, 212, 170, 0.08),
-    0 0 48px -12px rgba(0, 212, 170, 0.06);
+    0 0 0 1px rgba(189, 253, 0, 0.15),
+    0 4px 24px -4px rgba(189, 253, 0, 0.08),
+    0 0 48px -12px rgba(189, 253, 0, 0.06);
 }
 
 @keyframes tickerFlashUp {
-  0% { background-color: rgba(0, 212, 170, 0.15); }
+  0% { background-color: rgba(189, 253, 0, 0.15); }
   100% { background-color: transparent; }
 }
 
