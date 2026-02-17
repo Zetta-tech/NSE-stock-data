@@ -247,7 +247,7 @@ export function Dashboard({
 
         <TickerPanel hasCloseWatchStocks={closeWatchCount > 0} scanResults={results} />
 
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-2 flex flex-col gap-5 rounded-2xl border border-surface-border bg-surface px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-3">
               <h2 className="text-2xl font-bold tracking-tight">Watchlist</h2>
