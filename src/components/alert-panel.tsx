@@ -20,29 +20,15 @@ export function AlertPanel({ alerts }: { alerts: Alert[] }) {
             <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
           </svg>
         </div>
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">Alert Receipts</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
+          Alert Receipts
+        </h2>
         <p className="text-[11px] text-text-muted">What triggered and when</p>
-        <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-bold tabular-nums text-accent">{recentAlerts.length}</span>
+        <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-bold tabular-nums text-accent">
+          {recentAlerts.length}
+        </span>
         <div className="flex-1 border-t border-surface-border/40" />
       </div>
-
-      <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {todayAlerts.map((alert) => (
-          <div key={`${alert.id}-compact`} className="rounded-xl border border-surface-border bg-surface-raised px-3.5 py-3">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold tracking-tight">{alert.symbol}</p>
-              <p className="text-[11px] text-text-muted">
-                {new Date(alert.triggeredAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
-              </p>
-            </div>
-            <p className="mt-1 text-xs text-text-muted">{alert.name}</p>
-            <p className="mt-2 text-sm text-text-secondary">
-              High <span className="font-semibold text-accent">+{alert.highBreakPercent.toFixed(1)}%</span> · Vol <span className="font-semibold text-accent">+{alert.volumeBreakPercent.toFixed(1)}%</span>
-            </p>
-          </div>
-        ))}
-      </div>
-
       <div className="overflow-hidden rounded-xl border border-surface-border/80 bg-surface-raised">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

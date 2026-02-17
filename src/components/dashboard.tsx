@@ -34,6 +34,7 @@ export function Dashboard({
   const notifyCooldownRef = useRef<Map<string, number>>(new Map());
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
+  const closeWatchCount = watchlist.filter((s) => s.closeWatch).length;
   const closeWatchStocks = useMemo(
     () => watchlist.filter((stock) => stock.closeWatch),
     [watchlist]
@@ -42,7 +43,6 @@ export function Dashboard({
     () => watchlist.filter((stock) => !stock.closeWatch),
     [watchlist]
   );
-  const closeWatchCount = closeWatchStocks.length;
 
   const runScan = useCallback(async () => {
     setScanning(true);
@@ -209,13 +209,7 @@ export function Dashboard({
   const staleCount = results.filter((r) => r.dataSource === "stale").length;
   const liveCount = results.filter((r) => r.dataSource === "live").length;
   const scannedCount = results.length;
-  const staleCloseWatch = closeWatchStocks.filter((stock) => {
-    const result = results.find((r) => r.symbol === stock.symbol);
-    return result?.dataSource === "stale";
-  }).length;
-  const nextCheckSeconds = autoCheckActive
-    ? Math.max(0, 30 - (Math.floor(nowTs / 1000) % 30))
-    : null;
+  const nextCheckSeconds = autoCheckActive ? Math.max(0, 30 - (Math.floor(nowTs / 1000) % 30)) : null;
 
   return (
     <div className="min-h-screen">
@@ -227,15 +221,20 @@ export function Dashboard({
       />
 
       <main className="mx-auto max-w-7xl px-6 py-8">
-        <SystemStatus
-          marketOpen={marketOpen}
-          intraday={intraday}
-          autoCheckActive={autoCheckActive}
-          nextCheckSeconds={nextCheckSeconds}
-          liveCount={liveCount}
-          staleCount={staleCount}
-          scannedCount={scannedCount}
-        />
+        <div className="mb-7 grid gap-3 rounded-2xl border border-surface-border bg-surface-raised/70 p-3 sm:grid-cols-2 lg:grid-cols-4">
+          <StatusStripPill label="Market" value={marketOpen ? "Open" : "Closed"} tone={marketOpen ? "live" : "muted"} />
+          <StatusStripPill label="Mode" value={intraday ? "Intraday" : "Daily"} tone={intraday ? "live" : "muted"} />
+          <StatusStripPill
+            label="Auto-check"
+            value={autoCheckActive ? `Active · ${nextCheckSeconds}s` : "Paused"}
+            tone={autoCheckActive ? "watch" : "muted"}
+          />
+          <StatusStripPill
+            label="Data Feed"
+            value={scannedCount === 0 ? "Awaiting first scan" : `${liveCount} live · ${staleCount} stale`}
+            tone={staleCount > 0 ? "warn" : "live"}
+          />
+        </div>
 
         {scannedCount > 0 && (
           <div className={`mb-8 mt-5 grid gap-3 animate-fade-in ${staleCount > 0 ? "grid-cols-4" : "grid-cols-3"}`}>
@@ -341,7 +340,12 @@ export function Dashboard({
         )}
 
         <section className="mt-6">
-          <SectionTitle title="Close Watch" subtitle="Your priority symbols, always monitored first" count={closeWatchStocks.length} tone="watch" />
+          <SectionTitle
+            title="Close Watch"
+            subtitle="Your priority symbols, always monitored first"
+            count={closeWatchStocks.length}
+            tone="watch"
+          />
           {closeWatchStocks.length > 0 ? (
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {closeWatchStocks.map((stock) => (
@@ -371,7 +375,12 @@ export function Dashboard({
         <AlertPanel alerts={alerts} />
 
         <section className="mt-10">
-          <SectionTitle title="All Watchlist Stocks" subtitle="Secondary queue for broader monitoring" count={regularStocks.length} tone="default" />
+          <SectionTitle
+            title="All Watchlist Stocks"
+            subtitle="Secondary queue for broader monitoring"
+            count={regularStocks.length}
+            tone="default"
+          />
           {regularStocks.length > 0 ? (
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {regularStocks.map((stock) => (
@@ -397,6 +406,21 @@ export function Dashboard({
             </div>
           )}
         </section>
+
+        {results.length > 0 && triggeredCount === 0 && (
+          <div className="mt-10 overflow-hidden rounded-2xl border border-surface-border bg-surface-raised px-6 py-10 text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-overlay ring-1 ring-surface-border">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-text-muted">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+            </div>
+          ) : (
+            <div className="mt-4 rounded-2xl border border-surface-border bg-surface-raised px-5 py-6 text-sm text-text-muted">
+              All stocks are currently in Close Watch.
+            </div>
+          )}
+        </section>
       </main>
 
       <AddStockModal
@@ -409,47 +433,6 @@ export function Dashboard({
   );
 }
 
-function SystemStatus({
-  marketOpen,
-  intraday,
-  autoCheckActive,
-  nextCheckSeconds,
-  liveCount,
-  staleCount,
-  scannedCount,
-}: {
-  marketOpen: boolean;
-  intraday: boolean;
-  autoCheckActive: boolean;
-  nextCheckSeconds: number | null;
-  liveCount: number;
-  staleCount: number;
-  scannedCount: number;
-}) {
-  const headline = marketOpen
-    ? `Live • Auto-check ${autoCheckActive ? "ON" : "OFF"} • Next ${nextCheckSeconds}s`
-    : "Market Closed • Manual scan mode";
-
-  return (
-    <details className="group mb-4 overflow-hidden rounded-2xl border border-surface-border bg-surface-raised/80" open>
-      <summary className="cursor-pointer list-none px-4 py-3">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-[11px] uppercase tracking-wider text-text-muted">System Status</p>
-            <p className="text-sm font-semibold text-text-primary">{headline}</p>
-          </div>
-          <span className="text-xs text-text-muted">Details</span>
-        </div>
-      </summary>
-      <div className="grid gap-2 border-t border-surface-border px-4 py-3 text-xs text-text-secondary sm:grid-cols-2 lg:grid-cols-4">
-        <p>Market: {marketOpen ? "Open" : "Closed"}</p>
-        <p>Mode: {intraday ? "Intraday" : "Daily"}</p>
-        <p>Auto-check: {autoCheckActive ? `On · ${nextCheckSeconds}s` : "Paused"}</p>
-        <p>Data: {scannedCount === 0 ? "Awaiting first scan" : `${liveCount} live · ${staleCount} stale`}</p>
-      </div>
-    </details>
-  );
-}
 
 function SectionTitle({
   title,
@@ -484,7 +467,37 @@ function SectionTitle({
   );
 }
 
-function toStockResult(symbol: string, name: string, results: ScanResult[]): ScanResult {
+function StatusStripPill({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "live" | "warn" | "watch" | "muted";
+}) {
+  const toneClass =
+    tone === "live"
+      ? "border-accent/30 bg-accent/[0.06] text-accent"
+      : tone === "warn"
+        ? "border-warn/30 bg-warn/[0.08] text-warn"
+        : tone === "watch"
+          ? "border-amber-400/30 bg-amber-400/[0.08] text-amber-300"
+          : "border-surface-border bg-surface-overlay/40 text-text-secondary";
+
+  return (
+    <div className={`rounded-xl border px-3 py-2 ${toneClass}`}>
+      <p className="text-[10px] uppercase tracking-wider text-text-muted">{label}</p>
+      <p className="mt-0.5 text-sm font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function toStockResult(
+  symbol: string,
+  name: string,
+  results: ScanResult[]
+): ScanResult {
   return (
     results.find((item) => item.symbol === symbol) || {
       symbol,
