@@ -1,5 +1,6 @@
 import { logger } from "./logger";
 import { NseIndia } from "stock-nse-india";
+import { isExtendedHours } from "./market-hours";
 import type { DayData, NiftyIndex } from "./types";
 
 /* ── API call tracking ──────────────────────────────────────────────── */
@@ -196,16 +197,34 @@ export async function getCurrentDayData(
   }
 }
 
+let lastMarketStatus: { open: boolean; checkedAt: number } | null = null;
+const MARKET_STATUS_TTL = 60_000; // 1 minute
+
 export async function getMarketStatus(): Promise<boolean> {
+  // Outside extended hours (before 09:00 or after 16:00 IST), market is
+  // definitely closed — skip the NSE API call entirely.
+  if (!isExtendedHours()) {
+    recordCall("cache", "getMarketStatus");
+    return false;
+  }
+
+  // Within extended hours, reuse recent result if fresh
+  if (lastMarketStatus && Date.now() - lastMarketStatus.checkedAt < MARKET_STATUS_TTL) {
+    recordCall("cache", "getMarketStatus");
+    return lastMarketStatus.open;
+  }
+
   recordCall("api", "getMarketStatus");
   const nse = getNse();
   try {
     const status = await nse.getMarketStatus();
-    return status.marketState.some(
+    const open = status.marketState.some(
       (s) =>
         s.market === "Capital Market" &&
         s.marketStatus.toLowerCase().includes("open")
     );
+    lastMarketStatus = { open, checkedAt: Date.now() };
+    return open;
   } catch (error) {
     logger.error(
       `Market status check failed`,
@@ -213,7 +232,7 @@ export async function getMarketStatus(): Promise<boolean> {
       'NSE Data Service',
       `Unable to determine whether the Indian stock market is currently open. The system will assume the market is closed and use end-of-day data. This is usually caused by an NSE website timeout.`,
     );
-    return false;
+    return lastMarketStatus?.open ?? false;
   }
 }
 
@@ -227,6 +246,15 @@ export async function getNifty50Index(): Promise<NiftyIndex | null> {
   if (indexCache && Date.now() - indexCache.fetchedAt < INDEX_CACHE_TTL) {
     recordCall("cache", "getNifty50Index");
     return indexCache.data;
+  }
+
+  // Outside extended hours, return last-known closing value without hitting NSE
+  if (!isExtendedHours()) {
+    if (indexCache) {
+      recordCall("cache", "getNifty50Index");
+      return indexCache.data;
+    }
+    // No cached data at all — allow one fetch to seed the closing value
   }
 
   recordCall("api", "getNifty50Index");

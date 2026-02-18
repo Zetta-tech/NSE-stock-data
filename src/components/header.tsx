@@ -42,16 +42,18 @@ export function Header({
   }, []);
 
   useEffect(() => {
-    // Always fetch once on mount to show last-known value
+    // Fetch once on mount — the server-side cache in nse-client will
+    // return the last-known closing value without hitting NSE after hours.
     fetchIndex();
 
+    // Only set up a polling interval during extended hours
+    if (!isExtendedHours()) return;
+
     const interval = setInterval(() => {
-      const live = isExtendedHours();
-      if (live) {
+      if (isExtendedHours()) {
         fetchIndex();
       }
-      // After hours: don't poll (we already have the closing value)
-    }, isExtendedHours() ? NIFTY_POLL_LIVE : NIFTY_POLL_CLOSED);
+    }, NIFTY_POLL_LIVE);
 
     return () => clearInterval(interval);
   }, [fetchIndex]);
