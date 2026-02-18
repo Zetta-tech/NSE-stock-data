@@ -69,9 +69,30 @@ export interface ScanResponse {
   };
 }
 
+/* ── Nifty 50 Index ────────────────────────────────────────────────── */
+
+export interface NiftyIndex {
+  value: number;
+  change: number;
+  changePercent: number;
+  open: number;
+  high: number;
+  low: number;
+  previousClose: number;
+  fetchedAt: string;
+}
+
 /* ── Activity / Audit types ─────────────────────────────────────────── */
 
 export type ActivityCategory = "user" | "system" | "warning";
+
+export type ActivityActor = "dad" | "system" | "auto-check";
+
+export interface ActivityChange {
+  field: string;
+  from?: string | number | boolean;
+  to?: string | number | boolean;
+}
 
 export interface ActivityEvent {
   id: string;
@@ -79,6 +100,9 @@ export interface ActivityEvent {
   cat: ActivityCategory;
   action: string;
   label: string;
+  actor?: ActivityActor;
+  changes?: ActivityChange[];
+  snapshot?: Record<string, unknown>;
   detail?: Record<string, unknown>;
 }
 

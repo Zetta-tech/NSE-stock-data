@@ -79,7 +79,11 @@ export async function POST(request: Request) {
       scanType === "auto" ? "scan-auto" : "scan-manual",
       `${scanType === "auto" ? "Auto-scan" : "Manual scan"}: ${results.length} stocks in ${scanDuration}ms` +
         (newAlerts.length > 0 ? ` — ${newAlerts.length} breakout${newAlerts.length > 1 ? "s" : ""}` : ""),
-      { durationMs: scanDuration, stockCount: results.length, triggeredCount: newAlerts.length, marketOpen, intraday: useIntraday }
+      {
+        actor: scanType === "auto" ? "auto-check" : "dad",
+        detail: { durationMs: scanDuration, stockCount: results.length, triggeredCount: newAlerts.length, marketOpen, intraday: useIntraday },
+        snapshot: { marketOpen, stockCount: results.length, liveCount, historicalCount, staleCount, triggeredCount: newAlerts.length },
+      }
     );
 
     for (const a of newAlerts) {
@@ -87,7 +91,11 @@ export async function POST(request: Request) {
         "system",
         "alert-fired",
         `Alert: ${a.symbol} breakout — high +${a.highBreakPercent}%, vol +${a.volumeBreakPercent}%`,
-        { symbol: a.symbol, highBreakPercent: a.highBreakPercent, volumeBreakPercent: a.volumeBreakPercent }
+        {
+          actor: "system",
+          detail: { symbol: a.symbol, highBreakPercent: a.highBreakPercent, volumeBreakPercent: a.volumeBreakPercent },
+          snapshot: { todayHigh: a.todayHigh, prevMaxHigh: a.prevMaxHigh, todayVolume: a.todayVolume, prevMaxVolume: a.prevMaxVolume },
+        }
       );
     }
 
@@ -97,7 +105,7 @@ export async function POST(request: Request) {
         "warning",
         "data-stale",
         `${staleCount} stock${staleCount > 1 ? "s" : ""} returned stale data: ${staleSymbols.join(", ")}`,
-        { symbols: staleSymbols, count: staleCount }
+        { actor: "system", detail: { symbols: staleSymbols, count: staleCount } }
       );
     }
 
@@ -126,7 +134,7 @@ export async function POST(request: Request) {
       `The entire scan cycle failed. Error: "${message}". The system will try again on the next scan cycle.`,
     );
 
-    await addActivity("warning", "scan-error", `Scan failed: ${message}`).catch(() => {});
+    await addActivity("warning", "scan-error", `Scan failed: ${message}`, { actor: "system", detail: { error: message } }).catch(() => {});
 
     return NextResponse.json({ error: message }, { status: 500 });
   }

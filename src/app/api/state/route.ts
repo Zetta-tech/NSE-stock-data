@@ -1,18 +1,19 @@
 import { NextResponse } from "next/server";
 import { getWatchlist, getAlerts } from "@/lib/store";
 import { getScanMeta } from "@/lib/activity";
-import { getMarketStatus, getHistoricalCacheStats } from "@/lib/nse-client";
+import { getMarketStatus, getHistoricalCacheStats, getNifty50Index } from "@/lib/nse-client";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const [watchlist, alerts, scanMeta, marketOpen, cacheStats] =
+  const [watchlist, alerts, scanMeta, marketOpen, cacheStats, nifty] =
     await Promise.all([
       getWatchlist(),
       getAlerts(),
       getScanMeta(),
       getMarketStatus().catch(() => false),
       Promise.resolve(getHistoricalCacheStats()),
+      getNifty50Index().catch(() => null),
     ]);
 
   const closeWatchStocks = watchlist.filter((s) => s.closeWatch);
@@ -31,6 +32,7 @@ export async function GET() {
     },
     scan: scanMeta,
     cache: cacheStats,
+    nifty: nifty ?? null,
     serverTime: new Date().toISOString(),
   });
 }
