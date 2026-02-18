@@ -7,6 +7,7 @@ import { StockCard } from "./stock-card";
 import { AlertPanel } from "./alert-panel";
 import { TickerPanel } from "./ticker-panel";
 import { AddStockModal } from "./add-stock-modal";
+import { isMarketHours } from "@/lib/market-hours";
 import type { WatchlistStock, ScanResult, Alert } from "@/lib/types";
 
 export function Dashboard({
@@ -37,6 +38,31 @@ export function Dashboard({
   const notifyCooldownRef = useRef<Map<string, number>>(new Map());
 
   const closeWatchCount = watchlist.filter((s) => s.closeWatch).length;
+
+  // Track if user manually toggled auto-watch off during this session
+  const userToggledOffRef = useRef(false);
+
+  // Auto-start auto-watch during market hours when starred stocks exist
+  useEffect(() => {
+    const check = () => {
+      const live = isMarketHours();
+      if (live && closeWatchCount > 0 && !autoCheckActive && !userToggledOffRef.current) {
+        setAutoCheckActive(true);
+        reportAction("autocheck-started", "Auto-watch started (market open)", {
+          changes: [{ field: "autoCheck", from: false, to: true }],
+        });
+      } else if (!live && autoCheckActive && !userToggledOffRef.current) {
+        // Only auto-stop if we auto-started (user didn't manually toggle)
+        setAutoCheckActive(false);
+        reportAction("autocheck-stopped", "Auto-watch paused (market closed)", {
+          changes: [{ field: "autoCheck", from: true, to: false }],
+        });
+      }
+    };
+    check();
+    const interval = setInterval(check, 60_000);
+    return () => clearInterval(interval);
+  }, [closeWatchCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const runScan = useCallback(async () => {
     setScanning(true);
@@ -308,6 +334,7 @@ export function Dashboard({
                 onClick={() => {
                   const next = !autoCheckActive;
                   setAutoCheckActive(next);
+                  userToggledOffRef.current = !next; // remember if user explicitly turned it off
                   reportAction(
                     next ? "autocheck-started" : "autocheck-stopped",
                     next ? "Started auto-check (30s interval)" : "Stopped auto-check",
