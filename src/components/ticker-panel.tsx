@@ -74,9 +74,11 @@ export function TickerPanel({
     };
   }, [active, hasCloseWatchStocks, fetchTicker]);
 
-  // Reset when no close-watch stocks
+  // Auto-start when close-watch stocks appear, reset when they disappear
   useEffect(() => {
-    if (!hasCloseWatchStocks) {
+    if (hasCloseWatchStocks) {
+      setActive(true);
+    } else {
       setActive(false);
       setQuotes([]);
     }
