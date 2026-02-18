@@ -2,6 +2,45 @@ import { logger } from "./logger";
 import { NseIndia } from "stock-nse-india";
 import type { DayData, NiftyIndex } from "./types";
 
+/* ── API call tracking ──────────────────────────────────────────────── */
+
+interface ApiCallRecord {
+  ts: number;       // epoch ms
+  type: "api" | "cache";
+  method: string;   // e.g. "getHistoricalData", "getCurrentDayData"
+  symbol?: string;
+}
+
+const API_CALL_LOG: ApiCallRecord[] = [];
+const MAX_CALL_LOG = 500;
+
+function recordCall(type: "api" | "cache", method: string, symbol?: string) {
+  API_CALL_LOG.push({ ts: Date.now(), type, method, symbol });
+  if (API_CALL_LOG.length > MAX_CALL_LOG) API_CALL_LOG.splice(0, API_CALL_LOG.length - MAX_CALL_LOG);
+}
+
+export function getApiStats(): {
+  total: number;
+  apiCalls: number;
+  cacheHits: number;
+  recentRate: number;   // API calls per second in last 60s
+  last60s: ApiCallRecord[];
+} {
+  const now = Date.now();
+  const cutoff = now - 60_000;
+  const recent = API_CALL_LOG.filter((r) => r.ts >= cutoff);
+  const recentApi = recent.filter((r) => r.type === "api");
+  const allApi = API_CALL_LOG.filter((r) => r.type === "api");
+  const allCache = API_CALL_LOG.filter((r) => r.type === "cache");
+  return {
+    total: API_CALL_LOG.length,
+    apiCalls: allApi.length,
+    cacheHits: allCache.length,
+    recentRate: recentApi.length > 0 ? parseFloat((recentApi.length / 60).toFixed(2)) : 0,
+    last60s: recent,
+  };
+}
+
 /* Singleton per Lambda invocation.  On Vercel each cold start creates a
  * fresh instance (new cookies, empty cache).  Warm invocations reuse
  * the existing instance, which is ideal for NseIndia's session handling. */
@@ -72,6 +111,7 @@ export async function getHistoricalData(
   const cached = historicalCache.get(symbol);
 
   if (cached && cached.date === today && cached.days === days) {
+    recordCall("cache", "getHistoricalData", symbol);
     logger.debug(
       `Cache hit: ${symbol} (${days} days)`,
       { type: 'CACHE_HIT', symbol },
@@ -81,6 +121,7 @@ export async function getHistoricalData(
     return cached.data;
   }
 
+  recordCall("api", "getHistoricalData", symbol);
   logger.api(
     `Fetching historical data: ${symbol} (${days} days)`,
     { symbol, days },
@@ -122,6 +163,7 @@ export async function getHistoricalData(
 export async function getCurrentDayData(
   symbol: string
 ): Promise<{ high: number; volume: number; close: number; change: number } | null> {
+  recordCall("api", "getCurrentDayData", symbol);
   const nse = getNse();
 
   try {
@@ -155,6 +197,7 @@ export async function getCurrentDayData(
 }
 
 export async function getMarketStatus(): Promise<boolean> {
+  recordCall("api", "getMarketStatus");
   const nse = getNse();
   try {
     const status = await nse.getMarketStatus();
@@ -182,9 +225,11 @@ const INDEX_CACHE_TTL = 15_000; // 15 seconds
 export async function getNifty50Index(): Promise<NiftyIndex | null> {
   // Return cached if fresh
   if (indexCache && Date.now() - indexCache.fetchedAt < INDEX_CACHE_TTL) {
+    recordCall("cache", "getNifty50Index");
     return indexCache.data;
   }
 
+  recordCall("api", "getNifty50Index");
   const nse = getNse();
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -232,6 +277,7 @@ export interface NseSearchResult {
 export async function searchStocks(
   query: string
 ): Promise<NseSearchResult[]> {
+  recordCall("api", "searchStocks");
   const nse = getNse();
   try {
     logger.api(

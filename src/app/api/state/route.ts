@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getWatchlist, getAlerts } from "@/lib/store";
 import { getScanMeta } from "@/lib/activity";
-import { getMarketStatus, getHistoricalCacheStats, getNifty50Index } from "@/lib/nse-client";
+import { getMarketStatus, getHistoricalCacheStats, getNifty50Index, getApiStats } from "@/lib/nse-client";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +33,7 @@ export async function GET() {
     scan: scanMeta,
     cache: cacheStats,
     nifty: nifty ?? null,
+    apiStats: getApiStats(),
     serverTime: new Date().toISOString(),
   });
 }

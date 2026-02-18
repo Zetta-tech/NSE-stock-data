@@ -2,7 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { NotificationBell } from "./notification-bell";
+import { isExtendedHours } from "@/lib/market-hours";
 import type { Alert, NiftyIndex } from "@/lib/types";
+
+const NIFTY_POLL_LIVE = 15_000;   // 15s during extended hours
+const NIFTY_POLL_CLOSED = 5 * 60_000; // 5min after hours (just to catch edge transitions)
 
 export function Header({
   alerts,
@@ -18,6 +22,7 @@ export function Header({
   const [nifty, setNifty] = useState<NiftyIndex | null>(null);
   const prevValueRef = useRef<number | null>(null);
   const [flash, setFlash] = useState<"up" | "down" | null>(null);
+  const hasFetchedOnceRef = useRef(false);
 
   const fetchIndex = useCallback(async () => {
     try {
@@ -31,17 +36,28 @@ export function Header({
         }
         prevValueRef.current = data.value;
         setNifty(data);
+        hasFetchedOnceRef.current = true;
       }
     } catch { /* silent */ }
   }, []);
 
   useEffect(() => {
+    // Always fetch once on mount to show last-known value
     fetchIndex();
-    const interval = setInterval(fetchIndex, 15_000);
+
+    const interval = setInterval(() => {
+      const live = isExtendedHours();
+      if (live) {
+        fetchIndex();
+      }
+      // After hours: don't poll (we already have the closing value)
+    }, isExtendedHours() ? NIFTY_POLL_LIVE : NIFTY_POLL_CLOSED);
+
     return () => clearInterval(interval);
   }, [fetchIndex]);
 
   const isUp = nifty ? nifty.change >= 0 : true;
+  const isLive = isExtendedHours();
 
   return (
     <header className="sticky top-0 z-30 border-b border-surface-border/60 glass">
@@ -106,6 +122,9 @@ export function Header({
                   ({nifty.changePercent >= 0 ? "+" : ""}{nifty.changePercent.toFixed(2)}%)
                 </span>
               </div>
+              {!isLive && (
+                <span className="text-[9px] text-text-muted/50 font-medium">Close</span>
+              )}
             </div>
           )}
 

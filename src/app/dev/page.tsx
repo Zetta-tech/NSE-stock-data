@@ -9,6 +9,21 @@ import type { ActivityEvent, ActivityCategory, ActivityActor, ActivityChange, Sc
  * Types
  * ═══════════════════════════════════════════════════════════════════════ */
 
+interface ApiCallRecord {
+  ts: number;
+  type: "api" | "cache";
+  method: string;
+  symbol?: string;
+}
+
+interface ApiStatsData {
+  total: number;
+  apiCalls: number;
+  cacheHits: number;
+  recentRate: number;
+  last60s: ApiCallRecord[];
+}
+
 interface SystemState {
   market: { open: boolean };
   watchlist: { total: number; closeWatch: number; closeWatchSymbols: string[] };
@@ -16,6 +31,7 @@ interface SystemState {
   scan: ScanMeta | null;
   cache: { size: number; symbols: string[]; date: string };
   nifty: NiftyIndex | null;
+  apiStats: ApiStatsData | null;
   serverTime: string;
 }
 
@@ -623,6 +639,79 @@ export default function DevDashboard() {
               ) : <span className="text-xs text-text-muted">Loading...</span>}
             </StateCard>
           </div>
+
+          {/* ── API Throttle KPI ────────────────────────────────────────── */}
+          {state?.apiStats && (() => {
+            const s = state.apiStats;
+            const total = s.apiCalls + s.cacheHits;
+            const cachePercent = total > 0 ? ((s.cacheHits / total) * 100) : 0;
+            const rateOk = s.recentRate <= 3;
+            const recentApiCalls = s.last60s.filter((r) => r.type === 'api');
+            const recentCacheHits = s.last60s.filter((r) => r.type === 'cache');
+            return (
+              <div className={`mt-3 rounded-xl border p-4 ${rateOk ? 'border-surface-border bg-surface-raised' : 'border-amber-500/20 bg-amber-500/[0.04]'}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[10px] uppercase tracking-wider font-semibold text-text-muted">API Throttle</p>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${rateOk ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                    {s.recentRate} req/s {rateOk ? '(OK)' : '(HIGH)'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 gap-4">
+                  {/* Rate gauge */}
+                  <div>
+                    <p className="text-lg font-bold tabular-nums">{s.recentRate}<span className="text-text-muted text-xs font-normal">/s</span></p>
+                    <p className="text-[10px] text-text-muted mt-0.5">Last 60s rate</p>
+                    <div className="mt-1.5 h-1.5 w-full rounded-full bg-surface-overlay overflow-hidden">
+                      <div className={`h-full rounded-full transition-all duration-500 ${s.recentRate <= 1 ? 'bg-emerald-400' : s.recentRate <= 2 ? 'bg-blue-400' : s.recentRate <= 3 ? 'bg-amber-400' : 'bg-red-400'}`}
+                        style={{ width: `${Math.min((s.recentRate / 3) * 100, 100)}%` }} />
+                    </div>
+                    <p className="text-[9px] text-text-muted/50 mt-0.5">Best practice: &le;3/s</p>
+                  </div>
+
+                  {/* API vs Cache split */}
+                  <div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-lg font-bold tabular-nums text-cyan-400">{s.apiCalls}</span>
+                      <span className="text-[10px] text-text-muted">API</span>
+                    </div>
+                    <div className="flex items-baseline gap-1 mt-0.5">
+                      <span className="text-lg font-bold tabular-nums text-emerald-400">{s.cacheHits}</span>
+                      <span className="text-[10px] text-text-muted">Cache</span>
+                    </div>
+                    <p className="text-[10px] text-text-muted mt-1">{cachePercent.toFixed(0)}% hit rate</p>
+                  </div>
+
+                  {/* Last 60s breakdown */}
+                  <div>
+                    <p className="text-[10px] text-text-muted font-semibold mb-1.5">Last 60s</p>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-sm font-bold tabular-nums text-cyan-400">{recentApiCalls.length}</span>
+                      <span className="text-[9px] text-text-muted">NSE calls</span>
+                    </div>
+                    <div className="flex items-baseline gap-1 mt-0.5">
+                      <span className="text-sm font-bold tabular-nums text-emerald-400">{recentCacheHits.length}</span>
+                      <span className="text-[9px] text-text-muted">cache hits</span>
+                    </div>
+                  </div>
+
+                  {/* Recent API methods */}
+                  <div>
+                    <p className="text-[10px] text-text-muted font-semibold mb-1.5">Recent API calls</p>
+                    <div className="space-y-0.5 max-h-[60px] overflow-y-auto scrollbar-thin">
+                      {recentApiCalls.length === 0 ? (
+                        <span className="text-[10px] text-text-muted/50">None in last 60s</span>
+                      ) : recentApiCalls.slice(-6).reverse().map((r, i) => (
+                        <div key={i} className="flex items-center gap-1.5 text-[9px]">
+                          <span className="w-1 h-1 rounded-full bg-cyan-400 flex-shrink-0" />
+                          <span className="text-text-secondary font-mono truncate">{r.method}{r.symbol ? ` (${r.symbol})` : ''}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </section>
 
         {/* ── Activity Timeline ─────────────────────────────────────────── */}
