@@ -1,6 +1,6 @@
 import { logger } from "./logger";
 import { NseIndia } from "stock-nse-india";
-import type { DayData } from "./types";
+import type { DayData, NiftyIndex } from "./types";
 
 /* Singleton per Lambda invocation.  On Vercel each cold start creates a
  * fresh instance (new cookies, empty cache).  Warm invocations reuse
@@ -171,6 +171,56 @@ export async function getMarketStatus(): Promise<boolean> {
       `Unable to determine whether the Indian stock market is currently open. The system will assume the market is closed and use end-of-day data. This is usually caused by an NSE website timeout.`,
     );
     return false;
+  }
+}
+
+/* ── Nifty 50 Index ───────────────────────────────────────────────────── */
+
+let indexCache: { data: NiftyIndex; fetchedAt: number } | null = null;
+const INDEX_CACHE_TTL = 15_000; // 15 seconds
+
+export async function getNifty50Index(): Promise<NiftyIndex | null> {
+  // Return cached if fresh
+  if (indexCache && Date.now() - indexCache.fetchedAt < INDEX_CACHE_TTL) {
+    return indexCache.data;
+  }
+
+  const nse = getNse();
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw: any = await nse.getEquityStockIndices("NIFTY 50");
+    const meta = raw?.metadata;
+    if (!meta) {
+      logger.warn("Nifty 50 index response missing metadata", { keys: raw ? Object.keys(raw) : null }, "NSE Data Service");
+      return null;
+    }
+
+    const result: NiftyIndex = {
+      value: meta.last ?? meta.close ?? 0,
+      change: meta.change ?? 0,
+      changePercent: meta.percChange ?? 0,
+      open: meta.open ?? 0,
+      high: meta.high ?? 0,
+      low: meta.low ?? 0,
+      previousClose: meta.previousClose ?? 0,
+      fetchedAt: new Date().toISOString(),
+    };
+
+    indexCache = { data: result, fetchedAt: Date.now() };
+    logger.debug(
+      `Nifty 50 index: ${result.value} (${result.change >= 0 ? "+" : ""}${result.changePercent.toFixed(2)}%)`,
+      { value: result.value, change: result.change },
+      "NSE Data Service",
+    );
+    return result;
+  } catch (error) {
+    logger.error(
+      "Failed to fetch Nifty 50 index",
+      { error },
+      "NSE Data Service",
+      "Could not retrieve the Nifty 50 index value from NSE. This is typically a temporary network issue.",
+    );
+    return indexCache?.data ?? null; // return stale if available
   }
 }
 

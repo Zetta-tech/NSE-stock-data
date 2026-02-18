@@ -4,10 +4,19 @@ import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
+const changeSchema = z.object({
+  field: z.string(),
+  from: z.union([z.string(), z.number(), z.boolean()]).optional(),
+  to: z.union([z.string(), z.number(), z.boolean()]).optional(),
+});
+
 const postSchema = z.object({
   action: z.string().min(1).max(50),
   label: z.string().min(1).max(200),
   cat: z.enum(["user", "system", "warning"]).default("user"),
+  actor: z.enum(["dad", "system", "auto-check"]).optional(),
+  changes: z.array(changeSchema).optional(),
+  snapshot: z.record(z.unknown()).optional(),
   detail: z.record(z.unknown()).optional(),
 });
 
@@ -28,8 +37,8 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    const { cat, action, label, detail } = parsed.data;
-    await addActivity(cat, action, label, detail);
+    const { cat, action, label, actor, changes, snapshot, detail } = parsed.data;
+    await addActivity(cat, action, label, { actor, changes, snapshot, detail });
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });

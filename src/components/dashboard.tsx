@@ -310,7 +310,8 @@ export function Dashboard({
                   setAutoCheckActive(next);
                   reportAction(
                     next ? "autocheck-started" : "autocheck-stopped",
-                    next ? "Started auto-check (30s interval)" : "Stopped auto-check"
+                    next ? "Started auto-check (30s interval)" : "Stopped auto-check",
+                    { changes: [{ field: "autoCheck", from: !next, to: next }] }
                   );
                 }}
                 className={`flex items-center gap-1.5 rounded-lg border px-3.5 py-2.5 text-xs font-medium transition-all duration-200 ${
@@ -351,7 +352,8 @@ export function Dashboard({
                 setIntraday(next);
                 reportAction(
                   next ? "intraday-on" : "intraday-off",
-                  next ? "Switched to intraday mode" : "Switched to historical mode"
+                  next ? "Switched to intraday mode" : "Switched to historical mode",
+                  { changes: [{ field: "intraday", from: !next, to: next }] }
                 );
               }}
             />
@@ -470,11 +472,11 @@ function StatCard({
 }
 
 /* Fire-and-forget activity reporter for client-side user actions */
-function reportAction(action: string, label: string, detail?: Record<string, unknown>) {
+function reportAction(action: string, label: string, opts?: { detail?: Record<string, unknown>; changes?: { field: string; from?: string | number | boolean; to?: string | number | boolean }[] }) {
   fetch("/api/activity", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ cat: "user", action, label, detail }),
+    body: JSON.stringify({ cat: "user", action, label, actor: "dad", ...opts }),
   }).catch(() => {});
 }
 

@@ -76,7 +76,11 @@ export async function POST(request: Request) {
         'Watchlist',
         `"${parsed.data.name}" has been added to your watchlist. It will now be included in every scan cycle.`,
       );
-      await addActivity("user", "stock-added", `Added ${parsed.data.symbol} to watchlist`, { symbol: parsed.data.symbol, name: parsed.data.name });
+      await addActivity("user", "stock-added", `Added ${parsed.data.symbol} to watchlist`, {
+        actor: "dad",
+        changes: [{ field: "watchlist", to: parsed.data.symbol }],
+        detail: { symbol: parsed.data.symbol, name: parsed.data.name },
+      });
       return NextResponse.json({ watchlist });
     }
 
@@ -95,7 +99,11 @@ export async function POST(request: Request) {
         'Watchlist',
         `"${parsed.data.symbol}" has been removed from your watchlist. It will no longer be scanned.`,
       );
-      await addActivity("user", "stock-removed", `Removed ${parsed.data.symbol} from watchlist`, { symbol: parsed.data.symbol });
+      await addActivity("user", "stock-removed", `Removed ${parsed.data.symbol} from watchlist`, {
+        actor: "dad",
+        changes: [{ field: "watchlist", from: parsed.data.symbol }],
+        detail: { symbol: parsed.data.symbol },
+      });
       return NextResponse.json({ watchlist });
     }
 
@@ -119,7 +127,11 @@ export async function POST(request: Request) {
         "user",
         isNowWatching ? "closewatch-on" : "closewatch-off",
         `${isNowWatching ? "Starred" : "Unstarred"} ${parsed.data.symbol} for close watch`,
-        { symbol: parsed.data.symbol, closeWatch: isNowWatching }
+        {
+          actor: "dad",
+          changes: [{ field: "closeWatch", from: !isNowWatching, to: isNowWatching }],
+          detail: { symbol: parsed.data.symbol, closeWatch: isNowWatching },
+        }
       );
       return NextResponse.json({ watchlist });
     }

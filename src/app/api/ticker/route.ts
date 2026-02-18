@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCloseWatchStocks } from "@/lib/store";
-import { getCurrentDayData } from "@/lib/nse-client";
+import { getCurrentDayData, getNifty50Index } from "@/lib/nse-client";
 import { logger } from "@/lib/logger";
 import type { TickerQuote } from "@/lib/types";
 
@@ -49,8 +49,12 @@ export async function GET() {
       `Successfully fetched live prices for ${quotes.length} out of ${stocks.length} Close Watch stock(s). ${quotes.length < stocks.length ? `${stocks.length - quotes.length} stock(s) couldn't be fetched — they may be newly listed or the NSE may be temporarily unavailable for those symbols.` : 'All prices are up to date.'}`,
     );
 
+    // Fetch Nifty 50 index in parallel (best-effort)
+    const nifty = await getNifty50Index().catch(() => null);
+
     return NextResponse.json({
       quotes,
+      nifty,
       fetchedAt: new Date().toISOString(),
     });
   } catch (error) {

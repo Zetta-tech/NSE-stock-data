@@ -2,7 +2,7 @@ import "server-only";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import { getRedis } from "./redis";
-import type { ActivityEvent, ActivityCategory, ScanMeta } from "./types";
+import type { ActivityEvent, ActivityCategory, ActivityActor, ActivityChange, ScanMeta } from "./types";
 
 /* ── Keys & limits ──────────────────────────────────────────────────── */
 
@@ -84,7 +84,12 @@ export async function addActivity(
   cat: ActivityCategory,
   action: string,
   label: string,
-  detail?: Record<string, unknown>
+  opts?: {
+    detail?: Record<string, unknown>;
+    actor?: ActivityActor;
+    changes?: ActivityChange[];
+    snapshot?: Record<string, unknown>;
+  }
 ): Promise<void> {
   const event: ActivityEvent = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -92,7 +97,10 @@ export async function addActivity(
     cat,
     action,
     label,
-    ...(detail ? { detail } : {}),
+    ...(opts?.actor ? { actor: opts.actor } : {}),
+    ...(opts?.changes?.length ? { changes: opts.changes } : {}),
+    ...(opts?.snapshot ? { snapshot: opts.snapshot } : {}),
+    ...(opts?.detail ? { detail: opts.detail } : {}),
   };
   const events = await loadEvents();
   events.unshift(event);

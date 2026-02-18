@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import gsap from 'gsap';
 import type { LogEntry, LogLevel } from '@/lib/logger';
-import type { ActivityEvent, ActivityCategory, ScanMeta } from '@/lib/types';
+import type { ActivityEvent, ActivityCategory, ActivityActor, ActivityChange, ScanMeta, NiftyIndex } from '@/lib/types';
 
 /* ═══════════════════════════════════════════════════════════════════════
  * Types
@@ -15,6 +15,7 @@ interface SystemState {
   alerts: { total: number; unread: number };
   scan: ScanMeta | null;
   cache: { size: number; symbols: string[]; date: string };
+  nifty: NiftyIndex | null;
   serverTime: string;
 }
 
@@ -131,6 +132,66 @@ function DataHealthBar({ live, historical, stale }: { live: number; historical: 
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
+ * Actor badge
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+const ACTOR_STYLES: Record<string, { bg: string; text: string; label: string }> = {
+  dad:        { bg: 'bg-blue-500/10',    text: 'text-blue-400',    label: 'Dad' },
+  system:     { bg: 'bg-emerald-500/10', text: 'text-emerald-400', label: 'System' },
+  'auto-check': { bg: 'bg-amber-500/10',  text: 'text-amber-400',  label: 'Auto' },
+};
+
+function ActorBadge({ actor }: { actor?: ActivityActor }) {
+  if (!actor) return null;
+  const style = ACTOR_STYLES[actor] ?? ACTOR_STYLES.system;
+  return (
+    <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${style.bg} ${style.text}`}>
+      {actor === 'dad' && (
+        <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+        </svg>
+      )}
+      {actor === 'auto-check' && (
+        <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <path d="M21.5 2v6h-6" /><path d="M2.5 22v-6h6" /><path d="M2.5 11.5a10 10 0 0 1 18.1-4.5" /><path d="M21.5 12.5a10 10 0 0 1-18.1 4.5" />
+        </svg>
+      )}
+      {actor === 'system' && (
+        <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" />
+        </svg>
+      )}
+      {style.label}
+    </span>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * Changes pill
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+function ChangePills({ changes }: { changes: ActivityChange[] }) {
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-1.5">
+      {changes.map((c, i) => (
+        <span key={i} className="inline-flex items-center gap-1 rounded-md bg-surface-overlay/60 border border-surface-border/60 px-2 py-0.5 text-[10px] font-mono">
+          <span className="text-text-muted">{c.field}:</span>
+          {c.from !== undefined && (
+            <span className="text-red-400/80 line-through">{String(c.from)}</span>
+          )}
+          {c.from !== undefined && c.to !== undefined && (
+            <svg className="w-2.5 h-2.5 text-text-muted/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+          )}
+          {c.to !== undefined && (
+            <span className="text-accent">{String(c.to)}</span>
+          )}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
  * Timeline Entry
  * ═══════════════════════════════════════════════════════════════════════ */
 
@@ -150,17 +211,18 @@ function TimelineEntry({ event, expanded, onToggle, supportMode }: {
       }`}
       onClick={onToggle}
     >
-      {/* Left: icon + line */}
+      {/* Left: icon */}
       <div className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg ${cat.bg} ${cat.text}`}>
         <ActionIcon action={event.action} />
       </div>
 
       {/* Center: content */}
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 mb-0.5">
+        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
           <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider border ${cat.border} ${cat.bg} ${cat.text}`}>
             {cat.label}
           </span>
+          {event.actor && <ActorBadge actor={event.actor} />}
           <span className="text-[10px] text-text-muted font-mono tabular-nums">
             {formatTime(event.ts)}
           </span>
@@ -170,12 +232,35 @@ function TimelineEntry({ event, expanded, onToggle, supportMode }: {
         </div>
         <p className="text-xs text-text-primary leading-relaxed">{event.label}</p>
 
-        {/* Expandable detail */}
-        {expanded && event.detail && supportMode && (
-          <div className="mt-2 rounded-md border border-surface-border bg-surface/60 p-2.5">
-            <pre className="text-[10px] text-text-secondary font-mono whitespace-pre-wrap leading-relaxed">
-              {JSON.stringify(event.detail, null, 2)}
-            </pre>
+        {/* Inline changes */}
+        {event.changes && event.changes.length > 0 && (
+          <ChangePills changes={event.changes} />
+        )}
+
+        {/* Expandable snapshot + detail */}
+        {expanded && (
+          <div className="mt-2 space-y-2">
+            {event.snapshot && (
+              <div className="rounded-md border border-surface-border bg-surface/60 p-2.5">
+                <p className="text-[9px] uppercase tracking-wider text-text-muted font-semibold mb-1.5">System saw</p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  {Object.entries(event.snapshot).map(([k, v]) => (
+                    <span key={k} className="text-[10px]">
+                      <span className="text-text-muted">{k}: </span>
+                      <span className="text-text-primary font-mono">{typeof v === 'object' ? JSON.stringify(v) : String(v)}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {event.detail && supportMode && (
+              <div className="rounded-md border border-surface-border bg-surface/60 p-2.5">
+                <p className="text-[9px] uppercase tracking-wider text-text-muted font-semibold mb-1.5">Raw detail</p>
+                <pre className="text-[10px] text-text-secondary font-mono whitespace-pre-wrap leading-relaxed">
+                  {JSON.stringify(event.detail, null, 2)}
+                </pre>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -452,7 +537,19 @@ export default function DevDashboard() {
         {/* ── Current State Panel ───────────────────────────────────────── */}
         <section>
           <h2 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-3">Current State</h2>
-          <div ref={stateCardsRef} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div ref={stateCardsRef} className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+            {/* Nifty 50 */}
+            <StateCard label="Nifty 50" accent={!!state?.nifty && state.nifty.change >= 0} warning={!!state?.nifty && state.nifty.change < 0}>
+              {state?.nifty ? (
+                <div>
+                  <p className="text-sm font-bold tabular-nums">{state.nifty.value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
+                  <span className={`inline-flex items-center gap-0.5 mt-0.5 text-[10px] font-semibold tabular-nums ${state.nifty.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {state.nifty.change >= 0 ? '+' : ''}{state.nifty.change.toFixed(2)} ({state.nifty.changePercent >= 0 ? '+' : ''}{state.nifty.changePercent.toFixed(2)}%)
+                  </span>
+                </div>
+              ) : <span className="text-xs text-text-muted">Loading...</span>}
+            </StateCard>
+
             {/* Market */}
             <StateCard label="Market">
               {state ? (
