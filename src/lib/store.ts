@@ -4,6 +4,19 @@ import { join } from "path";
 import { getRedis } from "./redis";
 import type { Alert, WatchlistStock } from "./types";
 
+/* ── IST date helper ────────────────────────────────────────────────── */
+
+function todayIST(): string {
+  return new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+  ).toISOString().slice(0, 10);
+}
+
+function filterTodayAlerts(alerts: Alert[]): Alert[] {
+  const today = todayIST();
+  return alerts.filter((a) => a.triggeredAt.slice(0, 10) === today);
+}
+
 /* ── Default watchlist (used on first run) ──────────────────────────── */
 
 const DEFAULT_WATCHLIST: WatchlistStock[] = [
@@ -161,8 +174,15 @@ export async function getCloseWatchStocks(): Promise<WatchlistStock[]> {
 }
 
 export async function getAlerts(): Promise<Alert[]> {
-  const alerts = await loadAlerts();
-  return alerts.sort(
+  const all = await loadAlerts();
+  const todayAlerts = filterTodayAlerts(all);
+
+  // If old alerts were pruned, persist the cleanup
+  if (todayAlerts.length < all.length) {
+    await saveAlerts(todayAlerts);
+  }
+
+  return todayAlerts.sort(
     (a, b) =>
       new Date(b.triggeredAt).getTime() - new Date(a.triggeredAt).getTime()
   );
