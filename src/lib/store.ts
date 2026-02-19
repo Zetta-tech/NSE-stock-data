@@ -173,19 +173,27 @@ export async function getCloseWatchStocks(): Promise<WatchlistStock[]> {
   return (await loadWatchlist()).filter((s) => s.closeWatch);
 }
 
+/** Returns only today's alerts (for the main dashboard). */
 export async function getAlerts(): Promise<Alert[]> {
   const all = await loadAlerts();
-  const todayAlerts = filterTodayAlerts(all);
-
-  // If old alerts were pruned, persist the cleanup
-  if (todayAlerts.length < all.length) {
-    await saveAlerts(todayAlerts);
-  }
-
-  return todayAlerts.sort(
+  return filterTodayAlerts(all).sort(
     (a, b) =>
       new Date(b.triggeredAt).getTime() - new Date(a.triggeredAt).getTime()
   );
+}
+
+/** Returns ALL stored alerts across all dates (for the dev panel). */
+export async function getAllAlerts(): Promise<Alert[]> {
+  const all = await loadAlerts();
+  return all.sort(
+    (a, b) =>
+      new Date(b.triggeredAt).getTime() - new Date(a.triggeredAt).getTime()
+  );
+}
+
+/** Deletes all stored alerts. */
+export async function clearAlerts(): Promise<void> {
+  await saveAlerts([]);
 }
 
 export async function addAlert(alert: Alert): Promise<void> {

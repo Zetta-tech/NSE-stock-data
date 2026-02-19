@@ -27,7 +27,7 @@ interface ApiStatsData {
 interface SystemState {
   market: { open: boolean };
   watchlist: { total: number; closeWatch: number; closeWatchSymbols: string[] };
-  alerts: { total: number; unread: number };
+  alerts: { today: number; unread: number; totalStored: number; byDate: Record<string, number> };
   scan: ScanMeta | null;
   cache: { size: number; symbols: string[]; date: string };
   nifty: NiftyIndex | null;
@@ -624,7 +624,7 @@ export default function DevDashboard() {
                       <span className="text-text-muted font-normal">0 unread</span>
                     )}
                   </p>
-                  <p className="mt-0.5 text-[10px] text-text-muted">{state.alerts.total} total</p>
+                  <p className="mt-0.5 text-[10px] text-text-muted">{state.alerts.today} today · {state.alerts.totalStored} stored</p>
                 </div>
               ) : <span className="text-xs text-text-muted">Loading...</span>}
             </StateCard>
@@ -708,6 +708,47 @@ export default function DevDashboard() {
                       ))}
                     </div>
                   </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ── Alert History ──────────────────────────────────────────── */}
+          {state && state.alerts.totalStored > 0 && (() => {
+            const byDate = state.alerts.byDate;
+            const dates = Object.keys(byDate).sort().reverse();
+            return (
+              <div className="mt-3 rounded-xl border border-surface-border bg-surface-raised p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <p className="text-[10px] uppercase tracking-wider font-semibold text-text-muted">Alert History</p>
+                    <span className="text-[10px] font-bold tabular-nums text-text-secondary bg-surface-overlay/60 px-1.5 py-0.5 rounded">
+                      {state.alerts.totalStored} stored
+                    </span>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!confirm('Purge all stored alerts? This cannot be undone.')) return;
+                      try {
+                        await fetch('/api/state', { method: 'DELETE' });
+                        fetchAll();
+                      } catch { /* silent */ }
+                    }}
+                    className="flex items-center gap-1 px-2 py-1 bg-red-500/8 hover:bg-red-500/15 text-red-400 border border-red-500/20 rounded-lg text-[10px] font-semibold transition-colors"
+                  >
+                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                    Purge All
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {dates.map((date) => (
+                    <div key={date} className="flex items-center gap-1.5 rounded-md bg-surface-overlay/40 border border-surface-border/60 px-2.5 py-1.5">
+                      <span className="text-[10px] font-mono text-text-secondary">{date}</span>
+                      <span className="text-[10px] font-bold tabular-nums text-accent">{byDate[date]}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             );
