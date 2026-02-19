@@ -83,49 +83,88 @@ export function NotificationBell({
                 <p className="mt-1 text-xs text-text-muted">Run a scan to check for breakouts</p>
               </div>
             ) : (
-              alerts.slice(0, 20).map((alert, i) => (
-                <button
-                  key={alert.id}
-                  onClick={() => onMarkRead(alert.id)}
-                  className={`w-full border-b border-surface-border/40 px-4 py-3 text-left transition-all duration-200 hover:bg-surface-overlay/60 ${
-                    !alert.read ? "bg-accent/[0.04]" : ""
-                  }`}
-                  style={{ animationDelay: `${i * 30}ms` }}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2.5">
-                      {!alert.read && (
-                        <span className="mt-0.5 h-2 w-2 flex-shrink-0 rounded-full bg-accent shadow-sm shadow-accent/40" />
-                      )}
-                      <div>
-                        <span className="text-sm font-semibold">{alert.symbol}</span>
-                        <span className="ml-2 text-xs text-text-muted">{alert.name}</span>
+              alerts.slice(0, 20).map((alert, i) => {
+                const isLowBreak = alert.alertType === "low-break";
+                return (
+                  <button
+                    key={alert.id}
+                    onClick={() => onMarkRead(alert.id)}
+                    className={`w-full border-b border-surface-border/40 px-4 py-3 text-left transition-all duration-200 hover:bg-surface-overlay/60 ${
+                      !alert.read
+                        ? isLowBreak ? "bg-red-500/[0.04]" : "bg-accent/[0.04]"
+                        : ""
+                    }`}
+                    style={{ animationDelay: `${i * 30}ms` }}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        {!alert.read && (
+                          <span className={`mt-0.5 h-2 w-2 flex-shrink-0 rounded-full shadow-sm ${
+                            isLowBreak ? "bg-red-400 shadow-red-400/40" : "bg-accent shadow-accent/40"
+                          }`} />
+                        )}
+                        <div>
+                          <span className="text-sm font-semibold">{alert.symbol}</span>
+                          <span className="ml-2 text-xs text-text-muted">{alert.name}</span>
+                        </div>
                       </div>
+                      {isLowBreak ? (
+                        <span className="flex items-center gap-1 flex-shrink-0 rounded-md bg-red-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-red-400">
+                          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                            <polyline points="6 9 12 15 18 9" />
+                          </svg>
+                          LOW BREAK
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 flex-shrink-0 rounded-md bg-accent/15 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-accent">
+                          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                            <polyline points="18 15 12 9 6 15" />
+                          </svg>
+                          BREAKOUT
+                        </span>
+                      )}
                     </div>
-                    <span className="flex-shrink-0 rounded-md bg-accent/15 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-accent">
-                      BREAKOUT
-                    </span>
-                  </div>
-                  <div className={`mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs ${!alert.read ? "ml-[18px]" : ""}`}>
-                    <div className="text-text-secondary">
-                      High: <span className="text-accent tabular-nums">&#x20B9;{alert.todayHigh.toLocaleString("en-IN")}</span>
-                      <span className="text-text-muted"> vs &#x20B9;{alert.prevMaxHigh.toLocaleString("en-IN")}</span>
+
+                    {isLowBreak ? (
+                      <div className={`mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs ${!alert.read ? "ml-[18px]" : ""}`}>
+                        <div className="text-text-secondary">
+                          LTP: <span className="text-red-400 tabular-nums">&#x20B9;{alert.todayClose.toLocaleString("en-IN")}</span>
+                        </div>
+                        <div className="text-text-secondary">
+                          10d Low: <span className="text-text-muted tabular-nums">&#x20B9;{alert.prev10DayLow.toLocaleString("en-IN")}</span>
+                        </div>
+                        <div className="text-text-secondary col-span-2">
+                          Break: <span className="text-red-400 tabular-nums">-{alert.lowBreakPercent.toFixed(1)}%</span>
+                          <span className="text-text-muted ml-2">Day: </span>
+                          <span className={`tabular-nums ${alert.todayChange >= 0 ? "text-accent" : "text-red-400"}`}>
+                            {alert.todayChange >= 0 ? "+" : ""}{alert.todayChange.toFixed(2)}%
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={`mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs ${!alert.read ? "ml-[18px]" : ""}`}>
+                        <div className="text-text-secondary">
+                          High: <span className="text-accent tabular-nums">&#x20B9;{alert.todayHigh.toLocaleString("en-IN")}</span>
+                          <span className="text-text-muted"> vs &#x20B9;{alert.prevMaxHigh.toLocaleString("en-IN")}</span>
+                        </div>
+                        <div className="text-text-secondary">
+                          Vol: <span className="text-accent tabular-nums">{formatVolume(alert.todayVolume)}</span>
+                          <span className="text-text-muted"> vs {formatVolume(alert.prevMaxVolume)}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className={`mt-1.5 text-[10px] text-text-muted ${!alert.read ? "ml-[18px]" : ""}`}>
+                      {new Date(alert.triggeredAt).toLocaleString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </div>
-                    <div className="text-text-secondary">
-                      Vol: <span className="text-accent tabular-nums">{formatVolume(alert.todayVolume)}</span>
-                      <span className="text-text-muted"> vs {formatVolume(alert.prevMaxVolume)}</span>
-                    </div>
-                  </div>
-                  <div className={`mt-1.5 text-[10px] text-text-muted ${!alert.read ? "ml-[18px]" : ""}`}>
-                    {new Date(alert.triggeredAt).toLocaleString("en-IN", {
-                      day: "2-digit",
-                      month: "short",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </div>
-                </button>
-              ))
+                  </button>
+                );
+              })
             )}
           </div>
         </div>
