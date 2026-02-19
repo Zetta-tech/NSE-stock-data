@@ -84,6 +84,11 @@ export function Dashboard({
           data.results.filter((r: ScanResult) => r.triggered),
           notifyCooldownRef.current
         );
+        for (const r of data.results as ScanResult[]) {
+          if (r.lowBreakTriggered) {
+            notifyLowBreak(r, notifyCooldownRef.current);
+          }
+        }
       }
     } catch {
       // scan failed silently — results stay as-is
