@@ -130,9 +130,15 @@ export function Dashboard({
 
       for (const r of data.results as ScanResult[]) {
         if (r.triggered) {
-          currentTriggered.add(r.symbol);
-          if (!prevSet.has(r.symbol)) {
+          currentTriggered.add(`breakout:${r.symbol}`);
+          if (!prevSet.has(`breakout:${r.symbol}`)) {
             newlyTriggered.push(r);
+          }
+        }
+        if (r.lowBreakTriggered) {
+          currentTriggered.add(`lowbreak:${r.symbol}`);
+          if (!prevSet.has(`lowbreak:${r.symbol}`)) {
+            notifyLowBreak(r, notifyCooldownRef.current);
           }
         }
       }
@@ -224,7 +230,7 @@ export function Dashboard({
     }
   }, []);
 
-  const triggeredCount = results.filter((r) => r.triggered).length;
+  const triggeredCount = results.filter((r) => r.triggered || r.lowBreakTriggered).length;
   const staleCount = results.filter((r) => r.dataSource === "stale").length;
   const scannedCount = results.length;
 
@@ -251,7 +257,7 @@ export function Dashboard({
               }
             />
             <StatCard
-              label="Breakouts Found"
+              label="Alerts Triggered"
               value={triggeredCount.toString()}
               accent={triggeredCount > 0}
               icon={
@@ -404,6 +410,7 @@ export function Dashboard({
                       symbol: stock.symbol,
                       name: stock.name,
                       triggered: false,
+                      lowBreakTriggered: false,
                       todayHigh: 0,
                       todayVolume: 0,
                       prevMaxHigh: 0,
@@ -412,6 +419,8 @@ export function Dashboard({
                       volumeBreakPercent: 0,
                       todayClose: 0,
                       todayChange: 0,
+                      prev10DayLow: 0,
+                      lowBreakPercent: 0,
                       scannedAt: "",
                       dataSource: "historical",
                     }
@@ -439,8 +448,8 @@ export function Dashboard({
               No breakouts detected
             </p>
             <p className="mx-auto mt-2 max-w-sm text-sm text-text-muted">
-              None of your watchlist stocks broke their 5-day high and volume
-              simultaneously. Check back later or add more stocks.
+              No breakout or low-break signals detected. Check back later or
+              add more stocks.
             </p>
           </div>
         )}
@@ -533,6 +542,30 @@ function notifyBreakout(
       icon: "/favicon.ico",
     });
   }
+}
+
+function notifyLowBreak(
+  stock: ScanResult,
+  cooldownMap: Map<string, number>
+) {
+  if (
+    typeof window === "undefined" ||
+    !("Notification" in window) ||
+    Notification.permission !== "granted"
+  ) {
+    return;
+  }
+
+  const now = Date.now();
+  const key = `lowbreak:${stock.symbol}`;
+  const lastNotified = cooldownMap.get(key) ?? 0;
+  if (now - lastNotified < NOTIFY_COOLDOWN_MS) return;
+
+  cooldownMap.set(key, now);
+  new Notification(`Low Break: ${stock.symbol}`, {
+    body: `LTP \u20B9${stock.todayClose.toLocaleString("en-IN")} below 10d low \u20B9${stock.prev10DayLow.toLocaleString("en-IN")} (-${stock.lowBreakPercent}%)`,
+    icon: "/favicon.ico",
+  });
 }
 
 function formatVol(vol: number): string {
