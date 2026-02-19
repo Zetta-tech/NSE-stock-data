@@ -29,12 +29,18 @@ export interface ScanResult {
   todayChange: number;
   scannedAt: string;
   dataSource: DataSource;
+  lowBreakTriggered: boolean;
+  prev10DayLow: number;
+  lowBreakPercent: number;
 }
+
+export type AlertType = "breakout" | "low-break";
 
 export interface Alert {
   id: string;
   symbol: string;
   name: string;
+  alertType: AlertType;
   todayHigh: number;
   todayVolume: number;
   prevMaxHigh: number;
@@ -43,6 +49,8 @@ export interface Alert {
   volumeBreakPercent: number;
   todayClose: number;
   todayChange: number;
+  prev10DayLow: number;
+  lowBreakPercent: number;
   triggeredAt: string;
   read: boolean;
 }
