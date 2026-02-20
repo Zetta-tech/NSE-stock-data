@@ -11,7 +11,7 @@ import type { ActivityEvent, ActivityCategory, ActivityActor, ActivityChange, Sc
 
 interface ApiCallRecord {
   ts: number;
-  type: "api" | "cache";
+  type: "api" | "cache" | "cdn-hit" | "cdn-miss" | "cdn-stale" | "cdn-error";
   method: string;
   symbol?: string;
 }
@@ -20,6 +20,10 @@ interface ApiStatsData {
   total: number;
   apiCalls: number;
   cacheHits: number;
+  cdnHits: number;
+  cdnMisses: number;
+  cdnStale: number;
+  cdnErrors: number;
   recentRate: number;
   last60s: ApiCallRecord[];
 }
@@ -645,9 +649,15 @@ export default function DevDashboard() {
             const s = state.apiStats;
             const total = s.apiCalls + s.cacheHits;
             const cachePercent = total > 0 ? ((s.cacheHits / total) * 100) : 0;
+            const cdnTotal = s.cdnHits + s.cdnMisses + s.cdnStale + s.cdnErrors;
+            const cdnHitRate = cdnTotal > 0 ? ((s.cdnHits / cdnTotal) * 100) : 0;
             const rateOk = s.recentRate <= 3;
             const recentApiCalls = s.last60s.filter((r) => r.type === 'api');
             const recentCacheHits = s.last60s.filter((r) => r.type === 'cache');
+            const recentCdnHits = s.last60s.filter((r) => r.type === 'cdn-hit');
+            const recentCdnMisses = s.last60s.filter((r) => r.type === 'cdn-miss');
+            const recentCdnStale = s.last60s.filter((r) => r.type === 'cdn-stale');
+            const recentCdnErrors = s.last60s.filter((r) => r.type === 'cdn-error');
             return (
               <div className={`mt-3 rounded-xl border p-4 ${rateOk ? 'border-surface-border bg-surface-raised' : 'border-amber-500/20 bg-amber-500/[0.04]'}`}>
                 <div className="flex items-center justify-between mb-3">
@@ -656,7 +666,7 @@ export default function DevDashboard() {
                     {s.recentRate} req/s {rateOk ? '(OK)' : '(HIGH)'}
                   </span>
                 </div>
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-5 gap-4">
                   {/* Rate gauge */}
                   <div>
                     <p className="text-lg font-bold tabular-nums">{s.recentRate}<span className="text-text-muted text-xs font-normal">/s</span></p>
@@ -676,9 +686,23 @@ export default function DevDashboard() {
                     </div>
                     <div className="flex items-baseline gap-1 mt-0.5">
                       <span className="text-lg font-bold tabular-nums text-emerald-400">{s.cacheHits}</span>
-                      <span className="text-[10px] text-text-muted">Cache</span>
+                      <span className="text-[10px] text-text-muted">Memory</span>
                     </div>
-                    <p className="text-[10px] text-text-muted mt-1">{cachePercent.toFixed(0)}% hit rate</p>
+                    <p className="text-[10px] text-text-muted mt-1">{cachePercent.toFixed(0)}% mem hit</p>
+                  </div>
+
+                  {/* CDN stats */}
+                  <div>
+                    <p className="text-[10px] text-text-muted font-semibold mb-1.5">CDN (Candles)</p>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-sm font-bold tabular-nums text-violet-400">{s.cdnHits}</span>
+                      <span className="text-[9px] text-text-muted">HIT</span>
+                    </div>
+                    <div className="flex items-baseline gap-1 mt-0.5">
+                      <span className="text-sm font-bold tabular-nums text-amber-400">{s.cdnMisses + s.cdnStale}</span>
+                      <span className="text-[9px] text-text-muted">MISS/STALE</span>
+                    </div>
+                    {cdnTotal > 0 && <p className="text-[10px] text-text-muted mt-1">{cdnHitRate.toFixed(0)}% CDN hit</p>}
                   </div>
 
                   {/* Last 60s breakdown */}
@@ -686,24 +710,44 @@ export default function DevDashboard() {
                     <p className="text-[10px] text-text-muted font-semibold mb-1.5">Last 60s</p>
                     <div className="flex items-baseline gap-1">
                       <span className="text-sm font-bold tabular-nums text-cyan-400">{recentApiCalls.length}</span>
-                      <span className="text-[9px] text-text-muted">NSE calls</span>
+                      <span className="text-[9px] text-text-muted">NSE</span>
                     </div>
                     <div className="flex items-baseline gap-1 mt-0.5">
                       <span className="text-sm font-bold tabular-nums text-emerald-400">{recentCacheHits.length}</span>
-                      <span className="text-[9px] text-text-muted">cache hits</span>
+                      <span className="text-[9px] text-text-muted">mem</span>
+                    </div>
+                    <div className="flex items-baseline gap-1 mt-0.5">
+                      <span className="text-sm font-bold tabular-nums text-violet-400">{recentCdnHits.length}</span>
+                      <span className="text-[9px] text-text-muted">CDN</span>
+                      {(recentCdnStale.length > 0 || recentCdnErrors.length > 0 || recentCdnMisses.length > 0) && (
+                        <span className="text-[9px] text-text-muted/50">({recentCdnMisses.length}m {recentCdnStale.length}s {recentCdnErrors.length}e)</span>
+                      )}
                     </div>
                   </div>
 
                   {/* Recent API methods */}
                   <div>
-                    <p className="text-[10px] text-text-muted font-semibold mb-1.5">Recent API calls</p>
+                    <p className="text-[10px] text-text-muted font-semibold mb-1.5">Recent calls</p>
                     <div className="space-y-0.5 max-h-[60px] overflow-y-auto scrollbar-thin">
-                      {recentApiCalls.length === 0 ? (
+                      {s.last60s.length === 0 ? (
                         <span className="text-[10px] text-text-muted/50">None in last 60s</span>
-                      ) : recentApiCalls.slice(-6).reverse().map((r, i) => (
+                      ) : s.last60s.slice(-8).reverse().map((r, i) => (
                         <div key={i} className="flex items-center gap-1.5 text-[9px]">
-                          <span className="w-1 h-1 rounded-full bg-cyan-400 flex-shrink-0" />
+                          <span className={`w-1 h-1 rounded-full flex-shrink-0 ${
+                            r.type === 'api' ? 'bg-cyan-400'
+                            : r.type === 'cache' ? 'bg-emerald-400'
+                            : r.type === 'cdn-hit' ? 'bg-violet-400'
+                            : r.type === 'cdn-stale' ? 'bg-amber-400'
+                            : r.type === 'cdn-error' ? 'bg-red-400'
+                            : 'bg-blue-400'
+                          }`} />
                           <span className="text-text-secondary font-mono truncate">{r.method}{r.symbol ? ` (${r.symbol})` : ''}</span>
+                          <span className={`text-[8px] ${
+                            r.type === 'cdn-hit' ? 'text-violet-400/60'
+                            : r.type === 'cdn-stale' ? 'text-amber-400/60'
+                            : r.type === 'cdn-error' ? 'text-red-400/60'
+                            : ''
+                          }`}>{r.type.startsWith('cdn') ? r.type.replace('cdn-', '') : ''}</span>
                         </div>
                       ))}
                     </div>

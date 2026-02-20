@@ -1,10 +1,68 @@
 import "server-only";
-import { getHistoricalData, getCurrentDayData } from "./nse-client";
+import { getHistoricalData, getCurrentDayData, recordCall } from "./nse-client";
 import { logger } from "./logger";
 import type { ScanResult, DayData, DataSource } from "./types";
 
 const LOOKBACK_DAYS = 5;
 const LOW_BREAK_LOOKBACK = 10;
+
+/* ── CDN-backed candle fetcher ────────────────────────────────────────
+ * On Vercel, GET /api/candles?symbol=…&days=… is served through the CDN
+ * with Cache-Control headers.  Fetching via HTTP instead of a direct
+ * function call lets repeat scans for the same symbol hit the CDN edge
+ * rather than invoking the serverless function again.
+ *
+ * Fallback: if the HTTP fetch fails (cold CDN, local dev without server,
+ * network glitch), we fall back to the direct getHistoricalData() call
+ * which uses its own in-memory cache.
+ * ──────────────────────────────────────────────────────────────────── */
+
+function getBaseUrl(): string {
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return `http://localhost:${process.env.PORT || 3000}`;
+}
+
+async function fetchCandles(symbol: string, days: number): Promise<DayData[]> {
+  const url = `${getBaseUrl()}/api/candles?symbol=${encodeURIComponent(symbol)}&days=${days}`;
+
+  try {
+    const res = await fetch(url);
+
+    // Surface Vercel CDN cache status (x-vercel-cache: HIT | MISS | STALE | …)
+    const cdnStatus = res.headers.get("x-vercel-cache") || "none";
+
+    if (!res.ok) {
+      throw new Error(`Candles API ${res.status}`);
+    }
+
+    const data = await res.json();
+
+    // Map CDN status to call record type
+    const cdnType = cdnStatus === "HIT" ? "cdn-hit"
+      : cdnStatus === "STALE" ? "cdn-stale"
+      : "cdn-miss";
+    recordCall(cdnType, "fetchCandles", symbol);
+
+    logger.debug(
+      `Candles via CDN: ${symbol} (${data.candleCount} days, cdn=${cdnStatus})`,
+      { symbol, candleCount: data.candleCount, cdnStatus },
+      "Stock Scanner",
+    );
+
+    return data.candles as DayData[];
+  } catch (error) {
+    // CDN / HTTP fetch failed — fall back to direct function call.
+    // This keeps the scanner working on localhost and when CDN evicts.
+    const msg = error instanceof Error ? error.message : String(error);
+    logger.debug(
+      `CDN fetch failed for ${symbol}, falling back to direct call: ${msg}`,
+      { symbol, error: msg },
+      "Stock Scanner",
+    );
+    recordCall("cdn-error", "fetchCandles", symbol);
+    return getHistoricalData(symbol, days);
+  }
+}
 
 function analyzeBreakout(
   today: { high: number; volume: number; close: number; change: number },
@@ -63,7 +121,7 @@ export async function scanStock(
   const scannedAt = new Date().toISOString();
 
   try {
-    const historical = await getHistoricalData(symbol, 25);
+    const historical = await fetchCandles(symbol, 25);
 
     if (historical.length < LOOKBACK_DAYS + 1) {
       throw new Error(
