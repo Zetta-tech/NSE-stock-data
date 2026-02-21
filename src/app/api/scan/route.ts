@@ -35,10 +35,9 @@ export async function POST(request: Request) {
     for (const result of results) {
       if (result.triggered) {
         const alert: Alert = {
-          id: `${result.symbol}-breakout-${Date.now()}`,
+          id: `${result.symbol}-${Date.now()}`,
           symbol: result.symbol,
           name: result.name,
-          alertType: "breakout",
           todayHigh: result.todayHigh,
           todayVolume: result.todayVolume,
           prevMaxHigh: result.prevMaxHigh,
@@ -47,30 +46,6 @@ export async function POST(request: Request) {
           volumeBreakPercent: result.volumeBreakPercent,
           todayClose: result.todayClose,
           todayChange: result.todayChange,
-          prev10DayLow: result.prev10DayLow,
-          lowBreakPercent: 0,
-          triggeredAt: result.scannedAt,
-          read: false,
-        };
-        await addAlert(alert);
-        newAlerts.push(alert);
-      }
-      if (result.lowBreakTriggered) {
-        const alert: Alert = {
-          id: `${result.symbol}-lowbreak-${Date.now()}`,
-          symbol: result.symbol,
-          name: result.name,
-          alertType: "low-break",
-          todayHigh: result.todayHigh,
-          todayVolume: result.todayVolume,
-          prevMaxHigh: result.prevMaxHigh,
-          prevMaxVolume: result.prevMaxVolume,
-          highBreakPercent: 0,
-          volumeBreakPercent: 0,
-          todayClose: result.todayClose,
-          todayChange: result.todayChange,
-          prev10DayLow: result.prev10DayLow,
-          lowBreakPercent: result.lowBreakPercent,
           triggeredAt: result.scannedAt,
           read: false,
         };
@@ -99,19 +74,11 @@ export async function POST(request: Request) {
     };
     await setScanMeta(meta);
 
-    const breakoutAlerts = newAlerts.filter((a) => a.alertType === "breakout");
-    const lowBreakAlerts = newAlerts.filter((a) => a.alertType === "low-break");
-
-    const alertSummary = [
-      breakoutAlerts.length > 0 ? `${breakoutAlerts.length} breakout${breakoutAlerts.length > 1 ? "s" : ""}` : "",
-      lowBreakAlerts.length > 0 ? `${lowBreakAlerts.length} low-break${lowBreakAlerts.length > 1 ? "s" : ""}` : "",
-    ].filter(Boolean).join(", ");
-
     await addActivity(
       "system",
       scanType === "auto" ? "scan-auto" : "scan-manual",
       `${scanType === "auto" ? "Auto-scan" : "Manual scan"}: ${results.length} stocks in ${scanDuration}ms` +
-        (alertSummary ? ` — ${alertSummary}` : ""),
+        (newAlerts.length > 0 ? ` — ${newAlerts.length} breakout${newAlerts.length > 1 ? "s" : ""}` : ""),
       {
         actor: scanType === "auto" ? "auto-check" : "dad",
         detail: { durationMs: scanDuration, stockCount: results.length, triggeredCount: newAlerts.length, marketOpen, intraday: useIntraday },
@@ -120,29 +87,16 @@ export async function POST(request: Request) {
     );
 
     for (const a of newAlerts) {
-      if (a.alertType === "breakout") {
-        await addActivity(
-          "system",
-          "alert-fired",
-          `Alert: ${a.symbol} breakout — high +${a.highBreakPercent}%, vol +${a.volumeBreakPercent}%`,
-          {
-            actor: "system",
-            detail: { symbol: a.symbol, alertType: a.alertType, highBreakPercent: a.highBreakPercent, volumeBreakPercent: a.volumeBreakPercent },
-            snapshot: { todayHigh: a.todayHigh, prevMaxHigh: a.prevMaxHigh, todayVolume: a.todayVolume, prevMaxVolume: a.prevMaxVolume },
-          }
-        );
-      } else {
-        await addActivity(
-          "system",
-          "alert-fired",
-          `Alert: ${a.symbol} low-break — LTP ₹${a.todayClose} below 10d low ₹${a.prev10DayLow} (-${a.lowBreakPercent}%)`,
-          {
-            actor: "system",
-            detail: { symbol: a.symbol, alertType: a.alertType, ltp: a.todayClose, prev10DayLow: a.prev10DayLow, lowBreakPercent: a.lowBreakPercent },
-            snapshot: { todayClose: a.todayClose, prev10DayLow: a.prev10DayLow, todayChange: a.todayChange },
-          }
-        );
-      }
+      await addActivity(
+        "system",
+        "alert-fired",
+        `Alert: ${a.symbol} breakout — high +${a.highBreakPercent}%, vol +${a.volumeBreakPercent}%`,
+        {
+          actor: "system",
+          detail: { symbol: a.symbol, highBreakPercent: a.highBreakPercent, volumeBreakPercent: a.volumeBreakPercent },
+          snapshot: { todayHigh: a.todayHigh, prevMaxHigh: a.prevMaxHigh, todayVolume: a.todayVolume, prevMaxVolume: a.prevMaxVolume },
+        }
+      );
     }
 
     if (staleCount > 0) {

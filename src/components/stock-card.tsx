@@ -25,7 +25,6 @@ export function StockCard({
   const isLive = result.dataSource === "live";
   const highBreaks = hasData && !isStale && result.todayHigh > result.prevMaxHigh;
   const volBreaks = hasData && !isStale && result.todayVolume > result.prevMaxVolume;
-  const lowBreaks = hasData && !isStale && result.lowBreakTriggered;
 
   // Animate star toggle transitions
   useEffect(() => {
@@ -74,24 +73,19 @@ export function StockCard({
           ? "border-warn/30 bg-surface-raised"
           : result.triggered
             ? "border-accent/30 card-glow bg-surface-raised"
-            : lowBreaks
-              ? "border-red-500/30 bg-surface-raised"
-              : closeWatch
-                ? "border-amber-400/25 bg-surface-raised hover:shadow-xl hover:shadow-amber-400/5"
-                : "border-surface-border bg-surface-raised hover:border-surface-border/80 hover:shadow-xl hover:shadow-black/20"
+            : closeWatch
+              ? "border-amber-400/25 bg-surface-raised hover:shadow-xl hover:shadow-amber-400/5"
+              : "border-surface-border bg-surface-raised hover:border-surface-border/80 hover:shadow-xl hover:shadow-black/20"
       }`}
     >
       {/* Top edge highlight */}
       {result.triggered && !isStale && (
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/60 to-transparent" />
       )}
-      {lowBreaks && !result.triggered && (
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-red-500/60 to-transparent" />
-      )}
       {isStale && (
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-warn/60 to-transparent" />
       )}
-      {closeWatch && !result.triggered && !lowBreaks && !isStale && (
+      {closeWatch && !result.triggered && !isStale && (
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/50 to-transparent" />
       )}
 
@@ -165,12 +159,6 @@ export function StockCard({
                 <span className="inline-flex items-center gap-1 rounded-md bg-accent/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent">
                   <span className="h-1 w-1 rounded-full bg-accent animate-pulse" />
                   Breakout
-                </span>
-              )}
-              {lowBreaks && (
-                <span className="inline-flex items-center gap-1 rounded-md bg-red-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-400">
-                  <span className="h-1 w-1 rounded-full bg-red-400 animate-pulse" />
-                  Low Break
                 </span>
               )}
               {isLive && (
@@ -252,7 +240,6 @@ export function StockCard({
         <div className="mt-4 flex gap-2">
           <StatusPill active={highBreaks} label="High Break" />
           <StatusPill active={volBreaks} label="Vol Break" />
-          <StatusPill active={lowBreaks} label="Low Break" variant={lowBreaks ? "danger" : undefined} />
         </div>
       )}
 
@@ -328,28 +315,17 @@ function MetricBar({
   );
 }
 
-function StatusPill({ active, label, variant }: { active: boolean; label: string; variant?: "danger" }) {
-  const isDanger = variant === "danger";
+function StatusPill({ active, label }: { active: boolean; label: string }) {
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors ${
-        active
-          ? isDanger
-            ? "bg-red-500/10 text-red-400"
-            : "bg-accent/10 text-accent"
-          : "bg-surface-overlay text-text-muted"
+        active ? "bg-accent/10 text-accent" : "bg-surface-overlay text-text-muted"
       }`}
     >
       {active ? (
-        isDanger ? (
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        ) : (
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        )
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
       ) : (
         <span className="text-[8px]">&mdash;</span>
       )}

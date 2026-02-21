@@ -1,13 +1,13 @@
 import { logger } from "./logger";
 import { NseIndia } from "stock-nse-india";
 import { isExtendedHours } from "./market-hours";
-import type { DayData, NiftyIndex } from "./types";
+import type { DayData, NiftyIndex, Nifty50StockRow, Nifty50Snapshot } from "./types";
 
 /* ── API call tracking ──────────────────────────────────────────────── */
 
 interface ApiCallRecord {
   ts: number;       // epoch ms
-  type: "api" | "cache" | "cdn-hit" | "cdn-miss" | "cdn-stale" | "cdn-error";
+  type: "api" | "cache";
   method: string;   // e.g. "getHistoricalData", "getCurrentDayData"
   symbol?: string;
 }
@@ -15,22 +15,15 @@ interface ApiCallRecord {
 const API_CALL_LOG: ApiCallRecord[] = [];
 const MAX_CALL_LOG = 500;
 
-function recordCall(type: ApiCallRecord["type"], method: string, symbol?: string) {
+function recordCall(type: "api" | "cache", method: string, symbol?: string) {
   API_CALL_LOG.push({ ts: Date.now(), type, method, symbol });
   if (API_CALL_LOG.length > MAX_CALL_LOG) API_CALL_LOG.splice(0, API_CALL_LOG.length - MAX_CALL_LOG);
 }
-
-/** Expose recordCall so the scanner can log CDN hits/misses */
-export { recordCall };
 
 export function getApiStats(): {
   total: number;
   apiCalls: number;
   cacheHits: number;
-  cdnHits: number;
-  cdnMisses: number;
-  cdnStale: number;
-  cdnErrors: number;
   recentRate: number;   // API calls per second in last 60s
   last60s: ApiCallRecord[];
 } {
@@ -40,18 +33,10 @@ export function getApiStats(): {
   const recentApi = recent.filter((r) => r.type === "api");
   const allApi = API_CALL_LOG.filter((r) => r.type === "api");
   const allCache = API_CALL_LOG.filter((r) => r.type === "cache");
-  const allCdnHit = API_CALL_LOG.filter((r) => r.type === "cdn-hit");
-  const allCdnMiss = API_CALL_LOG.filter((r) => r.type === "cdn-miss");
-  const allCdnStale = API_CALL_LOG.filter((r) => r.type === "cdn-stale");
-  const allCdnError = API_CALL_LOG.filter((r) => r.type === "cdn-error");
   return {
     total: API_CALL_LOG.length,
     apiCalls: allApi.length,
     cacheHits: allCache.length,
-    cdnHits: allCdnHit.length,
-    cdnMisses: allCdnMiss.length,
-    cdnStale: allCdnStale.length,
-    cdnErrors: allCdnError.length,
     recentRate: recentApi.length > 0 ? parseFloat((recentApi.length / 60).toFixed(2)) : 0,
     last60s: recent,
   };
@@ -375,5 +360,122 @@ export async function searchStocks(
       `The search request to NSE for "${query}" couldn't be completed. This is typically a temporary network issue with NSE's servers. Try again in a few seconds.`,
     );
     return [];
+  }
+}
+
+/* ── Nifty 50 Stock Snapshot (for table view) ────────────────────────
+ * Uses getEquityStockIndices("NIFTY 50") to fetch all 50 constituent
+ * stocks in a single API call — much cheaper than 50 individual calls.
+ *
+ * Cache strategy:
+ *   - During market hours: 3-minute TTL (target refresh interval)
+ *   - After hours: serve last-known data indefinitely (no polling)
+ *   - On fetch failure: return stale data with stale=true flag
+ * ──────────────────────────────────────────────────────────────────── */
+
+let snapshotCache: { data: Nifty50Snapshot; fetchedAt: number } | null = null;
+const SNAPSHOT_CACHE_TTL = 3 * 60_000; // 3 minutes
+
+// Tracking stats for dev panel
+let snapshotFetchCount = 0;
+let snapshotFailCount = 0;
+
+export function getNifty50SnapshotStats() {
+  return {
+    lastRefreshTime: snapshotCache?.data.fetchedAt ?? null,
+    snapshotFetchSuccess: snapshotCache?.data.fetchSuccess ?? false,
+    snapshotFetchCount,
+    snapshotFailCount,
+  };
+}
+
+export async function getNifty50Snapshot(): Promise<Nifty50Snapshot> {
+  // Return cached if fresh
+  if (snapshotCache && Date.now() - snapshotCache.fetchedAt < SNAPSHOT_CACHE_TTL) {
+    recordCall("cache", "getNifty50Snapshot");
+    return snapshotCache.data;
+  }
+
+  // Outside extended hours, return last-known data without hitting NSE
+  if (!isExtendedHours()) {
+    if (snapshotCache) {
+      recordCall("cache", "getNifty50Snapshot");
+      return snapshotCache.data;
+    }
+    // No cached data at all — allow one fetch to seed
+  }
+
+  recordCall("api", "getNifty50Snapshot");
+  snapshotFetchCount++;
+  const nse = getNse();
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw: any = await nse.getEquityStockIndices("NIFTY 50");
+    const dataArray = raw?.data;
+
+    if (!Array.isArray(dataArray) || dataArray.length === 0) {
+      logger.warn(
+        "Nifty 50 snapshot: no data array in response",
+        { keys: raw ? Object.keys(raw) : null },
+        "Nifty50 Snapshot",
+      );
+      snapshotFailCount++;
+      if (snapshotCache) {
+        return { ...snapshotCache.data, stale: true, fetchSuccess: false };
+      }
+      return { stocks: [], fetchedAt: new Date().toISOString(), fetchSuccess: false, stale: true };
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const stocks: Nifty50StockRow[] = dataArray
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .filter((d: any) => d.symbol && d.symbol !== "NIFTY 50")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((d: any) => ({
+        symbol: d.symbol,
+        name: d.meta?.companyName ?? d.symbol,
+        lastPrice: d.lastPrice ?? d.close ?? 0,
+        change: d.change ?? 0,
+        pChange: d.pChange ?? 0,
+        open: d.open ?? 0,
+        dayHigh: d.dayHigh ?? 0,
+        dayLow: d.dayLow ?? 0,
+        previousClose: d.previousClose ?? 0,
+        totalTradedVolume: d.totalTradedVolume ?? 0,
+        totalTradedValue: d.totalTradedValue ?? 0,
+        yearHigh: d.yearHigh ?? 0,
+        yearLow: d.yearLow ?? 0,
+      }));
+
+    const snapshot: Nifty50Snapshot = {
+      stocks,
+      fetchedAt: new Date().toISOString(),
+      fetchSuccess: true,
+      stale: false,
+    };
+
+    snapshotCache = { data: snapshot, fetchedAt: Date.now() };
+
+    logger.debug(
+      `Nifty 50 snapshot: ${stocks.length} stocks fetched`,
+      { count: stocks.length },
+      "Nifty50 Snapshot",
+    );
+
+    return snapshot;
+  } catch (error) {
+    snapshotFailCount++;
+    logger.error(
+      "Failed to fetch Nifty 50 snapshot",
+      { error },
+      "Nifty50 Snapshot",
+      "Could not retrieve the Nifty 50 constituent stocks from NSE. Will use stale data if available.",
+    );
+
+    if (snapshotCache) {
+      return { ...snapshotCache.data, stale: true, fetchSuccess: false };
+    }
+    return { stocks: [], fetchedAt: new Date().toISOString(), fetchSuccess: false, stale: true };
   }
 }
