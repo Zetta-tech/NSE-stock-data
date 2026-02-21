@@ -7,7 +7,7 @@ import type { DayData, NiftyIndex } from "./types";
 
 interface ApiCallRecord {
   ts: number;       // epoch ms
-  type: "api" | "cache" | "cdn-hit" | "cdn-miss" | "cdn-stale" | "cdn-error";
+  type: "api" | "cache";
   method: string;   // e.g. "getHistoricalData", "getCurrentDayData"
   symbol?: string;
 }
@@ -15,22 +15,15 @@ interface ApiCallRecord {
 const API_CALL_LOG: ApiCallRecord[] = [];
 const MAX_CALL_LOG = 500;
 
-function recordCall(type: ApiCallRecord["type"], method: string, symbol?: string) {
+function recordCall(type: "api" | "cache", method: string, symbol?: string) {
   API_CALL_LOG.push({ ts: Date.now(), type, method, symbol });
   if (API_CALL_LOG.length > MAX_CALL_LOG) API_CALL_LOG.splice(0, API_CALL_LOG.length - MAX_CALL_LOG);
 }
-
-/** Expose recordCall so the scanner can log CDN hits/misses */
-export { recordCall };
 
 export function getApiStats(): {
   total: number;
   apiCalls: number;
   cacheHits: number;
-  cdnHits: number;
-  cdnMisses: number;
-  cdnStale: number;
-  cdnErrors: number;
   recentRate: number;   // API calls per second in last 60s
   last60s: ApiCallRecord[];
 } {
@@ -40,18 +33,10 @@ export function getApiStats(): {
   const recentApi = recent.filter((r) => r.type === "api");
   const allApi = API_CALL_LOG.filter((r) => r.type === "api");
   const allCache = API_CALL_LOG.filter((r) => r.type === "cache");
-  const allCdnHit = API_CALL_LOG.filter((r) => r.type === "cdn-hit");
-  const allCdnMiss = API_CALL_LOG.filter((r) => r.type === "cdn-miss");
-  const allCdnStale = API_CALL_LOG.filter((r) => r.type === "cdn-stale");
-  const allCdnError = API_CALL_LOG.filter((r) => r.type === "cdn-error");
   return {
     total: API_CALL_LOG.length,
     apiCalls: allApi.length,
     cacheHits: allCache.length,
-    cdnHits: allCdnHit.length,
-    cdnMisses: allCdnMiss.length,
-    cdnStale: allCdnStale.length,
-    cdnErrors: allCdnError.length,
     recentRate: recentApi.length > 0 ? parseFloat((recentApi.length / 60).toFixed(2)) : 0,
     last60s: recent,
   };

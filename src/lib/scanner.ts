@@ -1,73 +1,13 @@
 import "server-only";
-import { getHistoricalData, getCurrentDayData, recordCall } from "./nse-client";
+import { getHistoricalData, getCurrentDayData } from "./nse-client";
 import { logger } from "./logger";
 import type { ScanResult, DayData, DataSource } from "./types";
 
 const LOOKBACK_DAYS = 5;
-const LOW_BREAK_LOOKBACK = 10;
-
-/* ── CDN-backed candle fetcher ────────────────────────────────────────
- * On Vercel, GET /api/candles?symbol=…&days=… is served through the CDN
- * with Cache-Control headers.  Fetching via HTTP instead of a direct
- * function call lets repeat scans for the same symbol hit the CDN edge
- * rather than invoking the serverless function again.
- *
- * Fallback: if the HTTP fetch fails (cold CDN, local dev without server,
- * network glitch), we fall back to the direct getHistoricalData() call
- * which uses its own in-memory cache.
- * ──────────────────────────────────────────────────────────────────── */
-
-function getBaseUrl(): string {
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return `http://localhost:${process.env.PORT || 3000}`;
-}
-
-async function fetchCandles(symbol: string, days: number): Promise<DayData[]> {
-  const url = `${getBaseUrl()}/api/candles?symbol=${encodeURIComponent(symbol)}&days=${days}`;
-
-  try {
-    const res = await fetch(url);
-
-    // Surface Vercel CDN cache status (x-vercel-cache: HIT | MISS | STALE | …)
-    const cdnStatus = res.headers.get("x-vercel-cache") || "none";
-
-    if (!res.ok) {
-      throw new Error(`Candles API ${res.status}`);
-    }
-
-    const data = await res.json();
-
-    // Map CDN status to call record type
-    const cdnType = cdnStatus === "HIT" ? "cdn-hit"
-      : cdnStatus === "STALE" ? "cdn-stale"
-      : "cdn-miss";
-    recordCall(cdnType, "fetchCandles", symbol);
-
-    logger.debug(
-      `Candles via CDN: ${symbol} (${data.candleCount} days, cdn=${cdnStatus})`,
-      { symbol, candleCount: data.candleCount, cdnStatus },
-      "Stock Scanner",
-    );
-
-    return data.candles as DayData[];
-  } catch (error) {
-    // CDN / HTTP fetch failed — fall back to direct function call.
-    // This keeps the scanner working on localhost and when CDN evicts.
-    const msg = error instanceof Error ? error.message : String(error);
-    logger.debug(
-      `CDN fetch failed for ${symbol}, falling back to direct call: ${msg}`,
-      { symbol, error: msg },
-      "Stock Scanner",
-    );
-    recordCall("cdn-error", "fetchCandles", symbol);
-    return getHistoricalData(symbol, days);
-  }
-}
 
 function analyzeBreakout(
   today: { high: number; volume: number; close: number; change: number },
-  previousDays: DayData[],
-  lowBreakDays: DayData[]
+  previousDays: DayData[]
 ): Omit<ScanResult, "symbol" | "name" | "scannedAt" | "dataSource"> {
   const prevMaxHigh = Math.max(...previousDays.map((d) => d.high));
   const prevMaxVolume = Math.max(...previousDays.map((d) => d.volume));
@@ -82,20 +22,6 @@ function analyzeBreakout(
       ? ((today.volume - prevMaxVolume) / prevMaxVolume) * 100
       : 0;
 
-  // Low-break: LTP falls below the lowest daily low of previous 10 trading days
-  let prev10DayLow = 0;
-  let lowBreakTriggered = false;
-  let lowBreakPercent = 0;
-
-  if (lowBreakDays.length > 0) {
-    prev10DayLow = Math.min(...lowBreakDays.map((d) => d.low));
-    lowBreakTriggered = today.close < prev10DayLow && prev10DayLow > 0;
-    lowBreakPercent =
-      prev10DayLow > 0
-        ? ((prev10DayLow - today.close) / prev10DayLow) * 100
-        : 0;
-  }
-
   return {
     triggered: highBreak && volumeBreak,
     todayHigh: today.high,
@@ -106,9 +32,6 @@ function analyzeBreakout(
     volumeBreakPercent: Math.round(volumeBreakPercent * 100) / 100,
     todayClose: today.close,
     todayChange: Math.round(today.change * 100) / 100,
-    lowBreakTriggered,
-    prev10DayLow: Math.round(prev10DayLow * 100) / 100,
-    lowBreakPercent: Math.round(lowBreakPercent * 100) / 100,
   };
 }
 
@@ -121,7 +44,7 @@ export async function scanStock(
   const scannedAt = new Date().toISOString();
 
   try {
-    const historical = await fetchCandles(symbol, 25);
+    const historical = await getHistoricalData(symbol, 15);
 
     if (historical.length < LOOKBACK_DAYS + 1) {
       throw new Error(
@@ -136,7 +59,6 @@ export async function scanStock(
       change: number;
     };
     let previousDays: DayData[];
-    let lowBreakDays: DayData[];
     let dataSource: DataSource;
 
     if (useIntraday) {
@@ -145,7 +67,6 @@ export async function scanStock(
       if (liveDayData && liveDayData.high > 0) {
         todayData = liveDayData;
         previousDays = historical.slice(-LOOKBACK_DAYS);
-        lowBreakDays = historical.slice(-LOW_BREAK_LOOKBACK);
         dataSource = "live";
       } else {
         // Live fetch failed — behaviour depends on whether market is open.
@@ -158,10 +79,6 @@ export async function scanStock(
         };
         previousDays = historical.slice(
           -(LOOKBACK_DAYS + 1),
-          -1
-        );
-        lowBreakDays = historical.slice(
-          -(LOW_BREAK_LOOKBACK + 1),
           -1
         );
 
@@ -183,15 +100,13 @@ export async function scanStock(
             : 0,
       };
       previousDays = historical.slice(-(LOOKBACK_DAYS + 1), -1);
-      lowBreakDays = historical.slice(-(LOW_BREAK_LOOKBACK + 1), -1);
       dataSource = "historical";
     }
 
-    const analysis = analyzeBreakout(todayData, previousDays, lowBreakDays);
+    const analysis = analyzeBreakout(todayData, previousDays);
 
     // Suppress triggers when data is stale — we can't trust the comparison.
     const triggered = dataSource === "stale" ? false : analysis.triggered;
-    const lowBreakTriggered = dataSource === "stale" ? false : analysis.lowBreakTriggered;
 
     if (triggered) {
       logger.warn(
@@ -202,16 +117,7 @@ export async function scanStock(
       );
     }
 
-    if (lowBreakTriggered) {
-      logger.warn(
-        `LOW BREAK: ${symbol} — LTP ₹${analysis.todayClose} below 10-day low ₹${analysis.prev10DayLow} (-${analysis.lowBreakPercent}%)`,
-        { symbol, ltp: analysis.todayClose, prev10DayLow: analysis.prev10DayLow, lowBreakPercent: analysis.lowBreakPercent, dataSource },
-        'Stock Scanner',
-        `🔻 ${name} (${symbol}) has broken below its ${LOW_BREAK_LOOKBACK}-day low! The last traded price of ₹${analysis.todayClose} is ${analysis.lowBreakPercent}% below the lowest daily low (₹${analysis.prev10DayLow}) of the previous ${LOW_BREAK_LOOKBACK} trading days. This breakdown signal may indicate increased selling pressure.`,
-      );
-    }
-
-    return { symbol, name, scannedAt, dataSource, ...analysis, triggered, lowBreakTriggered };
+    return { symbol, name, scannedAt, dataSource, ...analysis, triggered };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error(
@@ -224,7 +130,6 @@ export async function scanStock(
       symbol,
       name,
       triggered: false,
-      lowBreakTriggered: false,
       todayHigh: 0,
       todayVolume: 0,
       prevMaxHigh: 0,
@@ -233,8 +138,6 @@ export async function scanStock(
       volumeBreakPercent: 0,
       todayClose: 0,
       todayChange: 0,
-      prev10DayLow: 0,
-      lowBreakPercent: 0,
       scannedAt,
       dataSource: "historical",
     };
@@ -257,7 +160,6 @@ export async function scanMultipleStocks(
         symbol: stocks[i].symbol,
         name: stocks[i].name,
         triggered: false,
-        lowBreakTriggered: false,
         todayHigh: 0,
         todayVolume: 0,
         prevMaxHigh: 0,
@@ -266,8 +168,6 @@ export async function scanMultipleStocks(
         volumeBreakPercent: 0,
         todayClose: 0,
         todayChange: 0,
-        prev10DayLow: 0,
-        lowBreakPercent: 0,
         scannedAt: new Date().toISOString(),
         dataSource: "historical" as const,
       }
