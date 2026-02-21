@@ -62,7 +62,6 @@ export function AddStockModal({
     };
   }, [open]);
 
-  // Nifty 50 local matches
   const niftyMatches = useMemo(() => {
     if (query.length < MIN_SEARCH_LENGTH) return [];
     const q = query.toLowerCase();
@@ -80,7 +79,6 @@ export function AddStockModal({
     );
   }, [query, currentSymbols]);
 
-  // Debounced NSE search
   const fetchNseResults = useCallback(
     (q: string) => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -137,7 +135,6 @@ export function AddStockModal({
     [currentSymbols]
   );
 
-  // Trigger wide search when query or mode changes
   useEffect(() => {
     if (wideSearch) {
       fetchNseResults(query);
@@ -148,7 +145,6 @@ export function AddStockModal({
     }
   }, [query, wideSearch, fetchNseResults]);
 
-  // Merged results: Nifty 50 first, then NSE results (deduped)
   const matches = useMemo(() => {
     if (!wideSearch) return niftyMatches;
 
@@ -201,13 +197,13 @@ export function AddStockModal({
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]">
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm animate-fade-in"
         onClick={onClose}
       />
       <div className="relative w-full max-w-lg animate-scale-in">
-        <div className="overflow-hidden rounded-2xl border border-surface-border bg-surface-raised shadow-2xl shadow-black/40">
+        <div className="overflow-hidden rounded-2xl bg-surface-raised ring-1 ring-surface-border/60 shadow-2xl shadow-black/50 card-elevated">
           {/* Search input */}
-          <div className="relative border-b border-surface-border">
+          <div className="relative border-b border-surface-border/40">
             <svg
               width="18"
               height="18"
@@ -231,23 +227,23 @@ export function AddStockModal({
                   ? "Search all NSE stocks..."
                   : "Search Nifty 50 stocks..."
               }
-              className="w-full bg-transparent py-4 pl-12 pr-16 text-base text-text-primary placeholder:text-text-muted outline-none"
+              className="w-full bg-transparent py-4 pl-12 pr-16 text-base font-medium text-text-primary placeholder:text-text-muted outline-none"
             />
             <button
               onClick={onClose}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-surface-border px-1.5 py-0.5 text-[10px] font-medium text-text-muted transition-colors hover:bg-surface-overlay hover:text-text-secondary"
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md ring-1 ring-surface-border px-1.5 py-0.5 font-mono text-[10px] font-semibold text-text-muted transition-colors hover:bg-surface-overlay hover:text-text-secondary"
             >
               ESC
             </button>
           </div>
 
           {/* Wide search toggle */}
-          <div className="flex items-center justify-between border-b border-surface-border px-4 py-2">
+          <div className="flex items-center justify-between border-b border-surface-border/40 px-4 py-2.5">
             <button
               onClick={() => setWideSearch(!wideSearch)}
-              className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-200 ${
+              className={`flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-all duration-200 ${
                 wideSearch
-                  ? "bg-accent/10 text-accent"
+                  ? "bg-accent/8 text-accent"
                   : "text-text-muted hover:bg-surface-overlay hover:text-text-secondary"
               }`}
             >
@@ -265,7 +261,7 @@ export function AddStockModal({
               Search beyond Nifty 50
             </button>
             {wideSearch && (
-              <span className="text-[10px] text-text-muted animate-fade-in-fast">
+              <span className="text-[10px] text-text-muted animate-fade-in-fast font-medium">
                 Server-assisted search
               </span>
             )}
@@ -278,7 +274,7 @@ export function AddStockModal({
           >
             {query.length === 0 && (
               <div className="px-4 py-8 text-center">
-                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-surface-overlay">
+                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-surface-overlay ring-1 ring-surface-border/50">
                   <svg
                     width="20"
                     height="20"
@@ -292,7 +288,7 @@ export function AddStockModal({
                     <polyline points="16 7 22 7 22 13" />
                   </svg>
                 </div>
-                <p className="text-sm text-text-secondary">
+                <p className="font-display text-sm font-semibold text-text-secondary">
                   {wideSearch
                     ? "Search any NSE-listed stock"
                     : "Add a Nifty 50 stock to your watchlist"}
@@ -313,7 +309,7 @@ export function AddStockModal({
 
             {showNseLoading && matches.length === 0 && (
               <div className="px-4 py-8 text-center animate-fade-in-fast">
-                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-surface-overlay">
+                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-surface-overlay ring-1 ring-surface-border/50">
                   <svg
                     width="18"
                     height="18"
@@ -326,7 +322,7 @@ export function AddStockModal({
                     <path d="M21 12a9 9 0 1 1-6.219-8.56" />
                   </svg>
                 </div>
-                <p className="text-sm text-text-secondary">
+                <p className="text-sm font-medium text-text-secondary">
                   {searchMsg}
                 </p>
               </div>
@@ -334,7 +330,7 @@ export function AddStockModal({
 
             {showNoResults && (
               <div className="px-4 py-6 text-center">
-                <p className="text-sm text-text-secondary">
+                <p className="font-display text-sm font-semibold text-text-secondary">
                   No matches found
                 </p>
                 <p className="mt-1 text-xs text-text-muted">
@@ -355,11 +351,11 @@ export function AddStockModal({
                 <div key={`${stock.source}-${stock.symbol}`}>
                   {showDivider && (
                     <div className="flex items-center gap-2 px-4 py-2">
-                      <div className="h-px flex-1 bg-surface-border" />
-                      <span className="text-[10px] font-medium text-text-muted">
+                      <div className="h-px flex-1 bg-surface-border/40" />
+                      <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">
                         Broader NSE
                       </span>
-                      <div className="h-px flex-1 bg-surface-border" />
+                      <div className="h-px flex-1 bg-surface-border/40" />
                     </div>
                   )}
                   <button
@@ -367,26 +363,26 @@ export function AddStockModal({
                     onMouseEnter={() => setHighlightIndex(i)}
                     className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
                       i === highlightIndex
-                        ? "bg-accent/[0.08]"
-                        : "hover:bg-surface-overlay/60"
+                        ? "bg-accent/[0.06]"
+                        : "hover:bg-surface-overlay/40"
                     }`}
                   >
                     <div
-                      className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
+                      className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl font-display text-xs font-bold ring-1 ${
                         stock.source === "nse"
-                          ? "bg-accent/10 text-accent/70"
-                          : "bg-surface-overlay text-text-secondary"
+                          ? "bg-accent/8 text-accent/70 ring-accent/15"
+                          : "bg-surface-overlay text-text-secondary ring-surface-border/50"
                       }`}
                     >
                       {stock.symbol.slice(0, 2)}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-text-primary">
+                        <span className="font-display text-sm font-bold text-text-primary">
                           {highlightMatch(stock.symbol, query)}
                         </span>
                         {stock.source === "nse" && (
-                          <span className="rounded bg-accent/10 px-1 py-0.5 text-[9px] font-medium text-accent/60">
+                          <span className="rounded-md bg-accent/8 ring-1 ring-accent/15 px-1 py-0.5 font-mono text-[9px] font-semibold text-accent/50">
                             NSE
                           </span>
                         )}
@@ -396,7 +392,7 @@ export function AddStockModal({
                       </p>
                     </div>
                     {i === highlightIndex && (
-                      <span className="flex-shrink-0 rounded-md bg-accent/10 px-2 py-1 text-xs font-medium text-accent">
+                      <span className="flex-shrink-0 rounded-lg bg-accent/10 ring-1 ring-accent/20 px-2.5 py-1 text-xs font-semibold text-accent">
                         Add
                       </span>
                     )}
@@ -414,7 +410,7 @@ export function AddStockModal({
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
-                  className="animate-spin text-accent/60"
+                  className="animate-spin text-accent/50"
                 >
                   <path d="M21 12a9 9 0 1 1-6.219-8.56" />
                 </svg>
@@ -425,26 +421,26 @@ export function AddStockModal({
 
           {/* Footer */}
           {matches.length > 0 && (
-            <div className="flex items-center gap-4 border-t border-surface-border px-4 py-2.5 text-[11px] text-text-muted">
+            <div className="flex items-center gap-4 border-t border-surface-border/40 px-4 py-2.5 text-[11px] text-text-muted">
               <span className="flex items-center gap-1">
-                <kbd className="rounded border border-surface-border bg-surface-overlay px-1 py-0.5 font-mono text-[10px]">
+                <kbd className="rounded-md ring-1 ring-surface-border bg-surface-overlay px-1.5 py-0.5 font-mono text-[10px]">
                   &uarr;&darr;
                 </kbd>
                 navigate
               </span>
               <span className="flex items-center gap-1">
-                <kbd className="rounded border border-surface-border bg-surface-overlay px-1 py-0.5 font-mono text-[10px]">
+                <kbd className="rounded-md ring-1 ring-surface-border bg-surface-overlay px-1.5 py-0.5 font-mono text-[10px]">
                   &crarr;
                 </kbd>
                 select
               </span>
               <span className="flex items-center gap-1">
-                <kbd className="rounded border border-surface-border bg-surface-overlay px-1 py-0.5 font-mono text-[10px]">
+                <kbd className="rounded-md ring-1 ring-surface-border bg-surface-overlay px-1.5 py-0.5 font-mono text-[10px]">
                   esc
                 </kbd>
                 close
               </span>
-              <span className="ml-auto tabular-nums">
+              <span className="ml-auto font-mono tabular-nums">
                 {matches.length} result{matches.length !== 1 ? "s" : ""}
                 {nseLoading ? "+" : ""}
               </span>
@@ -463,7 +459,7 @@ function highlightMatch(text: string, query: string): React.ReactNode {
   return (
     <>
       {text.slice(0, idx)}
-      <span className="text-accent font-semibold">
+      <span className="text-accent font-bold">
         {text.slice(idx, idx + query.length)}
       </span>
       {text.slice(idx + query.length)}

@@ -8,13 +8,11 @@ import type {
   BreakoutDiscovery,
 } from "@/lib/types";
 
-const REFRESH_INTERVAL = 3 * 60_000; // 3 minutes during market hours
+const REFRESH_INTERVAL = 3 * 60_000;
 const MARKET_CHECK_INTERVAL = 60_000;
 
 type SortKey = "symbol" | "lastPrice" | "pChange" | "dayHigh" | "totalTradedVolume";
 type SortDir = "asc" | "desc";
-
-/* ── Creative loading messages ──────────────────────────────────────── */
 
 const LOADING_MESSAGES_INITIAL = [
   "Waking up the Nifty 50...",
@@ -41,15 +39,13 @@ function pickRandom(arr: string[]): string {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-/* ── Heat indicator: visual strength bar ────────────────────────────── */
-
 function BreakStrength({ percent, type }: { percent: number; type: "high" | "volume" }) {
-  const capped = Math.min(Math.abs(percent), 20); // cap at 20% for bar width
+  const capped = Math.min(Math.abs(percent), 20);
   const width = Math.max((capped / 20) * 100, 8);
   const isStrong = Math.abs(percent) > 5;
   const color = type === "high"
-    ? isStrong ? "bg-accent" : "bg-accent/60"
-    : isStrong ? "bg-blue-400" : "bg-blue-400/60";
+    ? isStrong ? "bg-accent" : "bg-accent/50"
+    : isStrong ? "bg-blue-400" : "bg-blue-400/50";
 
   return (
     <div className="flex items-center gap-1.5">
@@ -59,14 +55,12 @@ function BreakStrength({ percent, type }: { percent: number; type: "high" | "vol
           style={{ width: `${width}%` }}
         />
       </div>
-      <span className={`text-[9px] font-semibold tabular-nums ${isStrong ? "text-accent" : "text-text-muted"}`}>
+      <span className={`font-mono text-[9px] font-semibold tabular-nums ${isStrong ? "text-accent" : "text-text-muted"}`}>
         +{percent.toFixed(1)}%
       </span>
     </div>
   );
 }
-
-/* ── Main component ─────────────────────────────────────────────────── */
 
 export function Nifty50Table() {
   const [data, setData] = useState<Nifty50TableResponse | null>(null);
@@ -85,7 +79,6 @@ export function Nifty50Table() {
   const startLoadingMessages = useCallback((isRefresh: boolean) => {
     const pool = isRefresh ? LOADING_MESSAGES_REFRESH : LOADING_MESSAGES_INITIAL;
     setLoadingMsg(pickRandom(pool));
-    // Cycle messages every 2.5s for long loads
     loadingMsgTimerRef.current = setInterval(() => {
       setLoadingMsg(pickRandom(LOADING_MESSAGES_REFRESH));
     }, 2500);
@@ -119,7 +112,6 @@ export function Nifty50Table() {
     }
   }, [startLoadingMessages, stopLoadingMessages]);
 
-  // Check market hours periodically
   useEffect(() => {
     const check = () => setMarketLive(isMarketHours());
     check();
@@ -127,15 +119,11 @@ export function Nifty50Table() {
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-refresh during market hours
   useEffect(() => {
-    // Always fetch once on mount
     fetchData();
-
     if (marketLive) {
       timerRef.current = setInterval(fetchData, REFRESH_INTERVAL);
     }
-
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -144,7 +132,6 @@ export function Nifty50Table() {
     };
   }, [marketLive, fetchData]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => stopLoadingMessages();
   }, [stopLoadingMessages]);
@@ -158,7 +145,6 @@ export function Nifty50Table() {
     }
   };
 
-  // Build sorted stock list
   const sortedStocks = data
     ? [...data.snapshot.stocks].sort((a, b) => {
         let va: number | string;
@@ -196,7 +182,6 @@ export function Nifty50Table() {
       })
     : [];
 
-  // Lookup maps
   const watchlistSet = new Set(data?.watchlistSymbols ?? []);
   const closeWatchSet = new Set(data?.closeWatchSymbols ?? []);
   const discoveryMap = new Map<string, BreakoutDiscovery>();
@@ -204,7 +189,6 @@ export function Nifty50Table() {
     discoveryMap.set(d.symbol, d);
   }
 
-  // Counts
   const discoveries = data?.discoveries ?? [];
   const breakoutCount = discoveries.filter((d) => d.breakout).length;
   const highOnlyCount = discoveries.filter((d) => d.highBreak && !d.breakout).length;
@@ -214,7 +198,6 @@ export function Nifty50Table() {
   const isStale = data?.snapshot.stale ?? false;
   const fetchSuccess = data?.snapshot.fetchSuccess ?? true;
 
-  // Market sentiment gauge
   const gainers = data ? data.snapshot.stocks.filter((s) => s.pChange > 0).length : 0;
   const losers = data ? data.snapshot.stocks.filter((s) => s.pChange < 0).length : 0;
 
@@ -222,19 +205,19 @@ export function Nifty50Table() {
 
   return (
     <div className="animate-fade-in">
-      <div className={`overflow-hidden rounded-2xl border bg-surface-raised transition-all duration-300 ${
+      <div className={`overflow-hidden rounded-2xl bg-surface-raised transition-all duration-300 ring-1 card-elevated ${
         breakoutCount > 0
-          ? "border-accent/25 shadow-[0_0_30px_-10px_rgba(0,212,170,0.1)]"
-          : "border-surface-border"
+          ? "ring-accent/20 shadow-[0_0_40px_-12px_rgba(0,230,138,0.08)]"
+          : "ring-surface-border/50"
       }`}>
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-surface-border px-5 py-3.5">
+        <div className="flex items-center justify-between border-b border-surface-border/60 px-5 py-3.5">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <div className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors duration-300 ${
+            <div className="flex items-center gap-2.5">
+              <div className={`flex h-8 w-8 items-center justify-center rounded-xl transition-colors duration-300 ring-1 ${
                 breakoutCount > 0
-                  ? "bg-accent/15 text-accent"
-                  : "bg-blue-500/10 text-blue-400"
+                  ? "bg-accent/10 text-accent ring-accent/15"
+                  : "bg-blue-500/8 text-blue-400 ring-blue-500/15"
               }`}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="3" y="3" width="7" height="7" />
@@ -244,7 +227,7 @@ export function Nifty50Table() {
                 </svg>
               </div>
               <div>
-                <h2 className="text-sm font-bold tracking-tight">NIFTY 50</h2>
+                <h2 className="font-display text-sm font-bold tracking-tight">NIFTY 50</h2>
                 <p className="text-[10px] text-text-muted">
                   {data ? (
                     <>
@@ -270,10 +253,9 @@ export function Nifty50Table() {
               </div>
             </div>
 
-            {/* Status badges */}
             <div className="flex items-center gap-1.5">
               {isStale && (
-                <span className="inline-flex items-center gap-1 rounded-md bg-warn/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warn">
+                <span className="inline-flex items-center gap-1 rounded-md bg-warn/10 ring-1 ring-warn/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warn">
                   <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                     <path d="M12 9v4M12 17h.01" />
                   </svg>
@@ -281,12 +263,12 @@ export function Nifty50Table() {
                 </span>
               )}
               {!fetchSuccess && !isStale && (
-                <span className="inline-flex items-center gap-1 rounded-md bg-danger-muted px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-danger">
+                <span className="inline-flex items-center gap-1 rounded-md bg-danger-muted ring-1 ring-danger/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-danger">
                   Fetch Failed
                 </span>
               )}
               {marketLive && fetchSuccess && !isStale && (
-                <span className="inline-flex items-center gap-1 rounded-md bg-accent/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-accent/70">
+                <span className="inline-flex items-center gap-1 rounded-md bg-accent/8 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-accent/70">
                   <span className="relative flex h-1.5 w-1.5">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
                     <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
@@ -295,15 +277,14 @@ export function Nifty50Table() {
                 </span>
               )}
               {!marketLive && hasFetchedRef.current && (
-                <span className="text-[9px] text-text-muted/50 font-medium">Market closed</span>
+                <span className="text-[9px] text-text-muted/40 font-semibold uppercase tracking-wider">Market closed</span>
               )}
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Last updated timestamp */}
             {lastUpdated && (
-              <span className="text-[10px] tabular-nums text-text-muted" title={lastUpdated}>
+              <span className="font-mono text-[10px] tabular-nums text-text-muted" title={lastUpdated}>
                 {new Date(lastUpdated).toLocaleTimeString("en-IN", {
                   hour: "2-digit",
                   minute: "2-digit",
@@ -313,14 +294,13 @@ export function Nifty50Table() {
               </span>
             )}
 
-            {/* Manual refresh */}
             <button
               onClick={fetchData}
               disabled={loading}
-              className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
+              className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all duration-200 ring-1 ${
                 loading
-                  ? "border-surface-border bg-surface-overlay text-text-muted cursor-not-allowed"
-                  : "border-surface-border bg-surface-overlay text-text-secondary hover:border-accent/30 hover:text-accent"
+                  ? "ring-surface-border bg-surface-overlay text-text-muted cursor-not-allowed"
+                  : "ring-surface-border bg-surface-overlay text-text-secondary hover:ring-accent/25 hover:text-accent"
               }`}
             >
               <svg
@@ -340,10 +320,9 @@ export function Nifty50Table() {
               {loading ? "Scanning..." : "Refresh"}
             </button>
 
-            {/* Collapse toggle */}
             <button
               onClick={() => setCollapsed(!collapsed)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-surface-border bg-surface-overlay text-text-muted transition-all hover:text-text-secondary"
+              className="flex h-8 w-8 items-center justify-center rounded-xl ring-1 ring-surface-border bg-surface-overlay text-text-muted transition-all hover:text-text-secondary hover:ring-surface-border-bright"
             >
               <svg
                 width="12"
@@ -360,10 +339,10 @@ export function Nifty50Table() {
           </div>
         </div>
 
-        {/* Creative loading banner (shows during refresh when data exists) */}
+        {/* Loading banner */}
         {loading && data && (
-          <div className="flex items-center gap-3 border-b border-surface-border bg-surface/60 px-5 py-2 animate-fade-in-fast">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3 border-b border-surface-border/40 bg-surface/60 px-5 py-2.5 animate-fade-in-fast">
+            <div className="flex items-center gap-2.5">
               <div className="flex gap-0.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-accent animate-bounce" style={{ animationDelay: "0ms" }} />
                 <span className="h-1.5 w-1.5 rounded-full bg-accent animate-bounce" style={{ animationDelay: "150ms" }} />
@@ -374,9 +353,9 @@ export function Nifty50Table() {
           </div>
         )}
 
-        {/* Discovery summary bar */}
+        {/* Discovery summary */}
         {!collapsed && data && !loading && (breakoutCount > 0 || highOnlyCount > 0 || volOnlyCount > 0 || possibleCount > 0 || baselineUnavailableCount > 0) && (
-          <div className="flex items-center gap-3 border-b border-surface-border bg-surface/60 px-5 py-2">
+          <div className="flex items-center gap-3 border-b border-surface-border/40 bg-surface/40 px-5 py-2.5">
             {breakoutCount > 0 && (
               <span className="flex items-center gap-1.5 text-[10px] font-semibold text-accent">
                 <span className="relative flex h-2 w-2">
@@ -416,13 +395,13 @@ export function Nifty50Table() {
                 {baselineUnavailableCount} no baseline
               </span>
             )}
-            <span className="ml-auto text-[10px] text-text-muted">
+            <span className="ml-auto font-mono text-[10px] text-text-muted">
               Baselines: {data.baselineStatus.available}/{data.baselineStatus.available + data.baselineStatus.missing}
             </span>
           </div>
         )}
 
-        {/* Error state */}
+        {/* Error */}
         {error && !data && (
           <div className="px-5 py-8 text-center">
             <p className="text-xs text-danger">{error}</p>
@@ -432,23 +411,23 @@ export function Nifty50Table() {
           </div>
         )}
 
-        {/* Table body */}
+        {/* Table */}
         {!collapsed && data && (
           <div className="overflow-x-auto max-h-[600px] overflow-y-auto scrollbar-thin">
             <table className="w-full text-left text-sm">
               <thead className="sticky top-0 z-10 bg-surface-raised">
-                <tr className="border-b border-surface-border text-[10px] uppercase tracking-wider text-text-muted font-semibold">
-                  <th className="px-4 py-2.5 w-10">#</th>
+                <tr className="border-b border-surface-border/60 text-[10px] uppercase tracking-wider text-text-muted font-semibold">
+                  <th className="px-4 py-2.5 w-10 font-semibold">#</th>
                   <SortHeader label="Symbol" sortKey="symbol" currentKey={sortKey} dir={sortDir} onClick={handleSort} className="w-[160px]" />
                   <SortHeader label="LTP" sortKey="lastPrice" currentKey={sortKey} dir={sortDir} onClick={handleSort} className="text-right w-[100px]" />
                   <SortHeader label="Chg %" sortKey="pChange" currentKey={sortKey} dir={sortDir} onClick={handleSort} className="text-right w-[90px]" />
                   <SortHeader label="Day High" sortKey="dayHigh" currentKey={sortKey} dir={sortDir} onClick={handleSort} className="text-right w-[100px]" />
                   <SortHeader label="Volume" sortKey="totalTradedVolume" currentKey={sortKey} dir={sortDir} onClick={handleSort} className="text-right w-[100px]" />
-                  <th className="px-4 py-2.5 text-center w-[130px]">Signal</th>
-                  <th className="px-4 py-2.5 text-center w-[80px]">Status</th>
+                  <th className="px-4 py-2.5 text-center w-[130px] font-semibold">Signal</th>
+                  <th className="px-4 py-2.5 text-center w-[80px] font-semibold">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-surface-border/40">
+              <tbody className="divide-y divide-surface-border/30">
                 {sortedStocks.map((stock, i) => (
                   <StockRow
                     key={stock.symbol}
@@ -465,15 +444,15 @@ export function Nifty50Table() {
           </div>
         )}
 
-        {/* Loading skeleton — first load */}
+        {/* Loading skeleton */}
         {!data && loading && (
           <div className="px-5 py-14 text-center">
             <div className="mx-auto flex items-center justify-center gap-1 mb-4">
-              <span className="h-2 w-2 rounded-full bg-accent/50 animate-bounce" style={{ animationDelay: "0ms" }} />
-              <span className="h-2 w-2 rounded-full bg-accent/50 animate-bounce" style={{ animationDelay: "100ms" }} />
-              <span className="h-2 w-2 rounded-full bg-accent/50 animate-bounce" style={{ animationDelay: "200ms" }} />
-              <span className="h-2 w-2 rounded-full bg-accent/50 animate-bounce" style={{ animationDelay: "300ms" }} />
-              <span className="h-2 w-2 rounded-full bg-accent/50 animate-bounce" style={{ animationDelay: "400ms" }} />
+              <span className="h-2 w-2 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: "0ms" }} />
+              <span className="h-2 w-2 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: "100ms" }} />
+              <span className="h-2 w-2 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: "200ms" }} />
+              <span className="h-2 w-2 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: "300ms" }} />
+              <span className="h-2 w-2 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: "400ms" }} />
             </div>
             <p className="text-xs text-text-muted italic">{loadingMsg}</p>
             <div className="mx-auto mt-3 h-1 w-48 animate-shimmer rounded-full bg-surface-overlay" />
@@ -482,7 +461,7 @@ export function Nifty50Table() {
 
         {/* Footer */}
         {!collapsed && data && (
-          <div className="flex items-center justify-between border-t border-surface-border px-5 py-2">
+          <div className="flex items-center justify-between border-t border-surface-border/40 px-5 py-2.5">
             <div className="flex items-center gap-4 text-[10px] text-text-muted">
               <span className="flex items-center gap-1.5">
                 <span className="relative flex h-2 w-2">
@@ -505,16 +484,16 @@ export function Nifty50Table() {
                 Vol Surge
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-sm bg-blue-400/30" />
+                <span className="h-2 w-2 rounded-sm bg-blue-400/25" />
                 Watchlist
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-sm bg-amber-400/30" />
+                <span className="h-2 w-2 rounded-sm bg-warn/25" />
                 Close Watch
               </span>
             </div>
             {marketLive && (
-              <span className="text-[10px] text-text-muted/50">
+              <span className="text-[10px] text-text-muted/40 font-medium">
                 Auto-refreshes every 3 min
               </span>
             )}
@@ -524,8 +503,6 @@ export function Nifty50Table() {
     </div>
   );
 }
-
-/* ── Sort Header Helper ─────────────────────────────────────────────── */
 
 function SortHeader({
   label,
@@ -558,7 +535,7 @@ function SortHeader({
             fill="none"
             stroke="currentColor"
             strokeWidth="3"
-            className={dir === "desc" ? "rotate-180" : ""}
+            className={`text-accent ${dir === "desc" ? "rotate-180" : ""}`}
           >
             <polyline points="18 15 12 9 6 15" />
           </svg>
@@ -567,8 +544,6 @@ function SortHeader({
     </th>
   );
 }
-
-/* ── Stock Row ──────────────────────────────────────────────────────── */
 
 function StockRow({
   stock,
@@ -592,41 +567,38 @@ function StockRow({
   const volBreak = discovery?.volumeBreak ?? false;
 
   const rowBg = isBreakout
-    ? "bg-accent/[0.04] hover:bg-accent/[0.07]"
+    ? "bg-accent/[0.03] hover:bg-accent/[0.06]"
     : isPossible
       ? "bg-warn/[0.02] hover:bg-warn/[0.04]"
       : (highBreak || volBreak) && !inWatchlist
-        ? "bg-accent/[0.02] hover:bg-accent/[0.04]"
+        ? "bg-accent/[0.015] hover:bg-accent/[0.03]"
         : inCloseWatch
-          ? "bg-amber-400/[0.02] hover:bg-amber-400/[0.04]"
+          ? "bg-warn/[0.015] hover:bg-warn/[0.03]"
           : inWatchlist
-            ? "bg-blue-500/[0.02] hover:bg-blue-500/[0.04]"
-            : "hover:bg-surface-overlay/20";
+            ? "bg-blue-500/[0.015] hover:bg-blue-500/[0.03]"
+            : "hover:bg-surface-overlay/15";
 
   return (
     <tr className={`transition-colors duration-150 ${rowBg}`}>
-      {/* Index */}
-      <td className="px-4 py-2.5 text-[10px] tabular-nums text-text-muted">{index}</td>
+      <td className="px-4 py-2.5 font-mono text-[10px] tabular-nums text-text-muted">{index}</td>
 
-      {/* Symbol + name */}
       <td className="px-4 py-2.5">
         <div className="flex items-center gap-2">
-          {/* Watchlist / close-watch / breakout indicator */}
           {isBreakout ? (
             <span className="flex h-5 w-5 items-center justify-center rounded" title="Breakout detected">
               <span className="relative flex h-2.5 w-2.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent shadow-[0_0_6px_rgba(0,212,170,0.5)]" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent shadow-[0_0_8px_rgba(0,230,138,0.5)]" />
               </span>
             </span>
           ) : inCloseWatch ? (
-            <span className="flex h-5 w-5 items-center justify-center rounded text-amber-400" title="Close Watch">
+            <span className="flex h-5 w-5 items-center justify-center rounded text-warn" title="Close Watch">
               <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1">
                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
               </svg>
             </span>
           ) : inWatchlist ? (
-            <span className="flex h-5 w-5 items-center justify-center rounded text-blue-400/60" title="In Watchlist">
+            <span className="flex h-5 w-5 items-center justify-center rounded text-blue-400/50" title="In Watchlist">
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                 <circle cx="12" cy="12" r="3" />
@@ -634,13 +606,13 @@ function StockRow({
             </span>
           ) : (highBreak || volBreak) ? (
             <span className="flex h-5 w-5 items-center justify-center rounded" title="Partial break">
-              <span className="h-2 w-2 rounded-full bg-accent/40" />
+              <span className="h-2 w-2 rounded-full bg-accent/30" />
             </span>
           ) : (
             <span className="w-5" />
           )}
           <div>
-            <span className={`text-xs font-semibold tracking-tight ${isBreakout ? "text-accent" : ""}`}>
+            <span className={`font-display text-xs font-bold tracking-tight ${isBreakout ? "text-accent" : ""}`}>
               {stock.symbol}
             </span>
             <p className="text-[10px] text-text-muted leading-tight truncate max-w-[120px]">{stock.name}</p>
@@ -648,26 +620,24 @@ function StockRow({
         </div>
       </td>
 
-      {/* LTP */}
       <td className="px-4 py-2.5 text-right">
-        <span className="text-xs font-semibold tabular-nums">
+        <span className="font-mono text-xs font-semibold tabular-nums">
           {stock.lastPrice > 0 ? `\u20B9${stock.lastPrice.toLocaleString("en-IN")}` : "\u2014"}
         </span>
       </td>
 
-      {/* Change % — with visual bar */}
       <td className="px-4 py-2.5 text-right">
         <div className="flex items-center justify-end gap-1.5">
           {stock.pChange !== 0 && (
             <div className="h-1 w-8 rounded-full bg-surface-overlay overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all duration-500 ${stock.pChange > 0 ? "bg-accent/50" : "bg-danger/50"}`}
+                className={`h-full rounded-full transition-all duration-500 ${stock.pChange > 0 ? "bg-accent/40" : "bg-danger/40"}`}
                 style={{ width: `${Math.min(Math.abs(stock.pChange) * 15, 100)}%` }}
               />
             </div>
           )}
           <span
-            className={`text-xs font-semibold tabular-nums ${
+            className={`font-mono text-xs font-semibold tabular-nums ${
               stock.pChange > 0 ? "text-accent" : stock.pChange < 0 ? "text-danger" : "text-text-muted"
             }`}
           >
@@ -677,45 +647,42 @@ function StockRow({
         </div>
       </td>
 
-      {/* Day High */}
       <td className="px-4 py-2.5 text-right">
-        <span className={`text-xs tabular-nums ${highBreak && !inWatchlist ? "text-accent font-semibold" : "text-text-secondary"}`}>
+        <span className={`font-mono text-xs tabular-nums ${highBreak && !inWatchlist ? "text-accent font-semibold" : "text-text-secondary"}`}>
           {stock.dayHigh > 0 ? `\u20B9${stock.dayHigh.toLocaleString("en-IN")}` : "\u2014"}
         </span>
       </td>
 
-      {/* Volume */}
       <td className="px-4 py-2.5 text-right">
-        <span className={`text-xs tabular-nums ${volBreak && !inWatchlist ? "text-accent font-semibold" : "text-text-secondary"}`}>
+        <span className={`font-mono text-xs tabular-nums ${volBreak && !inWatchlist ? "text-accent font-semibold" : "text-text-secondary"}`}>
           {formatVol(stock.totalTradedVolume)}
         </span>
       </td>
 
-      {/* Signal — enhanced with strength indicators */}
       <td className="px-4 py-2.5 text-center">
         {inWatchlist ? (
-          <span className="text-[9px] text-text-muted/50 font-medium">Watchlist</span>
+          <span className="text-[9px] text-text-muted/40 font-semibold uppercase tracking-wider">Watchlist</span>
         ) : isBreakout ? (
           <div className="inline-flex flex-col items-center gap-0.5">
-            <span className="inline-flex items-center gap-1 rounded-md bg-accent/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-accent card-glow">
+            <span className="inline-flex items-center gap-1 rounded-md bg-accent/10 ring-1 ring-accent/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-accent">
               <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                 <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
               </svg>
               Breakout
             </span>
-            <span className="text-[8px] text-accent/50 tabular-nums">
+            <span className="font-mono text-[8px] text-accent/40 tabular-nums">
               H+{discovery?.highBreakPercent?.toFixed(1)}% V+{discovery?.volumeBreakPercent?.toFixed(1)}%
             </span>
           </div>
         ) : isPossible ? (
-          <span className="inline-flex items-center gap-1 rounded-md bg-warn/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warn">
+          <span className="inline-flex items-center gap-1 rounded-md bg-warn/10 ring-1 ring-warn/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warn">
             <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
               <path d="M12 9v4M12 17h.01" />
             </svg>
             Possible
           </span>
         ) : baselineMissing ? (
-          <span className="inline-flex items-center gap-1 rounded-md bg-surface-overlay px-1.5 py-0.5 text-[9px] font-medium text-text-muted">
+          <span className="inline-flex items-center gap-1 rounded-md bg-surface-overlay ring-1 ring-surface-border/50 px-1.5 py-0.5 text-[9px] font-medium text-text-muted">
             No baseline
           </span>
         ) : highBreak ? (
@@ -723,28 +690,27 @@ function StockRow({
         ) : volBreak ? (
           <BreakStrength percent={discovery?.volumeBreakPercent ?? 0} type="volume" />
         ) : (
-          <span className="text-[9px] text-text-muted/30">&mdash;</span>
+          <span className="text-[9px] text-text-muted/20">&mdash;</span>
         )}
       </td>
 
-      {/* Status */}
       <td className="px-4 py-2.5 text-center">
         <div className="flex items-center justify-center gap-1">
           {snapshotStale && (
             <span className="h-1.5 w-1.5 rounded-full bg-warn" title="Data may be stale" />
           )}
           {inCloseWatch && (
-            <span className="inline-flex rounded bg-amber-400/10 px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-amber-400/70">
+            <span className="inline-flex rounded-md bg-warn/8 ring-1 ring-warn/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-warn/70">
               CW
             </span>
           )}
           {inWatchlist && !inCloseWatch && (
-            <span className="inline-flex rounded bg-blue-500/10 px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-blue-400/70">
+            <span className="inline-flex rounded-md bg-blue-500/8 ring-1 ring-blue-500/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-blue-400/70">
               WL
             </span>
           )}
           {!inWatchlist && !snapshotStale && (
-            <span className="text-[9px] text-text-muted/30">&mdash;</span>
+            <span className="text-[9px] text-text-muted/20">&mdash;</span>
           )}
         </div>
       </td>

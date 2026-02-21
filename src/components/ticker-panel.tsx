@@ -4,8 +4,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { isMarketHours } from "@/lib/market-hours";
 import type { TickerQuote, ScanResult } from "@/lib/types";
 
-const TICKER_INTERVAL = 10_000; // 10s
-const MARKET_CHECK_INTERVAL = 60_000; // re-check market status every 60s
+const TICKER_INTERVAL = 10_000;
+const MARKET_CHECK_INTERVAL = 60_000;
 
 export function TickerPanel({
   hasCloseWatchStocks,
@@ -22,7 +22,6 @@ export function TickerPanel({
   const [flashing, setFlashing] = useState<Map<string, "up" | "down">>(new Map());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fetchingRef = useRef(false);
-  // Track if user manually paused during market hours
   const userPausedRef = useRef(false);
 
   const fetchTicker = useCallback(async () => {
@@ -34,8 +33,6 @@ export function TickerPanel({
       if (data.error || !data.quotes) return;
 
       const newQuotes = data.quotes as TickerQuote[];
-
-      // Detect price changes for flash effect
       const newFlashes = new Map<string, "up" | "down">();
       const prevPrices = prevPricesRef.current;
       for (const q of newQuotes) {
@@ -45,7 +42,6 @@ export function TickerPanel({
         }
       }
 
-      // Update previous prices
       const nextPrices = new Map<string, number>();
       for (const q of newQuotes) {
         nextPrices.set(q.symbol, q.price);
@@ -66,19 +62,13 @@ export function TickerPanel({
     }
   }, []);
 
-  // Periodically check if market has opened/closed
   useEffect(() => {
-    const check = () => {
-      const live = isMarketHours();
-      setMarketLive(live);
-    };
+    const check = () => setMarketLive(isMarketHours());
     check();
     const interval = setInterval(check, MARKET_CHECK_INTERVAL);
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-start when close-watch stocks appear during market hours
-  // Auto-pause when market closes (unless last-known quotes are shown)
   useEffect(() => {
     if (hasCloseWatchStocks && marketLive && !userPausedRef.current) {
       setActive(true);
@@ -90,7 +80,6 @@ export function TickerPanel({
     }
   }, [hasCloseWatchStocks, marketLive]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Manage polling timer
   useEffect(() => {
     if (active && hasCloseWatchStocks) {
       fetchTicker();
@@ -106,7 +95,6 @@ export function TickerPanel({
 
   if (!hasCloseWatchStocks) return null;
 
-  // Build triggered lookup from scan results
   const triggeredSet = new Set(
     scanResults.filter((r) => r.triggered).map((r) => r.symbol)
   );
@@ -123,46 +111,46 @@ export function TickerPanel({
 
   return (
     <div className="mb-8 animate-fade-in">
-      <div className="overflow-hidden rounded-2xl border border-surface-border bg-surface-raised">
+      <div className="overflow-hidden rounded-2xl bg-surface-raised ring-1 ring-surface-border/50 card-elevated">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-surface-border px-5 py-3">
+        <div className="flex items-center justify-between border-b border-surface-border/40 px-5 py-3">
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               {active ? (
                 <span className="relative flex h-2 w-2">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-accent shadow-[0_0_6px_rgba(0,230,138,0.5)]" />
                 </span>
               ) : (
-                <span className="inline-flex h-2 w-2 rounded-full bg-text-muted/40" />
+                <span className="inline-flex h-2 w-2 rounded-full bg-text-muted/30" />
               )}
-              <span className="text-sm font-semibold tracking-tight">
+              <span className="font-display text-sm font-bold tracking-tight">
                 Live Ticker
               </span>
             </div>
             {active && lastFetch && (
-              <span className="text-[11px] tabular-nums text-text-muted">
+              <span className="font-mono text-[11px] tabular-nums text-text-muted">
                 {new Date(lastFetch).toLocaleTimeString("en-IN")}
               </span>
             )}
             {!marketLive && !active && (
-              <span className="text-[10px] text-text-muted/60 font-medium ml-1">
+              <span className="text-[10px] text-text-muted/50 font-semibold ml-1">
                 Market closed
               </span>
             )}
           </div>
           <div className="flex items-center gap-2">
             {!marketLive && !active && quotes.length === 0 && (
-              <span className="text-[10px] text-text-muted/50">
+              <span className="text-[10px] text-text-muted/40">
                 Resumes at 09:15 IST
               </span>
             )}
             <button
               onClick={handleToggle}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
+              className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all duration-200 ring-1 ${
                 active
-                  ? "bg-accent/10 text-accent hover:bg-accent/15"
-                  : "bg-surface-overlay text-text-secondary hover:text-text-primary"
+                  ? "bg-accent/8 text-accent ring-accent/20 hover:bg-accent/12"
+                  : "bg-surface-overlay text-text-secondary ring-surface-border hover:text-text-primary hover:ring-surface-border-bright"
               }`}
             >
               {active ? (
@@ -196,7 +184,7 @@ export function TickerPanel({
                   <div
                     key={q.symbol}
                     className={`relative flex min-w-[180px] flex-1 flex-col gap-1 px-5 py-4 transition-colors duration-300 ${
-                      i > 0 ? "border-l border-surface-border" : ""
+                      i > 0 ? "border-l border-surface-border/40" : ""
                     } ${
                       flash === "up"
                         ? "ticker-flash-up"
@@ -206,22 +194,22 @@ export function TickerPanel({
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold tracking-tight">
+                      <span className="font-display text-xs font-bold tracking-tight">
                         {q.symbol}
                       </span>
                       {isTriggered && (
-                        <span className="flex items-center gap-0.5 rounded bg-accent/15 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wider text-accent">
+                        <span className="flex items-center gap-0.5 rounded-md bg-accent/10 ring-1 ring-accent/20 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wider text-accent">
                           <span className="h-1 w-1 rounded-full bg-accent animate-pulse" />
                           BO
                         </span>
                       )}
                     </div>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-lg font-bold tabular-nums tracking-tight">
+                      <span className="font-mono text-lg font-bold tabular-nums tracking-tight">
                         &#x20B9;{q.price.toLocaleString("en-IN")}
                       </span>
                       <span
-                        className={`text-xs font-semibold tabular-nums ${
+                        className={`font-mono text-xs font-semibold tabular-nums ${
                           q.change >= 0 ? "text-accent" : "text-danger"
                         }`}
                       >
@@ -229,7 +217,7 @@ export function TickerPanel({
                         {q.change.toFixed(2)}%
                       </span>
                     </div>
-                    <div className="flex items-center gap-3 text-[10px] text-text-muted">
+                    <div className="flex items-center gap-3 font-mono text-[10px] text-text-muted">
                       <span>
                         H &#x20B9;{q.high.toLocaleString("en-IN")}
                       </span>
@@ -247,24 +235,23 @@ export function TickerPanel({
             </div>
           )
         ) : !marketLive && quotes.length > 0 ? (
-          /* After hours: show last-known quotes dimmed */
           <div>
-            <div className="flex gap-0 overflow-x-auto scrollbar-thin opacity-50">
+            <div className="flex gap-0 overflow-x-auto scrollbar-thin opacity-40">
               {quotes.map((q, i) => (
-                <div key={q.symbol} className={`relative flex min-w-[180px] flex-1 flex-col gap-1 px-5 py-4 ${i > 0 ? "border-l border-surface-border" : ""}`}>
-                  <span className="text-xs font-bold tracking-tight">{q.symbol}</span>
+                <div key={q.symbol} className={`relative flex min-w-[180px] flex-1 flex-col gap-1 px-5 py-4 ${i > 0 ? "border-l border-surface-border/40" : ""}`}>
+                  <span className="font-display text-xs font-bold tracking-tight">{q.symbol}</span>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-lg font-bold tabular-nums tracking-tight">&#x20B9;{q.price.toLocaleString("en-IN")}</span>
-                    <span className={`text-xs font-semibold tabular-nums ${q.change >= 0 ? "text-accent" : "text-danger"}`}>{q.change >= 0 ? "+" : ""}{q.change.toFixed(2)}%</span>
+                    <span className="font-mono text-lg font-bold tabular-nums tracking-tight">&#x20B9;{q.price.toLocaleString("en-IN")}</span>
+                    <span className={`font-mono text-xs font-semibold tabular-nums ${q.change >= 0 ? "text-accent" : "text-danger"}`}>{q.change >= 0 ? "+" : ""}{q.change.toFixed(2)}%</span>
                   </div>
-                  <div className="flex items-center gap-3 text-[10px] text-text-muted">
+                  <div className="flex items-center gap-3 font-mono text-[10px] text-text-muted">
                     <span>H &#x20B9;{q.high.toLocaleString("en-IN")}</span>
                     <span>V {formatVol(q.volume)}</span>
                   </div>
                 </div>
               ))}
             </div>
-            <div className="px-5 py-2 border-t border-surface-border text-center text-[10px] text-text-muted/50">
+            <div className="px-5 py-2 border-t border-surface-border/30 text-center text-[10px] text-text-muted/40 font-medium">
               Closing prices · Resumes at 09:15 IST
             </div>
           </div>
