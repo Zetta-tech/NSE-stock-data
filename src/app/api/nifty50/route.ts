@@ -129,25 +129,58 @@ export async function GET() {
           triggeredAt: new Date().toISOString(),
           read: false,
         };
-        await addAlert(alert);
+        const added = await addAlert(alert);
         newAlerts.push(alert);
+
+        // Log each new alert as an activity event (separate from discovery summary)
+        if (added) {
+          await addActivity(
+            "system",
+            "alert-fired",
+            `Nifty 50 alert: ${stock.symbol} breakout — High +${highBreakPercent}%, Vol +${volumeBreakPercent}%`,
+            {
+              actor: "system",
+              detail: {
+                source: "nifty50",
+                symbol: stock.symbol,
+                highBreakPercent,
+                volumeBreakPercent,
+                todayHigh: stock.dayHigh,
+                todayVolume: stock.totalTradedVolume,
+                prevMaxHigh: baseline.maxHigh5d,
+                prevMaxVolume: baseline.maxVolume5d,
+              },
+            },
+          );
+        }
       }
     }
 
     // Activity tracking for discoveries
     const breakoutCount = discoveries.filter((d) => d.breakout).length;
-    if (breakoutCount > 0) {
+    const highBreakOnly = discoveries.filter((d) => d.highBreak && !d.breakout).length;
+    const volBreakOnly = discoveries.filter((d) => d.volumeBreak && !d.breakout).length;
+
+    if (breakoutCount > 0 || highBreakOnly > 0 || volBreakOnly > 0) {
       const breakoutSymbols = discoveries.filter((d) => d.breakout).map((d) => d.symbol);
+      const parts: string[] = [];
+      if (breakoutCount > 0) parts.push(`${breakoutCount} breakout(s) — ${breakoutSymbols.join(", ")}`);
+      if (highBreakOnly > 0) parts.push(`${highBreakOnly} high-only break(s)`);
+      if (volBreakOnly > 0) parts.push(`${volBreakOnly} volume-only break(s)`);
+
       await addActivity(
         "system",
         "nifty50-discovery",
-        `Nifty 50 discovery: ${breakoutCount} breakout(s) — ${breakoutSymbols.join(", ")}`,
+        `Nifty 50 scan: ${parts.join(", ")}`,
         {
           actor: "system",
           detail: {
             breakoutCount,
+            highBreakOnly,
+            volBreakOnly,
             symbols: breakoutSymbols,
             snapshotStale: snapshot.stale,
+            alertsCreated: newAlerts.length,
           },
         },
       );

@@ -37,12 +37,29 @@ interface Nifty50StatsData {
   };
 }
 
+interface CacheLayersData {
+  historical: { size: number; symbols: string[]; date: string };
+  snapshot: {
+    lastRefreshTime: string | null;
+    snapshotFetchSuccess: boolean;
+    snapshotFetchCount: number;
+    snapshotFailCount: number;
+  };
+  apiThrottle: {
+    total: number;
+    apiCalls: number;
+    cacheHits: number;
+    hitRate: number;
+  };
+}
+
 interface SystemState {
   market: { open: boolean };
   watchlist: { total: number; closeWatch: number; closeWatchSymbols: string[] };
-  alerts: { total: number; unread: number };
+  alerts: { total: number; unread: number; nifty50Alerts?: number; scanAlerts?: number; recentSymbols?: string[] };
   scan: ScanMeta | null;
   cache: { size: number; symbols: string[]; date: string };
+  cacheLayers?: CacheLayersData;
   nifty: NiftyIndex | null;
   apiStats: ApiStatsData | null;
   nifty50Stats: Nifty50StatsData | null;
@@ -388,6 +405,149 @@ function LogsTable({ logs, loading }: { logs: LogEntry[]; loading: boolean }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
+ * Action Flow — visual sequence of user & system actions
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+const ACTION_FLOW_COLORS: Record<string, { dot: string; line: string; label: string }> = {
+  'scan-manual':       { dot: 'bg-blue-400',    line: 'bg-blue-400/20',    label: 'Manual Scan' },
+  'scan-auto':         { dot: 'bg-amber-400',   line: 'bg-amber-400/20',   label: 'Auto Scan' },
+  'alert-fired':       { dot: 'bg-accent',      line: 'bg-accent/20',      label: 'Alert' },
+  'stock-added':       { dot: 'bg-emerald-400', line: 'bg-emerald-400/20', label: 'Added Stock' },
+  'stock-removed':     { dot: 'bg-red-400',     line: 'bg-red-400/20',     label: 'Removed Stock' },
+  'closewatch-on':     { dot: 'bg-amber-400',   line: 'bg-amber-400/20',   label: 'Star On' },
+  'closewatch-off':    { dot: 'bg-slate-400',   line: 'bg-slate-400/20',   label: 'Star Off' },
+  'autocheck-started': { dot: 'bg-emerald-400', line: 'bg-emerald-400/20', label: 'Auto-Watch On' },
+  'autocheck-stopped': { dot: 'bg-red-400',     line: 'bg-red-400/20',     label: 'Auto-Watch Off' },
+  'intraday-on':       { dot: 'bg-cyan-400',    line: 'bg-cyan-400/20',    label: 'Intraday On' },
+  'intraday-off':      { dot: 'bg-slate-400',   line: 'bg-slate-400/20',   label: 'Intraday Off' },
+  'nifty50-discovery': { dot: 'bg-blue-400',    line: 'bg-blue-400/20',    label: 'N50 Discovery' },
+  'data-stale':        { dot: 'bg-amber-400',   line: 'bg-amber-400/20',   label: 'Stale Data' },
+  'scan-error':        { dot: 'bg-red-400',     line: 'bg-red-400/20',     label: 'Error' },
+};
+
+function ActionFlowSection({ events }: { events: ActivityEvent[] }) {
+  // Show the last 20 meaningful actions as a horizontal flow
+  const flowEvents = useMemo(() => {
+    return events
+      .filter((e) => ACTION_FLOW_COLORS[e.action])
+      .slice(0, 20);
+  }, [events]);
+
+  if (flowEvents.length === 0) return null;
+
+  // Group consecutive events into "sessions" by time gaps (>10 min = new session)
+  const sessions: { events: ActivityEvent[]; startTime: string; endTime: string }[] = [];
+  let currentSession: ActivityEvent[] = [];
+
+  for (const e of flowEvents) {
+    if (currentSession.length === 0) {
+      currentSession.push(e);
+    } else {
+      const prevTime = new Date(currentSession[currentSession.length - 1].ts).getTime();
+      const curTime = new Date(e.ts).getTime();
+      if (prevTime - curTime > 10 * 60_000) {
+        sessions.push({
+          events: currentSession,
+          startTime: currentSession[currentSession.length - 1].ts,
+          endTime: currentSession[0].ts,
+        });
+        currentSession = [e];
+      } else {
+        currentSession.push(e);
+      }
+    }
+  }
+  if (currentSession.length > 0) {
+    sessions.push({
+      events: currentSession,
+      startTime: currentSession[currentSession.length - 1].ts,
+      endTime: currentSession[0].ts,
+    });
+  }
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-text-muted">Action Flow</h2>
+          <span className="text-[9px] text-text-muted/50">{flowEvents.length} actions in {sessions.length} session{sessions.length !== 1 ? 's' : ''}</span>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-surface-border bg-surface-raised overflow-hidden">
+        <div className="overflow-x-auto scrollbar-thin px-5 py-4">
+          {sessions.map((session, si) => (
+            <div key={si} className="mb-4 last:mb-0">
+              {/* Session header */}
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[9px] font-mono text-text-muted/50 tabular-nums">
+                  {formatTime(session.startTime)}
+                </span>
+                <div className="h-px flex-1 bg-surface-border/40" />
+                <span className="text-[9px] font-mono text-text-muted/50 tabular-nums">
+                  {formatTime(session.endTime)}
+                </span>
+                <span className="text-[9px] text-text-muted/30">
+                  ({session.events.length} action{session.events.length !== 1 ? 's' : ''})
+                </span>
+              </div>
+
+              {/* Flow visualization */}
+              <div className="flex items-center gap-0 overflow-x-auto">
+                {session.events.map((event, ei) => {
+                  const colors = ACTION_FLOW_COLORS[event.action] ?? { dot: 'bg-slate-400', line: 'bg-slate-400/20', label: event.action };
+                  const isAlert = event.action === 'alert-fired';
+                  const isError = event.action === 'scan-error' || event.action === 'data-stale';
+
+                  return (
+                    <div key={event.id} className="flex items-center">
+                      {/* Connector line */}
+                      {ei > 0 && (
+                        <div className={`h-0.5 w-6 ${colors.line}`} />
+                      )}
+                      {/* Node */}
+                      <div className="group relative flex flex-col items-center" title={`${event.label} (${formatTime(event.ts)})`}>
+                        <div className={`relative flex h-7 w-7 items-center justify-center rounded-lg border border-surface-border/60 bg-surface-overlay transition-all duration-200 group-hover:scale-110 ${
+                          isAlert ? 'ring-1 ring-accent/30 shadow-[0_0_8px_rgba(0,212,170,0.15)]' :
+                          isError ? 'ring-1 ring-amber-500/30' : ''
+                        }`}>
+                          <div className={`h-2 w-2 rounded-full ${colors.dot} ${isAlert ? 'animate-pulse' : ''}`} />
+                        </div>
+                        <span className="mt-1 text-[7px] font-semibold text-text-muted/50 whitespace-nowrap group-hover:text-text-muted transition-colors">
+                          {colors.label}
+                        </span>
+                        {/* Hover tooltip */}
+                        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
+                          <div className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 shadow-xl shadow-black/40 text-[10px] whitespace-nowrap">
+                            <p className="font-semibold text-text-primary">{event.label}</p>
+                            <p className="text-text-muted font-mono tabular-nums">{formatTime(event.ts)} · {timeAgo(event.ts)}</p>
+                            {event.actor && <p className="text-text-muted/60 mt-0.5">by {event.actor}</p>}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Flow legend */}
+        <div className="flex items-center gap-3 border-t border-surface-border px-5 py-2 flex-wrap">
+          {Object.entries(ACTION_FLOW_COLORS).slice(0, 8).map(([action, colors]) => (
+            <span key={action} className="flex items-center gap-1 text-[8px] text-text-muted/50">
+              <span className={`h-1.5 w-1.5 rounded-full ${colors.dot}`} />
+              {colors.label}
+            </span>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
  * Main Dev Dashboard
  * ═══════════════════════════════════════════════════════════════════════ */
 
@@ -629,7 +789,7 @@ export default function DevDashboard() {
               ) : <span className="text-xs text-text-muted">No scan data</span>}
             </StateCard>
 
-            {/* Alerts */}
+            {/* Alerts — with source breakdown */}
             <StateCard label="Alerts" accent={!!state && state.alerts.unread > 0}>
               {state ? (
                 <div>
@@ -640,16 +800,40 @@ export default function DevDashboard() {
                       <span className="text-text-muted font-normal">0 unread</span>
                     )}
                   </p>
-                  <p className="mt-0.5 text-[10px] text-text-muted">{state.alerts.total} total</p>
+                  <div className="mt-1 flex items-center gap-2 text-[10px] text-text-muted">
+                    <span>{state.alerts.total} total</span>
+                    {(state.alerts.nifty50Alerts ?? 0) > 0 && (
+                      <span className="flex items-center gap-0.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+                        {state.alerts.nifty50Alerts} N50
+                      </span>
+                    )}
+                    {(state.alerts.scanAlerts ?? 0) > 0 && (
+                      <span className="flex items-center gap-0.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                        {state.alerts.scanAlerts} scan
+                      </span>
+                    )}
+                  </div>
                 </div>
               ) : <span className="text-xs text-text-muted">Loading...</span>}
             </StateCard>
 
-            {/* Cache */}
-            <StateCard label="Cache">
+            {/* Cache — with hit rate */}
+            <StateCard label="Cache" accent={!!state?.cacheLayers && state.cacheLayers.apiThrottle.hitRate > 60}>
               {state ? (
                 <div>
                   <p className="text-sm font-bold tabular-nums">{state.cache.size} <span className="text-text-muted font-normal">entries</span></p>
+                  {state.cacheLayers && (
+                    <div className="mt-1 flex items-center gap-1">
+                      <div className="h-1.5 w-12 rounded-full bg-surface-overlay overflow-hidden">
+                        <div className="h-full rounded-full bg-emerald-400 transition-all duration-500"
+                          style={{ width: `${state.cacheLayers.apiThrottle.hitRate}%` }} />
+                      </div>
+                      <span className="text-[9px] text-emerald-400 font-semibold tabular-nums">{state.cacheLayers.apiThrottle.hitRate}%</span>
+                      <span className="text-[9px] text-text-muted">hit</span>
+                    </div>
+                  )}
                   <p className="mt-0.5 text-[10px] text-text-muted">{state.cache.date}</p>
                 </div>
               ) : <span className="text-xs text-text-muted">Loading...</span>}
@@ -721,6 +905,94 @@ export default function DevDashboard() {
                     <p className="text-[10px] text-text-muted font-semibold mb-1">Baseline Date</p>
                     <p className="text-sm font-bold tabular-nums font-mono">{bl.date}</p>
                     <p className="text-[9px] text-text-muted/50 mt-0.5">Recomputes daily</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ── Cache Layers Panel ──────────────────────────────────────── */}
+          {state?.cacheLayers && (() => {
+            const cl = state.cacheLayers;
+            const snTotal = cl.snapshot.snapshotFetchCount + cl.snapshot.snapshotFailCount;
+            const snRate = snTotal > 0 ? Math.round((cl.snapshot.snapshotFetchCount / snTotal) * 100) : 0;
+            return (
+              <div className="mt-3 rounded-xl border border-violet-500/20 bg-violet-500/[0.02] p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-violet-400">
+                      <ellipse cx="12" cy="5" rx="9" ry="3" />
+                      <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+                      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+                    </svg>
+                    <p className="text-[10px] uppercase tracking-wider font-semibold text-text-muted">Cache Layers</p>
+                  </div>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${cl.apiThrottle.hitRate >= 50 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                    {cl.apiThrottle.hitRate}% overall hit rate
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  {/* Layer 1: Historical Data Cache */}
+                  <div className="rounded-lg border border-surface-border/60 bg-surface-raised/50 p-3">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <span className="h-2 w-2 rounded-full bg-blue-400" />
+                      <p className="text-[10px] font-semibold text-blue-400">Historical Data</p>
+                    </div>
+                    <p className="text-lg font-bold tabular-nums">{cl.historical.size}</p>
+                    <p className="text-[9px] text-text-muted mt-0.5">symbols cached</p>
+                    <p className="text-[9px] text-text-muted/50 mt-0.5">Date: {cl.historical.date}</p>
+                    {cl.historical.symbols.length > 0 && (
+                      <p className="text-[8px] text-text-muted/40 mt-1 truncate" title={cl.historical.symbols.join(', ')}>
+                        {cl.historical.symbols.slice(0, 5).join(', ')}{cl.historical.symbols.length > 5 ? ` +${cl.historical.symbols.length - 5}` : ''}
+                      </p>
+                    )}
+                    <p className="text-[8px] text-text-muted/30 mt-1">TTL: IST midnight reset</p>
+                  </div>
+
+                  {/* Layer 2: Nifty 50 Snapshot Cache */}
+                  <div className="rounded-lg border border-surface-border/60 bg-surface-raised/50 p-3">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <span className={`h-2 w-2 rounded-full ${cl.snapshot.snapshotFetchSuccess ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                      <p className="text-[10px] font-semibold text-emerald-400">Snapshot (N50)</p>
+                    </div>
+                    <p className="text-lg font-bold tabular-nums">
+                      {cl.snapshot.snapshotFetchCount}<span className="text-text-muted text-xs font-normal"> fetches</span>
+                    </p>
+                    {cl.snapshot.snapshotFailCount > 0 && (
+                      <p className="text-[10px] text-red-400 mt-0.5">{cl.snapshot.snapshotFailCount} failures</p>
+                    )}
+                    <div className="mt-1.5 h-1 w-full rounded-full bg-surface-overlay overflow-hidden">
+                      <div className="h-full rounded-full bg-emerald-400 transition-all duration-500"
+                        style={{ width: `${snRate}%` }} />
+                    </div>
+                    <p className="text-[8px] text-text-muted/50 mt-0.5">{snRate}% success</p>
+                    <p className="text-[8px] text-text-muted/30 mt-0.5">TTL: 3 min market hrs</p>
+                  </div>
+
+                  {/* Layer 3: API Call Cache (throttle prevention) */}
+                  <div className="rounded-lg border border-surface-border/60 bg-surface-raised/50 p-3">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <span className={`h-2 w-2 rounded-full ${cl.apiThrottle.hitRate >= 50 ? 'bg-violet-400' : 'bg-amber-400'}`} />
+                      <p className="text-[10px] font-semibold text-violet-400">API Throttle</p>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-lg font-bold tabular-nums text-cyan-400">{cl.apiThrottle.apiCalls}</span>
+                      <span className="text-[9px] text-text-muted">API</span>
+                      <span className="text-lg font-bold tabular-nums text-emerald-400 ml-1">{cl.apiThrottle.cacheHits}</span>
+                      <span className="text-[9px] text-text-muted">cache</span>
+                    </div>
+                    <div className="mt-1.5 h-1 w-full rounded-full bg-surface-overlay overflow-hidden flex">
+                      {cl.apiThrottle.total > 0 && (
+                        <>
+                          <div className="h-full bg-cyan-400 transition-all duration-500"
+                            style={{ width: `${((cl.apiThrottle.apiCalls / cl.apiThrottle.total) * 100)}%` }} />
+                          <div className="h-full bg-emerald-400 transition-all duration-500"
+                            style={{ width: `${((cl.apiThrottle.cacheHits / cl.apiThrottle.total) * 100)}%` }} />
+                        </>
+                      )}
+                    </div>
+                    <p className="text-[8px] text-text-muted/50 mt-0.5">{cl.apiThrottle.total} total calls tracked</p>
+                    <p className="text-[8px] text-text-muted/30 mt-0.5">Rolling 500 call window</p>
                   </div>
                 </div>
               </div>
@@ -800,6 +1072,9 @@ export default function DevDashboard() {
             );
           })()}
         </section>
+
+        {/* ── User Action Flow ──────────────────────────────────────────── */}
+        <ActionFlowSection events={events} />
 
         {/* ── Activity Timeline ─────────────────────────────────────────── */}
         <section>

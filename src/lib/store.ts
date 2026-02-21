@@ -168,7 +168,7 @@ export async function getAlerts(): Promise<Alert[]> {
   );
 }
 
-export async function addAlert(alert: Alert): Promise<void> {
+export async function addAlert(alert: Alert): Promise<boolean> {
   const alerts = await loadAlerts();
   const existing = alerts.find(
     (a) =>
@@ -179,7 +179,9 @@ export async function addAlert(alert: Alert): Promise<void> {
   if (!existing) {
     alerts.push(alert);
     await saveAlerts(alerts);
+    return true;
   }
+  return false;
 }
 
 export async function markAlertRead(id: string): Promise<void> {
