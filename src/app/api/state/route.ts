@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getWatchlist, getAlerts } from "@/lib/store";
 import { getScanMeta } from "@/lib/activity";
-import { getMarketStatus, getHistoricalCacheStats, getNifty50Index, getApiStats } from "@/lib/nse-client";
+import { getMarketStatus, getHistoricalCacheStats, getNifty50Index, getApiStats, getNifty50SnapshotStats } from "@/lib/nse-client";
+import { getBaselineStats } from "@/lib/baselines";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,10 @@ export async function GET() {
     cache: cacheStats,
     nifty: nifty ?? null,
     apiStats: getApiStats(),
+    nifty50Stats: {
+      ...getNifty50SnapshotStats(),
+      baselines: getBaselineStats(),
+    },
     serverTime: new Date().toISOString(),
   });
 }

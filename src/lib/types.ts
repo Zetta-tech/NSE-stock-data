@@ -118,3 +118,83 @@ export interface ScanMeta {
   closeWatchSymbols: string[];
   alertsFired: string[];
 }
+
+/* ── Nifty 50 Table (snapshot from getEquityStockIndices) ─────────── */
+
+/** A single stock row returned by NSE's getEquityStockIndices("NIFTY 50") */
+export interface Nifty50StockRow {
+  symbol: string;
+  name: string;
+  lastPrice: number;
+  change: number;
+  pChange: number;
+  open: number;
+  dayHigh: number;
+  dayLow: number;
+  previousClose: number;
+  totalTradedVolume: number;
+  totalTradedValue: number;
+  yearHigh: number;
+  yearLow: number;
+}
+
+/** Full snapshot response for the Nifty 50 table */
+export interface Nifty50Snapshot {
+  stocks: Nifty50StockRow[];
+  fetchedAt: string;
+  fetchSuccess: boolean;
+  stale: boolean;
+}
+
+/** 5-day baseline for a single stock (computed once per trading day) */
+export interface StockBaseline {
+  symbol: string;
+  maxHigh5d: number;
+  maxVolume5d: number;
+  computedDate: string; // YYYY-MM-DD in IST
+}
+
+/** Breakout discovery signal for Nifty 50 table */
+export interface BreakoutDiscovery {
+  symbol: string;
+  name: string;
+  /** true = both high AND volume break (full breakout) */
+  breakout: boolean;
+  /** true = only high break */
+  highBreak: boolean;
+  /** true = only volume break */
+  volumeBreak: boolean;
+  highBreakPercent: number;
+  volumeBreakPercent: number;
+  /** true = baseline data is unreliable or missing */
+  baselineUnavailable: boolean;
+  /** true = live price data fetch failed; breakout is possible but unconfirmed */
+  possibleBreakout: boolean;
+}
+
+/** API response for /api/nifty50 */
+export interface Nifty50TableResponse {
+  snapshot: Nifty50Snapshot;
+  discoveries: BreakoutDiscovery[];
+  baselineStatus: {
+    available: number;
+    missing: number;
+    date: string;
+  };
+  watchlistSymbols: string[];
+  closeWatchSymbols: string[];
+  marketOpen: boolean;
+}
+
+/** Dev panel tracking for Nifty50 system */
+export interface Nifty50DevStats {
+  lastRefreshTime: string | null;
+  snapshotFetchSuccess: boolean;
+  snapshotFetchCount: number;
+  snapshotFailCount: number;
+  baselineAvailable: number;
+  baselineMissing: number;
+  baselineDate: string;
+  alertCount: number;
+  discoveryCount: number;
+}

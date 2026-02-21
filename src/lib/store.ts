@@ -173,6 +173,7 @@ export async function addAlert(alert: Alert): Promise<void> {
   const existing = alerts.find(
     (a) =>
       a.symbol === alert.symbol &&
+      a.alertType === alert.alertType &&
       a.triggeredAt.slice(0, 10) === alert.triggeredAt.slice(0, 10)
   );
   if (!existing) {

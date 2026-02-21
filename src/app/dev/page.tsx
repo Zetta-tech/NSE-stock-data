@@ -24,6 +24,19 @@ interface ApiStatsData {
   last60s: ApiCallRecord[];
 }
 
+interface Nifty50StatsData {
+  lastRefreshTime: string | null;
+  snapshotFetchSuccess: boolean;
+  snapshotFetchCount: number;
+  snapshotFailCount: number;
+  baselines: {
+    available: number;
+    missing: number;
+    date: string;
+    symbols: string[];
+  };
+}
+
 interface SystemState {
   market: { open: boolean };
   watchlist: { total: number; closeWatch: number; closeWatchSymbols: string[] };
@@ -32,6 +45,7 @@ interface SystemState {
   cache: { size: number; symbols: string[]; date: string };
   nifty: NiftyIndex | null;
   apiStats: ApiStatsData | null;
+  nifty50Stats: Nifty50StatsData | null;
   serverTime: string;
 }
 
@@ -74,6 +88,8 @@ function ActionIcon({ action }: { action: string }) {
       return <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>;
     case 'scan-error':
       return <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>;
+    case 'nifty50-discovery':
+      return <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>;
     default:
       return <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>;
   }
@@ -639,6 +655,77 @@ export default function DevDashboard() {
               ) : <span className="text-xs text-text-muted">Loading...</span>}
             </StateCard>
           </div>
+
+          {/* ── Nifty 50 Table Tracking ──────────────────────────────────── */}
+          {state?.nifty50Stats && (() => {
+            const n = state.nifty50Stats;
+            const bl = n.baselines;
+            const fetchOk = n.snapshotFetchSuccess;
+            const totalFetches = n.snapshotFetchCount + n.snapshotFailCount;
+            const successRate = totalFetches > 0 ? Math.round((n.snapshotFetchCount / totalFetches) * 100) : 0;
+            return (
+              <div className={`mt-3 rounded-xl border p-4 ${fetchOk ? 'border-blue-500/20 bg-blue-500/[0.03]' : 'border-amber-500/20 bg-amber-500/[0.04]'}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <p className="text-[10px] uppercase tracking-wider font-semibold text-text-muted">Nifty 50 Table</p>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${fetchOk ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                      {fetchOk ? 'Healthy' : 'Degraded'}
+                    </span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 gap-4">
+                  {/* Last Refresh */}
+                  <div>
+                    <p className="text-[10px] text-text-muted font-semibold mb-1">Last Refresh</p>
+                    <p className="text-sm font-bold tabular-nums">
+                      {n.lastRefreshTime ? formatTime(n.lastRefreshTime) : '—'}
+                    </p>
+                    <p className="text-[9px] text-text-muted/50 mt-0.5">
+                      {n.lastRefreshTime ? timeAgo(n.lastRefreshTime) : 'Never'}
+                    </p>
+                  </div>
+
+                  {/* Snapshot Fetches */}
+                  <div>
+                    <p className="text-[10px] text-text-muted font-semibold mb-1">Snapshot Fetches</p>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-sm font-bold tabular-nums text-emerald-400">{n.snapshotFetchCount}</span>
+                      <span className="text-[9px] text-text-muted">ok</span>
+                    </div>
+                    <div className="flex items-baseline gap-1 mt-0.5">
+                      <span className="text-sm font-bold tabular-nums text-red-400">{n.snapshotFailCount}</span>
+                      <span className="text-[9px] text-text-muted">fail</span>
+                    </div>
+                    <p className="text-[9px] text-text-muted/50 mt-0.5">{successRate}% success</p>
+                  </div>
+
+                  {/* Baselines */}
+                  <div>
+                    <p className="text-[10px] text-text-muted font-semibold mb-1">Baselines</p>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-sm font-bold tabular-nums text-emerald-400">{bl.available}</span>
+                      <span className="text-[9px] text-text-muted">ready</span>
+                    </div>
+                    <div className="flex items-baseline gap-1 mt-0.5">
+                      <span className="text-sm font-bold tabular-nums text-text-muted">{bl.missing}</span>
+                      <span className="text-[9px] text-text-muted">pending</span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 w-full rounded-full bg-surface-overlay overflow-hidden">
+                      <div className="h-full rounded-full bg-emerald-400 transition-all duration-500"
+                        style={{ width: `${bl.available + bl.missing > 0 ? (bl.available / (bl.available + bl.missing)) * 100 : 0}%` }} />
+                    </div>
+                  </div>
+
+                  {/* Baseline Date */}
+                  <div>
+                    <p className="text-[10px] text-text-muted font-semibold mb-1">Baseline Date</p>
+                    <p className="text-sm font-bold tabular-nums font-mono">{bl.date}</p>
+                    <p className="text-[9px] text-text-muted/50 mt-0.5">Recomputes daily</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ── API Throttle KPI ────────────────────────────────────────── */}
           {state?.apiStats && (() => {

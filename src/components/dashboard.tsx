@@ -6,6 +6,7 @@ import { ScanButton } from "./scan-button";
 import { StockCard } from "./stock-card";
 import { AlertPanel } from "./alert-panel";
 import { TickerPanel } from "./ticker-panel";
+import { Nifty50Table } from "./nifty50-table";
 import { AddStockModal } from "./add-stock-modal";
 import { isMarketHours } from "@/lib/market-hours";
 import type { WatchlistStock, ScanResult, Alert } from "@/lib/types";
@@ -289,6 +290,10 @@ export function Dashboard({
           hasCloseWatchStocks={closeWatchCount > 0}
           scanResults={results}
         />
+
+        <div className="mb-8">
+          <Nifty50Table />
+        </div>
 
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
