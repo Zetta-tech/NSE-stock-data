@@ -5,8 +5,8 @@ import { NotificationBell } from "./notification-bell";
 import { isExtendedHours } from "@/lib/market-hours";
 import type { Alert, NiftyIndex } from "@/lib/types";
 
-const NIFTY_POLL_LIVE = 15_000;   // 15s during extended hours
-const NIFTY_POLL_CLOSED = 5 * 60_000; // 5min after hours (just to catch edge transitions)
+const NIFTY_POLL_LIVE = 15_000;
+const NIFTY_POLL_CLOSED = 5 * 60_000;
 
 export function Header({
   alerts,
@@ -42,19 +42,11 @@ export function Header({
   }, []);
 
   useEffect(() => {
-    // Fetch once on mount — the server-side cache in nse-client will
-    // return the last-known closing value without hitting NSE after hours.
     fetchIndex();
-
-    // Only set up a polling interval during extended hours
     if (!isExtendedHours()) return;
-
     const interval = setInterval(() => {
-      if (isExtendedHours()) {
-        fetchIndex();
-      }
+      if (isExtendedHours()) fetchIndex();
     }, NIFTY_POLL_LIVE);
-
     return () => clearInterval(interval);
   }, [fetchIndex]);
 
@@ -62,11 +54,15 @@ export function Header({
   const isLive = isExtendedHours();
 
   return (
-    <header className="sticky top-0 z-30 border-b border-surface-border/60 glass">
-      <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent" />
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+    <header className="sticky top-0 z-30 glass">
+      {/* Top accent line */}
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-accent/30 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-surface-border/60 to-transparent" />
+
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3.5">
+        {/* Brand */}
         <div className="flex items-center gap-4">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 ring-1 ring-accent/20">
+          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-accent/[0.08] ring-1 ring-accent/15">
             <svg
               width="20"
               height="20"
@@ -79,59 +75,60 @@ export function Header({
               <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
               <polyline points="16 7 22 7 22 13" />
             </svg>
-            <div className="absolute -inset-1 rounded-xl bg-accent/10 blur-md animate-glow-pulse" />
+            <div className="absolute -inset-1.5 rounded-xl bg-accent/5 blur-lg animate-glow-pulse" />
           </div>
           <div>
-            <h1 className="text-lg font-bold tracking-tight">
+            <h1 className="font-display text-lg font-bold tracking-tight leading-tight">
               Nifty <span className="text-gradient">Breakout</span> Scanner
             </h1>
-            <p className="text-[11px] text-text-muted">
-              5-day high &amp; volume breakout detection
+            <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-text-muted">
+              5-day high &amp; volume detection
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {/* Nifty 50 Index */}
           {nifty && (
             <div
-              className={`flex items-center gap-2.5 rounded-lg border px-3 py-1.5 transition-all duration-300 ${
+              className={`flex items-center gap-3 rounded-xl px-4 py-2 transition-all duration-300 ring-1 ${
                 flash === "up"
-                  ? "border-accent/40 bg-accent/[0.08]"
+                  ? "ring-accent/30 bg-accent/[0.06]"
                   : flash === "down"
-                    ? "border-danger/40 bg-danger/[0.08]"
-                    : "border-surface-border/60 bg-surface-overlay/40"
+                    ? "ring-danger/30 bg-danger/[0.06]"
+                    : "ring-surface-border/50 bg-surface-overlay/30"
               }`}
               title={`Open: ${nifty.open.toLocaleString("en-IN")} · High: ${nifty.high.toLocaleString("en-IN")} · Low: ${nifty.low.toLocaleString("en-IN")} · Prev Close: ${nifty.previousClose.toLocaleString("en-IN")}`}
             >
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
+              <div className="flex items-center gap-2">
+                <span className="font-display text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
                   Nifty 50
                 </span>
-                <span className="text-sm font-bold tabular-nums tracking-tight text-text-primary">
+                <span className="font-mono text-sm font-bold tabular-nums tracking-tight text-text-primary">
                   {nifty.value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
                 </span>
               </div>
-              <div className={`flex items-center gap-1 ${isUp ? "text-accent" : "text-danger"}`}>
+              <div className="h-4 w-px bg-surface-border/60" />
+              <div className={`flex items-center gap-1.5 ${isUp ? "text-accent" : "text-danger"}`}>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                  className={isUp ? "" : "rotate-180"}>
+                  className={`transition-transform ${isUp ? "" : "rotate-180"}`}>
                   <polyline points="18 15 12 9 6 15" />
                 </svg>
-                <span className="text-xs font-semibold tabular-nums">
+                <span className="font-mono text-xs font-semibold tabular-nums">
                   {nifty.change >= 0 ? "+" : ""}{nifty.change.toFixed(2)}
                 </span>
-                <span className="text-[10px] font-medium tabular-nums opacity-70">
+                <span className="font-mono text-[10px] font-medium tabular-nums opacity-60">
                   ({nifty.changePercent >= 0 ? "+" : ""}{nifty.changePercent.toFixed(2)}%)
                 </span>
               </div>
               {!isLive && (
-                <span className="text-[9px] text-text-muted/50 font-medium">Close</span>
+                <span className="text-[9px] font-semibold uppercase tracking-wider text-text-muted/40">Close</span>
               )}
             </div>
           )}
 
           {/* Market Status */}
-          <div className="flex items-center gap-2.5 rounded-lg border border-surface-border/60 bg-surface-overlay/40 px-3 py-1.5">
+          <div className="flex items-center gap-2 rounded-xl ring-1 ring-surface-border/50 bg-surface-overlay/30 px-3.5 py-2">
             <span className="relative flex h-2 w-2">
               <span
                 className={`absolute inline-flex h-full w-full rounded-full ${
@@ -140,11 +137,11 @@ export function Header({
               />
               <span
                 className={`relative inline-flex h-2 w-2 rounded-full ${
-                  marketOpen ? "bg-accent" : "bg-text-muted"
+                  marketOpen ? "bg-accent shadow-[0_0_6px_rgba(0,230,138,0.5)]" : "bg-text-muted"
                 }`}
               />
             </span>
-            <span className="text-xs font-medium text-text-secondary">
+            <span className="text-xs font-semibold text-text-secondary">
               {marketOpen ? "Market Open" : "Market Closed"}
             </span>
           </div>

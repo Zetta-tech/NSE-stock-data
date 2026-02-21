@@ -15,10 +15,10 @@ export function ScanButton({
     <div className="flex items-center gap-2">
       <button
         onClick={onToggleIntraday}
-        className={`relative overflow-hidden rounded-lg border px-3 py-2.5 text-xs font-medium transition-all duration-200 ${
+        className={`relative overflow-hidden rounded-xl px-3.5 py-2.5 text-xs font-semibold transition-all duration-200 ring-1 ${
           intraday
-            ? "border-accent/30 bg-accent/10 text-accent"
-            : "border-surface-border bg-surface-raised text-text-secondary hover:border-surface-border/80 hover:text-text-primary"
+            ? "ring-accent/25 bg-accent/8 text-accent"
+            : "ring-surface-border bg-surface-raised text-text-secondary hover:ring-surface-border-bright hover:text-text-primary"
         }`}
       >
         <span className="relative z-10 flex items-center gap-1.5">
@@ -41,7 +41,7 @@ export function ScanButton({
       <button
         onClick={onScan}
         disabled={loading}
-        className="group relative flex items-center gap-2 overflow-hidden rounded-lg bg-gradient-to-r from-accent to-accent-hover px-5 py-2.5 text-sm font-semibold text-surface shadow-lg shadow-accent/20 transition-all duration-200 hover:shadow-accent/30 hover:brightness-110 active:scale-[0.97] disabled:opacity-60 disabled:shadow-none disabled:cursor-not-allowed"
+        className="group relative flex items-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-accent to-accent-hover px-5 py-2.5 text-sm font-bold text-surface shadow-lg shadow-accent/15 transition-all duration-200 hover:shadow-accent/25 hover:brightness-110 active:scale-[0.97] disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed"
       >
         <span className="absolute inset-0 bg-white/0 transition-colors group-hover:bg-white/10" />
         {loading ? (

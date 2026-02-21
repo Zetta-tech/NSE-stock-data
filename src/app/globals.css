@@ -2,25 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&f[]=jetbrains-mono@400&display=swap");
+@import url("https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&f[]=satoshi@400,500,600,700&f[]=jetbrains-mono@400&display=swap");
 
 :root {
-  --surface: #0b0d11;
-  --surface-raised: #12151c;
-  --surface-overlay: #1a1e2a;
-  --surface-border: #252a3a;
-  --accent: #00d4aa;
-  --accent-hover: #00e8bc;
-  --accent-dim: #00a888;
-  --accent-muted: rgba(0, 212, 170, 0.10);
-  --accent-glow: rgba(0, 212, 170, 0.15);
-  --danger: #ef4444;
-  --danger-muted: rgba(239, 68, 68, 0.12);
-  --warn: #f59e0b;
-  --warn-muted: rgba(245, 158, 11, 0.12);
-  --text-primary: #edf0f5;
-  --text-secondary: #9ca3af;
-  --text-muted: #5c6370;
+  --surface: #08090d;
+  --surface-raised: #0e1017;
+  --surface-overlay: #161922;
+  --surface-border: #1f2331;
+  --surface-border-bright: #2a2f42;
+
+  --accent: #00e68a;
+  --accent-hover: #00ff99;
+  --accent-dim: #00b86e;
+  --accent-muted: rgba(0, 230, 138, 0.08);
+  --accent-glow: rgba(0, 230, 138, 0.12);
+
+  --danger: #ff4757;
+  --danger-muted: rgba(255, 71, 87, 0.10);
+
+  --warn: #f5a623;
+  --warn-muted: rgba(245, 166, 35, 0.10);
+
+  --text-primary: #f0f2f7;
+  --text-secondary: #8b92a5;
+  --text-muted: #4a5068;
 }
 
 * {
@@ -34,13 +39,22 @@ html {
 body {
   background: var(--surface);
   background-image:
-    radial-gradient(ellipse 80% 60% at 50% -20%, rgba(0, 212, 170, 0.04) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 40% at 100% 0%, rgba(0, 100, 200, 0.03) 0%, transparent 60%);
+    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.015) 1px, transparent 0),
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0, 230, 138, 0.03) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 100% 0%, rgba(0, 120, 255, 0.02) 0%, transparent 50%);
+  background-size: 24px 24px, 100% 100%, 100% 100%;
   background-attachment: fixed;
   color: var(--text-primary);
-  font-family: "General Sans", system-ui, sans-serif;
+  font-family: "Satoshi", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+@layer base {
+  ::selection {
+    background: rgba(0, 230, 138, 0.25);
+    color: #fff;
+  }
 }
 
 @layer utilities {
@@ -50,15 +64,28 @@ body {
   }
 
   .text-gradient {
-    background: linear-gradient(135deg, #00d4aa 0%, #00a5e0 100%);
+    background: linear-gradient(135deg, #00e68a 0%, #00b4d8 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+
+  .text-gradient-warm {
+    background: linear-gradient(135deg, #f5a623 0%, #ff6b6b 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .font-display {
+    font-family: "Clash Display", "Satoshi", system-ui, sans-serif;
+  }
 }
 
+/* ── Keyframes ───────────────────────────────────────────────────────── */
+
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -68,23 +95,23 @@ body {
 }
 
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 @keyframes slideIn {
-  from { opacity: 0; transform: translateX(16px); }
+  from { opacity: 0; transform: translateX(20px); }
   to { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-8px); }
+  from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes pulse-ring {
   0% { transform: scale(0.8); opacity: 1; }
-  100% { transform: scale(2.2); opacity: 0; }
+  100% { transform: scale(2.4); opacity: 0; }
 }
 
 @keyframes shimmer {
@@ -93,8 +120,8 @@ body {
 }
 
 @keyframes glow-pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.8; }
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.7; }
 }
 
 @keyframes bar-fill {
@@ -102,8 +129,20 @@ body {
   to { width: var(--bar-width); }
 }
 
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(200%); }
+}
+
+/* ── Animation Classes ───────────────────────────────────────────────── */
+
 .animate-fade-in {
-  animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .animate-fade-in-fast {
@@ -111,15 +150,15 @@ body {
 }
 
 .animate-scale-in {
-  animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: scaleIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .animate-slide-in {
-  animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: slideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .animate-slide-down {
-  animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .animate-pulse-ring {
@@ -130,7 +169,7 @@ body {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(0, 212, 170, 0.06) 50%,
+    rgba(0, 230, 138, 0.04) 50%,
     transparent 100%
   );
   background-size: 200% 100%;
@@ -145,20 +184,41 @@ body {
   animation: bar-fill 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.card-glow {
-  box-shadow:
-    0 0 0 1px rgba(0, 212, 170, 0.15),
-    0 4px 24px -4px rgba(0, 212, 170, 0.08),
-    0 0 48px -12px rgba(0, 212, 170, 0.06);
+.animate-float {
+  animation: float 3s ease-in-out infinite;
 }
 
+/* ── Glow & Shadow Effects ───────────────────────────────────────────── */
+
+.card-glow {
+  box-shadow:
+    0 0 0 1px rgba(0, 230, 138, 0.12),
+    0 4px 32px -4px rgba(0, 230, 138, 0.08),
+    0 0 64px -16px rgba(0, 230, 138, 0.05);
+}
+
+.card-glow-warn {
+  box-shadow:
+    0 0 0 1px rgba(245, 166, 35, 0.12),
+    0 4px 32px -4px rgba(245, 166, 35, 0.08);
+}
+
+.card-elevated {
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 4px 16px -2px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+/* ── Ticker Flash ────────────────────────────────────────────────────── */
+
 @keyframes tickerFlashUp {
-  0% { background-color: rgba(0, 212, 170, 0.15); }
+  0% { background-color: rgba(0, 230, 138, 0.12); }
   100% { background-color: transparent; }
 }
 
 @keyframes tickerFlashDown {
-  0% { background-color: rgba(239, 68, 68, 0.15); }
+  0% { background-color: rgba(255, 71, 87, 0.12); }
   100% { background-color: transparent; }
 }
 
@@ -170,8 +230,43 @@ body {
   animation: tickerFlashDown 1.2s ease-out forwards;
 }
 
+/* ── Glass Effect ────────────────────────────────────────────────────── */
+
 .glass {
-  background: rgba(18, 21, 28, 0.8);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  background: rgba(14, 16, 23, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+/* ── Noise texture overlay ───────────────────────────────────────────── */
+
+.noise-overlay::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.4;
+}
+
+/* ── Premium scrollbar ───────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-border-bright);
 }

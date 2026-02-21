@@ -26,7 +26,6 @@ export function StockCard({
   const highBreaks = hasData && !isStale && result.todayHigh > result.prevMaxHigh;
   const volBreaks = hasData && !isStale && result.todayVolume > result.prevMaxVolume;
 
-  // Animate star toggle transitions
   useEffect(() => {
     if (prevCloseWatch.current === closeWatch) return;
     prevCloseWatch.current = closeWatch;
@@ -34,7 +33,6 @@ export function StockCard({
     if (!cardRef.current || !starRef.current) return;
 
     if (closeWatch) {
-      // Star ON: pulse the star + flash the card border
       gsap.fromTo(
         starRef.current,
         { scale: 0.5, rotation: -30 },
@@ -42,11 +40,10 @@ export function StockCard({
       );
       gsap.fromTo(
         cardRef.current,
-        { boxShadow: "0 0 0 2px rgba(251, 191, 36, 0.5), 0 0 20px rgba(251, 191, 36, 0.15)" },
-        { boxShadow: "0 0 0 1px rgba(251, 191, 36, 0.2), 0 0 0px rgba(251, 191, 36, 0)", duration: 0.8, ease: "power2.out" }
+        { boxShadow: "0 0 0 2px rgba(245, 166, 35, 0.4), 0 0 24px rgba(245, 166, 35, 0.12)" },
+        { boxShadow: "0 0 0 1px rgba(245, 166, 35, 0.15), 0 0 0px rgba(245, 166, 35, 0)", duration: 0.8, ease: "power2.out" }
       );
     } else {
-      // Star OFF: shrink + fade
       gsap.fromTo(
         starRef.current,
         { scale: 1.3 },
@@ -55,57 +52,56 @@ export function StockCard({
     }
   }, [closeWatch]);
 
-  // Entrance animation
   useEffect(() => {
     if (!cardRef.current) return;
     gsap.fromTo(
       cardRef.current,
-      { opacity: 0, y: 12 },
-      { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }
+      { opacity: 0, y: 14 },
+      { opacity: 1, y: 0, duration: 0.45, ease: "power2.out" }
     );
   }, []);
 
   return (
     <div
       ref={cardRef}
-      className={`group relative overflow-hidden rounded-2xl border p-5 transition-all duration-300 hover:-translate-y-1 ${
+      className={`group relative overflow-hidden rounded-2xl p-5 transition-all duration-300 hover:-translate-y-0.5 ring-1 ${
         isStale
-          ? "border-warn/30 bg-surface-raised"
+          ? "ring-warn/25 bg-surface-raised card-glow-warn"
           : result.triggered
-            ? "border-accent/30 card-glow bg-surface-raised"
+            ? "ring-accent/25 card-glow bg-surface-raised"
             : closeWatch
-              ? "border-amber-400/25 bg-surface-raised hover:shadow-xl hover:shadow-amber-400/5"
-              : "border-surface-border bg-surface-raised hover:border-surface-border/80 hover:shadow-xl hover:shadow-black/20"
-      }`}
+              ? "ring-warn/15 bg-surface-raised hover:shadow-xl hover:shadow-warn/5"
+              : "ring-surface-border/50 bg-surface-raised hover:ring-surface-border-bright/60 hover:shadow-xl hover:shadow-black/30"
+      } card-elevated`}
     >
       {/* Top edge highlight */}
       {result.triggered && !isStale && (
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/60 to-transparent" />
+        <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-accent/50 to-transparent" />
       )}
       {isStale && (
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-warn/60 to-transparent" />
+        <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-warn/50 to-transparent" />
       )}
       {closeWatch && !result.triggered && !isStale && (
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/50 to-transparent" />
+        <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-warn/40 to-transparent" />
       )}
 
-      {/* Left amber strip for close-watch stocks */}
+      {/* Left strip for close-watch */}
       {closeWatch && (
         <div
           ref={borderRef}
-          className="absolute inset-y-0 left-0 w-[3px] rounded-l-2xl bg-gradient-to-b from-amber-400/70 via-amber-400/40 to-amber-400/10"
+          className="absolute inset-y-0 left-0 w-[2px] rounded-l-2xl bg-gradient-to-b from-warn/60 via-warn/30 to-warn/5"
         />
       )}
 
       {/* Action buttons */}
-      <div className="absolute right-3 top-3 flex items-center gap-1">
+      <div className="absolute right-3 top-3 flex items-center gap-0.5">
         <button
           ref={starRef}
           onClick={() => onToggleCloseWatch(result.symbol)}
           className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-200 ${
             closeWatch
-              ? "text-amber-400 opacity-100 hover:bg-amber-400/15"
-              : "text-text-muted opacity-0 hover:bg-surface-overlay hover:text-amber-400 group-hover:opacity-100"
+              ? "text-warn opacity-100 hover:bg-warn/10"
+              : "text-text-muted opacity-0 hover:bg-surface-overlay hover:text-warn group-hover:opacity-100"
           }`}
           aria-label={`${closeWatch ? "Remove from" : "Add to"} close watch`}
           title={closeWatch ? "Remove from Close Watch" : "Add to Close Watch"}
@@ -134,21 +130,21 @@ export function StockCard({
       <div className="flex items-start justify-between pr-16">
         <div className="flex items-center gap-3">
           <div
-            className={`flex h-10 w-10 items-center justify-center rounded-xl text-xs font-bold transition-colors ${
+            className={`flex h-10 w-10 items-center justify-center rounded-xl font-display text-xs font-bold transition-colors ring-1 ${
               result.triggered
-                ? "bg-accent/15 text-accent"
+                ? "bg-accent/10 text-accent ring-accent/15"
                 : closeWatch
-                  ? "bg-amber-400/10 text-amber-400"
-                  : "bg-surface-overlay text-text-secondary"
+                  ? "bg-warn/8 text-warn ring-warn/15"
+                  : "bg-surface-overlay text-text-secondary ring-surface-border/50"
             }`}
           >
             {result.symbol.slice(0, 2)}
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold tracking-tight">{result.symbol}</h3>
+              <h3 className="font-display font-bold tracking-tight">{result.symbol}</h3>
               {closeWatch && !result.triggered && (
-                <span className="inline-flex items-center gap-0.5 rounded-md bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-400/80">
+                <span className="inline-flex items-center gap-0.5 rounded-md bg-warn/8 ring-1 ring-warn/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warn/80">
                   <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1">
                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                   </svg>
@@ -156,18 +152,18 @@ export function StockCard({
                 </span>
               )}
               {result.triggered && (
-                <span className="inline-flex items-center gap-1 rounded-md bg-accent/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent">
+                <span className="inline-flex items-center gap-1 rounded-md bg-accent/10 ring-1 ring-accent/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-accent">
                   <span className="h-1 w-1 rounded-full bg-accent animate-pulse" />
                   Breakout
                 </span>
               )}
               {isLive && (
-                <span className="inline-flex items-center gap-1 rounded-md bg-accent/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent/70">
+                <span className="inline-flex items-center gap-1 rounded-md bg-accent/8 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-accent/60">
                   Live
                 </span>
               )}
               {isStale && (
-                <span className="inline-flex items-center gap-1 rounded-md bg-warn/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-warn">
+                <span className="inline-flex items-center gap-1 rounded-md bg-warn/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warn">
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                     <path d="M12 9v4M12 17h.01" />
                   </svg>
@@ -180,11 +176,11 @@ export function StockCard({
         </div>
         {hasData && (
           <div className="text-right">
-            <p className="text-lg font-bold tabular-nums tracking-tight">
+            <p className="font-mono text-lg font-bold tabular-nums tracking-tight">
               &#x20B9;{result.todayClose.toLocaleString("en-IN")}
             </p>
             <p
-              className={`text-xs font-semibold tabular-nums ${
+              className={`font-mono text-xs font-semibold tabular-nums ${
                 result.todayChange >= 0 ? "text-accent" : "text-danger"
               }`}
             >
@@ -217,7 +213,7 @@ export function StockCard({
           />
         </div>
       ) : (
-        <div className="mt-5 flex items-center justify-center rounded-xl border border-dashed border-surface-border bg-surface-overlay/30 px-3 py-6">
+        <div className="mt-5 flex items-center justify-center rounded-xl border border-dashed border-surface-border bg-surface-overlay/20 px-3 py-6">
           <div className="text-center">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto mb-2 text-text-muted">
               <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
@@ -229,7 +225,7 @@ export function StockCard({
       )}
 
       {hasData && isStale && (
-        <div className="mt-4 rounded-lg border border-warn/20 bg-warn/[0.06] px-3 py-2">
+        <div className="mt-4 rounded-xl border border-warn/15 bg-warn/[0.04] px-3 py-2">
           <p className="text-[11px] font-medium text-warn">
             Live data unavailable — showing last historical candle. Breakout detection paused for this stock.
           </p>
@@ -243,11 +239,12 @@ export function StockCard({
         </div>
       )}
 
+      {/* Background glow effects */}
       {result.triggered && (
-        <div className="pointer-events-none absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-accent/[0.04] blur-2xl animate-glow-pulse" />
+        <div className="pointer-events-none absolute -bottom-10 -right-10 h-36 w-36 rounded-full bg-accent/[0.03] blur-3xl animate-glow-pulse" />
       )}
       {closeWatch && !result.triggered && (
-        <div className="pointer-events-none absolute -bottom-8 -right-8 h-24 w-24 rounded-full bg-amber-400/[0.03] blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-8 -right-8 h-24 w-24 rounded-full bg-warn/[0.02] blur-2xl" />
       )}
     </div>
   );
@@ -277,36 +274,36 @@ function MetricBar({
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between text-xs">
-        <span className="font-medium text-text-secondary">{label}</span>
+        <span className="font-semibold uppercase tracking-wider text-text-muted text-[10px]">{label}</span>
         <div className="flex items-center gap-2">
-          <span className={`tabular-nums font-semibold ${breaks ? "text-accent" : "text-text-primary"}`}>
+          <span className={`font-mono tabular-nums font-semibold ${breaks ? "text-accent" : "text-text-primary"}`}>
             {todayStr}
           </span>
-          <span className="text-text-muted">vs</span>
-          <span className="tabular-nums text-text-muted">{prevStr}</span>
+          <span className="text-text-muted/50">vs</span>
+          <span className="font-mono tabular-nums text-text-muted">{prevStr}</span>
           {breaks && (
-            <span className="rounded-md bg-accent/15 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-accent">
+            <span className="rounded-md bg-accent/10 ring-1 ring-accent/20 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-accent">
               +{breakPercent.toFixed(1)}%
             </span>
           )}
         </div>
       </div>
-      <div className="relative h-2 overflow-hidden rounded-full bg-surface-overlay">
+      <div className="relative h-1.5 overflow-hidden rounded-full bg-surface-overlay">
         <div
-          className="absolute inset-y-0 left-0 rounded-full bg-surface-border/60 transition-all duration-700"
+          className="absolute inset-y-0 left-0 rounded-full bg-surface-border/40 transition-all duration-700"
           style={{ width: `${prevPct}%` }}
         />
         <div
           className={`absolute inset-y-0 left-0 rounded-full animate-bar-fill ${
             breaks
-              ? "bg-gradient-to-r from-accent/80 to-accent"
-              : "bg-text-muted/40"
+              ? "bg-gradient-to-r from-accent/70 to-accent"
+              : "bg-text-muted/30"
           }`}
           style={{ "--bar-width": `${todayPct}%` } as React.CSSProperties}
         />
         {breaks && (
           <div
-            className="absolute inset-y-0 left-0 rounded-full bg-accent/30 blur-sm animate-bar-fill"
+            className="absolute inset-y-0 left-0 rounded-full bg-accent/25 blur-sm animate-bar-fill"
             style={{ "--bar-width": `${todayPct}%` } as React.CSSProperties}
           />
         )}
@@ -318,8 +315,8 @@ function MetricBar({
 function StatusPill({ active, label }: { active: boolean; label: string }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors ${
-        active ? "bg-accent/10 text-accent" : "bg-surface-overlay text-text-muted"
+      className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors ring-1 ${
+        active ? "bg-accent/8 text-accent ring-accent/15" : "bg-surface-overlay text-text-muted ring-surface-border/50"
       }`}
     >
       {active ? (

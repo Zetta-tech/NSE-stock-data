@@ -29,21 +29,14 @@ export function Dashboard({
   const [autoCheckActive, setAutoCheckActive] = useState(false);
   const [lastAutoCheck, setLastAutoCheck] = useState<string | null>(null);
 
-  // Track which symbols were triggered on the previous auto-check cycle
-  // so we only alert on transitions (not-triggered → triggered).
   const prevTriggeredRef = useRef<Set<string>>(new Set());
   const autoCheckTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoCheckRunningRef = useRef(false);
-
-  // 5-minute cooldown per symbol for browser notifications
   const notifyCooldownRef = useRef<Map<string, number>>(new Map());
 
   const closeWatchCount = watchlist.filter((s) => s.closeWatch).length;
-
-  // Track if user manually toggled auto-watch off during this session
   const userToggledOffRef = useRef(false);
 
-  // Auto-start auto-watch during market hours when starred stocks exist
   useEffect(() => {
     const check = () => {
       const live = isMarketHours();
@@ -53,7 +46,6 @@ export function Dashboard({
           changes: [{ field: "autoCheck", from: false, to: true }],
         });
       } else if (!live && autoCheckActive && !userToggledOffRef.current) {
-        // Only auto-stop if we auto-started (user didn't manually toggle)
         setAutoCheckActive(false);
         reportAction("autocheck-stopped", "Auto-watch paused (market closed)", {
           changes: [{ field: "autoCheck", from: true, to: false }],
@@ -87,13 +79,12 @@ export function Dashboard({
         );
       }
     } catch {
-      // scan failed silently — results stay as-is
+      // scan failed silently
     } finally {
       setScanning(false);
     }
   }, [intraday]);
 
-  // Close Watch auto-check: scan only starred stocks every 30s
   const runCloseWatchCheck = useCallback(async () => {
     if (autoCheckRunningRef.current) return;
     autoCheckRunningRef.current = true;
@@ -106,7 +97,6 @@ export function Dashboard({
       const data = await res.json();
       if (data.error) return;
 
-      // Merge close-watch results into existing results
       setResults((prev) => {
         const updated = [...prev];
         for (const cwResult of data.results as ScanResult[]) {
@@ -124,7 +114,6 @@ export function Dashboard({
       setMarketOpen(data.marketOpen);
       setLastAutoCheck(data.scannedAt);
 
-      // Alert dedup: only notify on transitions from not-triggered → triggered
       const prevSet = prevTriggeredRef.current;
       const currentTriggered = new Set<string>();
       const newlyTriggered: ScanResult[] = [];
@@ -150,12 +139,10 @@ export function Dashboard({
     }
   }, []);
 
-  // Start/stop auto-check based on conditions
   useEffect(() => {
     const shouldRun = autoCheckActive && closeWatchCount > 0;
 
     if (shouldRun) {
-      // Run immediately on activation, then every 30s
       runCloseWatchCheck();
       autoCheckTimerRef.current = setInterval(runCloseWatchCheck, 30_000);
     }
@@ -239,6 +226,7 @@ export function Dashboard({
       />
 
       <main className="mx-auto max-w-7xl px-6 py-8">
+        {/* Stat Cards */}
         {scannedCount > 0 && (
           <div className={`mb-8 grid gap-3 animate-fade-in ${staleCount > 0 ? "grid-cols-4" : "grid-cols-3"}`}>
             <StatCard
@@ -295,15 +283,16 @@ export function Dashboard({
           <Nifty50Table />
         </div>
 
+        {/* Watchlist Header */}
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-bold tracking-tight">Watchlist</h2>
-              <span className="rounded-lg bg-surface-overlay px-2 py-0.5 text-xs font-medium tabular-nums text-text-muted">
+              <h2 className="font-display text-2xl font-bold tracking-tight">Watchlist</h2>
+              <span className="rounded-lg bg-surface-overlay ring-1 ring-surface-border/50 px-2.5 py-0.5 font-mono text-xs font-semibold tabular-nums text-text-muted">
                 {watchlist.length}
               </span>
               {closeWatchCount > 0 && (
-                <span className="flex items-center gap-1 rounded-lg bg-amber-400/10 px-2 py-0.5 text-xs font-medium tabular-nums text-amber-400">
+                <span className="flex items-center gap-1 rounded-lg bg-warn/8 ring-1 ring-warn/20 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-warn">
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1">
                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                   </svg>
@@ -311,7 +300,7 @@ export function Dashboard({
                 </span>
               )}
             </div>
-            <div className="mt-1.5 flex items-center gap-3">
+            <div className="mt-2 flex items-center gap-3">
               {lastScan && (
                 <p className="flex items-center gap-1.5 text-xs text-text-muted">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -322,10 +311,10 @@ export function Dashboard({
                 </p>
               )}
               {autoCheckActive && lastAutoCheck && (
-                <p className="flex items-center gap-1.5 text-xs text-amber-400/70">
+                <p className="flex items-center gap-1.5 text-xs text-warn/70">
                   <span className="relative flex h-1.5 w-1.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
-                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-amber-400" />
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-warn opacity-75" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-warn" />
                   </span>
                   Auto-check {new Date(lastAutoCheck).toLocaleTimeString("en-IN")}
                 </p>
@@ -339,17 +328,17 @@ export function Dashboard({
                 onClick={() => {
                   const next = !autoCheckActive;
                   setAutoCheckActive(next);
-                  userToggledOffRef.current = !next; // remember if user explicitly turned it off
+                  userToggledOffRef.current = !next;
                   reportAction(
                     next ? "autocheck-started" : "autocheck-stopped",
                     next ? "Started auto-check (30s interval)" : "Stopped auto-check",
                     { changes: [{ field: "autoCheck", from: !next, to: next }] }
                   );
                 }}
-                className={`flex items-center gap-1.5 rounded-lg border px-3.5 py-2.5 text-xs font-medium transition-all duration-200 ${
+                className={`flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-semibold transition-all duration-200 ring-1 ${
                   autoCheckActive
-                    ? "border-amber-400/30 bg-amber-400/10 text-amber-400"
-                    : "border-surface-border bg-surface-raised text-text-secondary hover:border-amber-400/30 hover:text-amber-400"
+                    ? "ring-warn/25 bg-warn/8 text-warn"
+                    : "ring-surface-border bg-surface-raised text-text-secondary hover:ring-warn/25 hover:text-warn"
                 }`}
                 title={autoCheckActive ? "Stop auto-checking starred stocks" : "Auto-check starred stocks every 30s"}
               >
@@ -368,7 +357,7 @@ export function Dashboard({
             )}
             <button
               onClick={() => setModalOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-dashed border-surface-border px-3.5 py-2.5 text-xs font-medium text-text-secondary transition-all duration-200 hover:border-accent/30 hover:bg-accent/[0.04] hover:text-accent"
+              className="flex items-center gap-1.5 rounded-xl border border-dashed border-surface-border px-4 py-2.5 text-xs font-semibold text-text-secondary transition-all duration-200 hover:border-accent/25 hover:bg-accent/[0.03] hover:text-accent"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 5v14M5 12h14" />
@@ -398,11 +387,12 @@ export function Dashboard({
           </div>
         )}
 
+        {/* Stock Cards Grid */}
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {watchlist.map((stock, i) => {
             const result = results.find((r) => r.symbol === stock.symbol);
             return (
-              <div key={stock.symbol}>
+              <div key={stock.symbol} style={{ animationDelay: `${i * 50}ms` }} className="animate-fade-in">
                 <StockCard
                   result={
                     result || {
@@ -433,14 +423,14 @@ export function Dashboard({
         <AlertPanel alerts={alerts} />
 
         {results.length > 0 && triggeredCount === 0 && (
-          <div className="mt-10 overflow-hidden rounded-2xl border border-surface-border bg-surface-raised px-6 py-10 text-center">
+          <div className="mt-10 overflow-hidden rounded-2xl border border-surface-border bg-surface-raised card-elevated px-6 py-10 text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-overlay ring-1 ring-surface-border">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-text-muted">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                 <polyline points="22 4 12 14.01 9 11.01" />
               </svg>
             </div>
-            <p className="text-base font-semibold text-text-secondary">
+            <p className="font-display text-base font-semibold text-text-secondary">
               No breakouts detected
             </p>
             <p className="mx-auto mt-2 max-w-sm text-sm text-text-muted">
@@ -475,30 +465,37 @@ function StatCard({
   warning?: boolean;
 }) {
   return (
-    <div className={`flex items-center gap-3 rounded-xl border p-4 transition-colors ${
+    <div className={`relative overflow-hidden flex items-center gap-3.5 rounded-2xl p-4 transition-all duration-300 ring-1 ${
       warning
-        ? "border-warn/20 bg-warn/[0.04]"
+        ? "ring-warn/15 bg-warn/[0.03]"
         : accent
-          ? "border-accent/20 bg-accent/[0.04]"
-          : "border-surface-border bg-surface-raised"
-    }`}>
-      <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg ${
+          ? "ring-accent/15 bg-accent/[0.03]"
+          : "ring-surface-border/50 bg-surface-raised"
+    } card-elevated`}>
+      <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${
         warning
-          ? "bg-warn/15 text-warn"
+          ? "bg-warn/10 text-warn"
           : accent
-            ? "bg-accent/15 text-accent"
+            ? "bg-accent/10 text-accent"
             : "bg-surface-overlay text-text-muted"
       }`}>
         {icon}
       </div>
       <div>
-        <p className={`text-xl font-bold tabular-nums tracking-tight ${
+        <p className={`font-display text-2xl font-bold tabular-nums tracking-tight ${
           warning ? "text-warn" : accent ? "text-accent" : ""
         }`}>
           {value}
         </p>
-        <p className="text-[11px] text-text-muted">{label}</p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-text-muted">{label}</p>
       </div>
+      {/* Subtle gradient backdrop for accent cards */}
+      {accent && (
+        <div className="pointer-events-none absolute -right-4 -top-4 h-20 w-20 rounded-full bg-accent/[0.04] blur-2xl" />
+      )}
+      {warning && (
+        <div className="pointer-events-none absolute -right-4 -top-4 h-20 w-20 rounded-full bg-warn/[0.04] blur-2xl" />
+      )}
     </div>
   );
 }
@@ -512,7 +509,7 @@ function reportAction(action: string, label: string, opts?: { detail?: Record<st
   }).catch(() => {});
 }
 
-const NOTIFY_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+const NOTIFY_COOLDOWN_MS = 5 * 60 * 1000;
 
 function notifyBreakout(
   triggered: ScanResult[],
