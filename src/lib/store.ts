@@ -4,6 +4,19 @@ import { join } from "path";
 import { getRedis } from "./redis";
 import type { Alert, WatchlistStock } from "./types";
 
+/* ── IST date helper ────────────────────────────────────────────────── */
+
+function todayIST(): string {
+  return new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+  ).toISOString().slice(0, 10);
+}
+
+function filterTodayAlerts(alerts: Alert[]): Alert[] {
+  const today = todayIST();
+  return alerts.filter((a) => a.triggeredAt.slice(0, 10) === today);
+}
+
 /* ── Default watchlist (used on first run) ──────────────────────────── */
 
 const DEFAULT_WATCHLIST: WatchlistStock[] = [
@@ -160,12 +173,27 @@ export async function getCloseWatchStocks(): Promise<WatchlistStock[]> {
   return (await loadWatchlist()).filter((s) => s.closeWatch);
 }
 
+/** Returns only today's alerts (for the main dashboard). */
 export async function getAlerts(): Promise<Alert[]> {
-  const alerts = await loadAlerts();
-  return alerts.sort(
+  const all = await loadAlerts();
+  return filterTodayAlerts(all).sort(
     (a, b) =>
       new Date(b.triggeredAt).getTime() - new Date(a.triggeredAt).getTime()
   );
+}
+
+/** Returns ALL stored alerts across all dates (for the dev panel). */
+export async function getAllAlerts(): Promise<Alert[]> {
+  const all = await loadAlerts();
+  return all.sort(
+    (a, b) =>
+      new Date(b.triggeredAt).getTime() - new Date(a.triggeredAt).getTime()
+  );
+}
+
+/** Deletes all stored alerts. */
+export async function clearAlerts(): Promise<void> {
+  await saveAlerts([]);
 }
 
 export async function addAlert(alert: Alert): Promise<void> {
