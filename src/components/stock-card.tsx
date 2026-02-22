@@ -64,14 +64,14 @@ export function StockCard({
   return (
     <div
       ref={cardRef}
-      className={`group relative overflow-hidden rounded-2xl p-5 transition-all duration-300 hover:-translate-y-0.5 ring-1 ${
+      className={`stock-card group relative overflow-hidden rounded-2xl p-5 transition-all duration-300 hover:-translate-y-0.5 ring-1 ${
         isStale
           ? "ring-warn/25 bg-surface-raised card-glow-warn"
           : result.triggered
             ? "ring-accent/25 card-glow bg-surface-raised"
             : closeWatch
               ? "ring-warn/15 bg-surface-raised hover:shadow-xl hover:shadow-warn/5"
-              : "ring-surface-border/50 bg-surface-raised hover:ring-surface-border-bright/60 hover:shadow-xl hover:shadow-black/30"
+              : "ring-surface-border/40 bg-surface-raised hover:ring-surface-border-bright/60 hover:shadow-xl hover:shadow-black/30"
       } card-elevated`}
     >
       {/* Top edge highlight */}
@@ -213,7 +213,7 @@ export function StockCard({
           />
         </div>
       ) : (
-        <div className="mt-5 flex items-center justify-center rounded-xl border border-dashed border-surface-border bg-surface-overlay/20 px-3 py-6">
+        <div className="mt-5 flex items-center justify-center rounded-xl border border-dashed border-surface-border/40 bg-surface-overlay/10 px-3 py-6">
           <div className="text-center">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto mb-2 text-text-muted">
               <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />

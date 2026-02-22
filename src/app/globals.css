@@ -82,6 +82,129 @@ body {
   }
 }
 
+/* ── Dashboard Layout ────────────────────────────────────────────────── */
+
+.dashboard-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-layout {
+    grid-template-columns: 260px 1fr;
+  }
+}
+
+@media (min-width: 1280px) {
+  .dashboard-layout {
+    grid-template-columns: 280px 1fr;
+  }
+}
+
+.dashboard-sidebar {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-sidebar {
+    display: block;
+  }
+}
+
+.alert-sidebar {
+  position: sticky;
+  top: 72px;
+  max-height: calc(100vh - 88px);
+}
+
+.dashboard-main {
+  min-width: 0;
+}
+
+/* ── Stock Card Grid ─────────────────────────────────────────────────── */
+
+.stock-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .stock-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1280px) {
+  .stock-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ── Stock Card ──────────────────────────────────────────────────────── */
+
+.stock-card {
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    rgba(255, 255, 255, 0.012) 1px,
+    transparent 0
+  );
+  background-size: 20px 20px;
+}
+
+/* ── Action Icon Buttons ─────────────────────────────────────────────── */
+
+.action-icon-btn {
+  @apply flex items-center justify-center w-[38px] h-[38px] rounded-xl transition-all duration-200 ring-1;
+}
+
+/* ── NIFTY 50 Rail ───────────────────────────────────────────────────── */
+
+.rail-container {
+  overflow: hidden;
+  border-radius: 1rem;
+  background: var(--surface-raised);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 4px 16px -2px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+  --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+  --tw-ring-color: rgb(31 35 49 / 0.5);
+  box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 16px -2px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.rail-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  scroll-snap-type: x proximity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail-scroll {
+    scroll-behavior: auto;
+  }
+}
+
+.rail-tile {
+  scroll-snap-align: start;
+  min-width: 130px;
+  width: 130px;
+}
+
+.rail-scroll::-webkit-scrollbar {
+  height: 3px;
+}
+
+.rail-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.rail-scroll::-webkit-scrollbar-thumb {
+  background: var(--surface-border);
+  border-radius: 2px;
+}
+
 /* ── Keyframes ───────────────────────────────────────────────────────── */
 
 @keyframes fadeIn {
@@ -186,6 +309,28 @@ body {
 
 .animate-float {
   animation: float 3s ease-in-out infinite;
+}
+
+/* ── Respect reduced motion ──────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-fade-in-fast,
+  .animate-scale-in,
+  .animate-slide-in,
+  .animate-slide-down,
+  .animate-bar-fill,
+  .animate-float {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .animate-glow-pulse,
+  .animate-shimmer,
+  .animate-pulse-ring {
+    animation: none;
+  }
 }
 
 /* ── Glow & Shadow Effects ───────────────────────────────────────────── */
