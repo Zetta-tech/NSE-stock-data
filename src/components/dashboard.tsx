@@ -211,8 +211,6 @@ export function Dashboard({
   }, []);
 
   const triggeredCount = results.filter((r) => r.triggered).length;
-  const staleCount = results.filter((r) => r.dataSource === "stale").length;
-  const scannedCount = results.length;
 
   return (
     <div className="min-h-screen">
@@ -234,53 +232,6 @@ export function Dashboard({
           </div>
 
           <div className="dashboard-main">
-            {scannedCount > 0 && (
-              <div className={`mb-8 grid gap-3.5 animate-fade-in ${staleCount > 0 ? "grid-cols-4" : "grid-cols-3"}`}>
-                <StatCard
-                  label="Scanned"
-                  value={scannedCount.toString()}
-                  icon={
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="11" cy="11" r="8" />
-                      <path d="m21 21-4.35-4.35" />
-                    </svg>
-                  }
-                />
-                <StatCard
-                  label="Breakouts"
-                  value={triggeredCount.toString()}
-                  accent={triggeredCount > 0}
-                  icon={
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                    </svg>
-                  }
-                />
-                <StatCard
-                  label="Alerts"
-                  value={alerts.length.toString()}
-                  icon={
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                    </svg>
-                  }
-                />
-                {staleCount > 0 && (
-                  <StatCard
-                    label="Stale"
-                    value={staleCount.toString()}
-                    warning
-                    icon={
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                      </svg>
-                    }
-                  />
-                )}
-              </div>
-            )}
-
             <TickerPanel
               hasCloseWatchStocks={closeWatchCount > 0}
               scanResults={results}
@@ -449,48 +400,6 @@ export function Dashboard({
         onAdd={addStock}
         currentSymbols={watchlist.map((s) => s.symbol)}
       />
-    </div>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  icon,
-  accent,
-  warning,
-}: {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-  accent?: boolean;
-  warning?: boolean;
-}) {
-  return (
-    <div className={`relative overflow-hidden flex items-center gap-3.5 rounded-xl p-4 transition-all duration-300 ring-1 ${
-      warning
-        ? "ring-warn/15 bg-warn/[0.03]"
-        : accent
-          ? "ring-accent/15 bg-accent/[0.03]"
-          : "ring-surface-border/50 bg-surface-raised"
-    } card-elevated`}>
-      <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg ${
-        warning
-          ? "bg-warn/10 text-warn"
-          : accent
-            ? "bg-accent/10 text-accent"
-            : "bg-surface-overlay text-text-muted"
-      }`}>
-        {icon}
-      </div>
-      <div>
-        <p className={`font-display text-xl font-bold tabular-nums tracking-tight ${
-          warning ? "text-warn" : accent ? "text-accent" : ""
-        }`}>
-          {value}
-        </p>
-        <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-text-muted">{label}</p>
-      </div>
     </div>
   );
 }
