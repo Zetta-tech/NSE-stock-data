@@ -38,12 +38,6 @@ html {
 
 body {
   background: var(--surface);
-  background-image:
-    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.015) 1px, transparent 0),
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0, 230, 138, 0.03) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 40% at 100% 0%, rgba(0, 120, 255, 0.02) 0%, transparent 50%);
-  background-size: 24px 24px, 100% 100%, 100% 100%;
-  background-attachment: fixed;
   color: var(--text-primary);
   font-family: "Satoshi", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -82,6 +76,95 @@ body {
   }
 }
 
+/* ── Progressive Background ──────────────────────────────────────────── */
+
+.bg-scene {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.bg-scene::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    rgba(255, 255, 255, 0.018) 1px,
+    transparent 0
+  );
+  background-size: 28px 28px;
+  mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 0.6) 40%,
+    rgba(0, 0, 0, 0.15) 70%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 0.6) 40%,
+    rgba(0, 0, 0, 0.15) 70%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+
+.bg-scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 50% at 20% -5%, rgba(0, 230, 138, 0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 85% 5%, rgba(0, 120, 255, 0.025) 0%, transparent 50%),
+    radial-gradient(ellipse 40% 30% at 50% 90%, rgba(0, 230, 138, 0.015) 0%, transparent 60%);
+}
+
+.bg-blur-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.4;
+  animation: orbDrift 25s ease-in-out infinite alternate;
+}
+
+.bg-blur-orb--accent {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(0, 230, 138, 0.06) 0%, transparent 70%);
+  top: -10%;
+  left: 10%;
+}
+
+.bg-blur-orb--blue {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(0, 120, 255, 0.04) 0%, transparent 70%);
+  top: 20%;
+  right: -5%;
+  animation-delay: -12s;
+  animation-duration: 30s;
+}
+
+.bg-blur-orb--dim {
+  width: 350px;
+  height: 350px;
+  background: radial-gradient(circle, rgba(0, 230, 138, 0.025) 0%, transparent 70%);
+  bottom: 5%;
+  left: 30%;
+  animation-delay: -8s;
+  animation-duration: 22s;
+}
+
+@keyframes orbDrift {
+  0% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -20px) scale(1.05); }
+  66% { transform: translate(-20px, 15px) scale(0.95); }
+  100% { transform: translate(10px, -10px) scale(1.02); }
+}
+
 /* ── Dashboard Layout ────────────────────────────────────────────────── */
 
 .dashboard-layout {
@@ -113,8 +196,8 @@ body {
 
 .alert-sidebar {
   position: sticky;
-  top: 72px;
-  max-height: calc(100vh - 88px);
+  top: 80px;
+  max-height: calc(100vh - 96px);
 }
 
 .dashboard-main {
@@ -125,7 +208,7 @@ body {
 
 .stock-grid {
   display: grid;
-  gap: 1rem;
+  gap: 1.125rem;
   grid-template-columns: 1fr;
 }
 
@@ -158,7 +241,7 @@ body {
   @apply flex items-center justify-center w-[38px] h-[38px] rounded-xl transition-all duration-200 ring-1;
 }
 
-/* ── NIFTY 50 Rail ───────────────────────────────────────────────────── */
+/* ── NIFTY 50 Marquee Rail ───────────────────────────────────────────── */
 
 .rail-container {
   overflow: hidden;
@@ -174,35 +257,57 @@ body {
   box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 16px -2px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
-.rail-scroll {
-  -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
-  scroll-snap-type: x proximity;
+.rail-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marqueeScroll var(--marquee-duration, 90s) linear infinite;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .rail-scroll {
-    scroll-behavior: auto;
-  }
+.rail-marquee-track:hover {
+  animation-play-state: paused;
 }
 
 .rail-tile {
-  scroll-snap-align: start;
-  min-width: 130px;
-  width: 130px;
+  min-width: 140px;
+  width: 140px;
+  flex-shrink: 0;
 }
 
-.rail-scroll::-webkit-scrollbar {
-  height: 3px;
+.rail-fade-left,
+.rail-fade-right {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 48px;
+  z-index: 2;
+  pointer-events: none;
 }
 
-.rail-scroll::-webkit-scrollbar-track {
-  background: transparent;
+.rail-fade-left {
+  left: 0;
+  background: linear-gradient(to right, var(--surface-raised) 0%, transparent 100%);
 }
 
-.rail-scroll::-webkit-scrollbar-thumb {
-  background: var(--surface-border);
-  border-radius: 2px;
+.rail-fade-right {
+  right: 0;
+  background: linear-gradient(to left, var(--surface-raised) 0%, transparent 100%);
+}
+
+@keyframes marqueeScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail-marquee-track {
+    animation: none;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .rail-fade-left,
+  .rail-fade-right {
+    display: none;
+  }
 }
 
 /* ── Keyframes ───────────────────────────────────────────────────────── */
@@ -331,6 +436,10 @@ body {
   .animate-pulse-ring {
     animation: none;
   }
+
+  .bg-blur-orb {
+    animation: none;
+  }
 }
 
 /* ── Glow & Shadow Effects ───────────────────────────────────────────── */
@@ -378,9 +487,9 @@ body {
 /* ── Glass Effect ────────────────────────────────────────────────────── */
 
 .glass {
-  background: rgba(14, 16, 23, 0.85);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  background: rgba(8, 9, 13, 0.82);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
 }
 
 /* ── Noise texture overlay ───────────────────────────────────────────── */
@@ -393,7 +502,7 @@ body {
   background-size: 256px 256px;
   pointer-events: none;
   z-index: 9999;
-  opacity: 0.4;
+  opacity: 0.35;
 }
 
 /* ── Premium scrollbar ───────────────────────────────────────────────── */

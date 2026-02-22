@@ -54,15 +54,12 @@ export function Header({
 
   return (
     <header className="sticky top-0 z-30 glass">
-      {/* Top accent line */}
-      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-accent/30 to-transparent" />
-      <div className="absolute inset-x-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-surface-border/60 to-transparent" />
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-accent/25 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-surface-border/50 to-transparent" />
 
-      <div className="mx-auto flex max-w-[1440px] items-center justify-between px-4 py-3">
-        {/* Left: Brand + NIFTY Index */}
-        <div className="flex items-center gap-5">
-          {/* Brand */}
-          <div className="flex items-center gap-3">
+      <div className="mx-auto flex max-w-[1440px] items-center justify-between px-5 py-3.5">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3.5">
             <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-accent/[0.08] ring-1 ring-accent/15">
               <svg
                 width="18"
@@ -88,13 +85,11 @@ export function Header({
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="hidden md:block h-8 w-px bg-surface-border/40" />
+          <div className="hidden md:block h-8 w-px bg-surface-border/30" />
 
-          {/* Nifty 50 Index */}
           {nifty && (
             <div
-              className={`hidden md:flex items-center gap-3 rounded-xl px-3.5 py-2 transition-all duration-300 ring-1 ${
+              className={`hidden md:flex items-center gap-3 rounded-xl px-4 py-2.5 transition-all duration-300 ring-1 ${
                 flash === "up"
                   ? "ring-accent/30 bg-accent/[0.06]"
                   : flash === "down"
@@ -112,7 +107,7 @@ export function Header({
               <div className="h-3.5 w-px bg-surface-border/40" />
               <div className={`flex items-center gap-1 ${isUp ? "text-accent" : "text-danger"}`}>
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                  className={`transition-transform ${isUp ? "" : "rotate-180"}`}>
+                  className={`transition-transform duration-300 ${isUp ? "" : "rotate-180"}`}>
                   <polyline points="18 15 12 9 6 15" />
                 </svg>
                 <span className="font-mono text-xs font-semibold tabular-nums">
@@ -129,9 +124,7 @@ export function Header({
           )}
         </div>
 
-        {/* Right: Market Status + Notifications */}
-        <div className="flex items-center gap-2">
-          {/* Market Status */}
+        <div className="flex items-center gap-2.5">
           <div className="flex items-center gap-2 rounded-xl ring-1 ring-surface-border/40 bg-surface-overlay/20 px-3 py-2">
             <span className="relative flex h-2 w-2">
               <span
@@ -140,7 +133,7 @@ export function Header({
                 }`}
               />
               <span
-                className={`relative inline-flex h-2 w-2 rounded-full ${
+                className={`relative inline-flex h-2 w-2 rounded-full transition-colors duration-500 ${
                   marketOpen ? "bg-accent shadow-[0_0_6px_rgba(0,230,138,0.5)]" : "bg-text-muted"
                 }`}
               />

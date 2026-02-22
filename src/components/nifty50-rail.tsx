@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { isMarketHours } from "@/lib/market-hours";
 import type {
   Nifty50TableResponse,
@@ -10,22 +10,15 @@ import type {
 
 const REFRESH_INTERVAL = 3 * 60_000;
 const MARKET_CHECK_INTERVAL = 60_000;
+const TILE_WIDTH = 148;
+const PIXELS_PER_SECOND = 35;
 
 export function Nifty50Rail() {
   const [data, setData] = useState<Nifty50TableResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [marketLive, setMarketLive] = useState(() => isMarketHours());
-  const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fetchingRef = useRef(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const prefersReducedMotion = useRef(false);
-
-  useEffect(() => {
-    prefersReducedMotion.current = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    ).matches;
-  }, []);
 
   const fetchData = useCallback(async () => {
     if (fetchingRef.current) return;
@@ -37,7 +30,6 @@ export function Nifty50Rail() {
       const json: Nifty50TableResponse = await res.json();
       setData(json);
     } catch {
-      // silent
     } finally {
       setLoading(false);
       fetchingRef.current = false;
@@ -64,27 +56,36 @@ export function Nifty50Rail() {
     };
   }, [marketLive, fetchData]);
 
-  const discoveryMap = new Map<string, BreakoutDiscovery>();
-  for (const d of data?.discoveries ?? []) {
-    discoveryMap.set(d.symbol, d);
-  }
+  const discoveryMap = useMemo(() => {
+    const map = new Map<string, BreakoutDiscovery>();
+    for (const d of data?.discoveries ?? []) {
+      map.set(d.symbol, d);
+    }
+    return map;
+  }, [data?.discoveries]);
 
-  const stocks = data?.snapshot.stocks ?? [];
-  // Sort: breakouts first, then by change% desc
-  const sorted = [...stocks].sort((a, b) => {
-    const da = discoveryMap.get(a.symbol);
-    const db = discoveryMap.get(b.symbol);
-    const aBreak = da?.breakout ? 1 : 0;
-    const bBreak = db?.breakout ? 1 : 0;
-    if (aBreak !== bBreak) return bBreak - aBreak;
-    return b.pChange - a.pChange;
-  });
+  const sorted = useMemo(() => {
+    const stocks = data?.snapshot.stocks ?? [];
+    return [...stocks].sort((a, b) => {
+      const da = discoveryMap.get(a.symbol);
+      const db = discoveryMap.get(b.symbol);
+      const aBreak = da?.breakout ? 1 : 0;
+      const bBreak = db?.breakout ? 1 : 0;
+      if (aBreak !== bBreak) return bBreak - aBreak;
+      return b.pChange - a.pChange;
+    });
+  }, [data?.snapshot.stocks, discoveryMap]);
+
+  const marqueeDuration = useMemo(() => {
+    const totalWidth = sorted.length * TILE_WIDTH;
+    return Math.max(totalWidth / PIXELS_PER_SECOND, 30);
+  }, [sorted.length]);
 
   if (!data && loading) {
     return (
       <div className="rail-container">
         <div className="flex items-center gap-3 px-5 py-4">
-          <div className="flex gap-0.5">
+          <div className="flex gap-1">
             <span className="h-1.5 w-1.5 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: "0ms" }} />
             <span className="h-1.5 w-1.5 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: "150ms" }} />
             <span className="h-1.5 w-1.5 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: "300ms" }} />
@@ -99,7 +100,6 @@ export function Nifty50Rail() {
 
   return (
     <div className="rail-container">
-      {/* Rail header */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-surface-border/30">
         <div className="flex items-center gap-2.5">
           <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-500/10 ring-1 ring-blue-500/15">
@@ -144,34 +144,31 @@ export function Nifty50Rail() {
         </div>
       </div>
 
-      {/* Horizontal scrolling rail */}
-      <div
-        ref={scrollRef}
-        className="rail-scroll flex gap-1.5 overflow-x-auto px-3 py-3 scrollbar-thin"
-      >
-        {sorted.map((stock) => {
-          const discovery = discoveryMap.get(stock.symbol);
-          const isBreakout = discovery?.breakout ?? false;
-          const highBreak = discovery?.highBreak ?? false;
-          const volBreak = discovery?.volumeBreak ?? false;
-          const isSelected = selectedSymbol === stock.symbol;
+      <div className="relative">
+        <div className="rail-fade-left" />
+        <div className="rail-fade-right" />
 
-          return (
-            <RailTile
-              key={stock.symbol}
-              stock={stock}
-              isBreakout={isBreakout}
-              highBreak={highBreak}
-              volBreak={volBreak}
-              isSelected={isSelected}
-              onClick={() =>
-                setSelectedSymbol(
-                  isSelected ? null : stock.symbol
-                )
-              }
-            />
-          );
-        })}
+        <div className="overflow-hidden py-3 px-1">
+          <div
+            className="rail-marquee-track gap-2"
+            style={{ "--marquee-duration": `${marqueeDuration}s` } as React.CSSProperties}
+          >
+            {sorted.map((stock) => (
+              <RailTile
+                key={`a-${stock.symbol}`}
+                stock={stock}
+                discovery={discoveryMap.get(stock.symbol)}
+              />
+            ))}
+            {sorted.map((stock) => (
+              <RailTile
+                key={`b-${stock.symbol}`}
+                stock={stock}
+                discovery={discoveryMap.get(stock.symbol)}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -179,33 +176,24 @@ export function Nifty50Rail() {
 
 function RailTile({
   stock,
-  isBreakout,
-  highBreak,
-  volBreak,
-  isSelected,
-  onClick,
+  discovery,
 }: {
   stock: Nifty50StockRow;
-  isBreakout: boolean;
-  highBreak: boolean;
-  volBreak: boolean;
-  isSelected: boolean;
-  onClick: () => void;
+  discovery?: BreakoutDiscovery;
 }) {
   const isUp = stock.pChange >= 0;
+  const isBreakout = discovery?.breakout ?? false;
+  const highBreak = discovery?.highBreak ?? false;
+  const volBreak = discovery?.volumeBreak ?? false;
 
   return (
-    <button
-      onClick={onClick}
-      className={`rail-tile group relative flex-shrink-0 rounded-xl px-3.5 py-2.5 text-left transition-all duration-200 ring-1 ${
-        isSelected
-          ? "ring-accent/40 bg-accent/[0.08] shadow-lg shadow-accent/10 scale-[1.02]"
-          : isBreakout
-            ? "ring-accent/20 bg-accent/[0.04] hover:ring-accent/30 hover:bg-accent/[0.07]"
-            : "ring-surface-border/40 bg-surface-overlay/40 hover:ring-surface-border-bright/60 hover:bg-surface-overlay/70"
+    <div
+      className={`rail-tile group relative rounded-xl px-3.5 py-2.5 text-left transition-all duration-200 ring-1 ${
+        isBreakout
+          ? "ring-accent/20 bg-accent/[0.04] hover:ring-accent/30 hover:bg-accent/[0.07]"
+          : "ring-surface-border/40 bg-surface-overlay/40 hover:ring-surface-border-bright/60 hover:bg-surface-overlay/70"
       }`}
     >
-      {/* Breakout indicator */}
       {isBreakout && (
         <div className="absolute right-1.5 top-1.5">
           <span className="relative flex h-1.5 w-1.5">
@@ -215,14 +203,9 @@ function RailTile({
         </div>
       )}
 
-      {/* Top edge highlight for selected */}
-      {isSelected && (
-        <div className="absolute inset-x-0 top-0 h-[1.5px] rounded-t-xl bg-gradient-to-r from-transparent via-accent/60 to-transparent" />
-      )}
-
       <div className="flex items-center gap-2">
         <span className={`font-display text-[11px] font-bold tracking-tight ${
-          isBreakout ? "text-accent" : isSelected ? "text-text-primary" : "text-text-secondary"
+          isBreakout ? "text-accent" : "text-text-secondary"
         }`}>
           {stock.symbol}
         </span>
@@ -258,6 +241,6 @@ function RailTile({
           {stock.pChange.toFixed(2)}%
         </span>
       </div>
-    </button>
+    </div>
   );
 }
