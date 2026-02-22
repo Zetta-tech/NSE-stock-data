@@ -6,7 +6,7 @@ import { ScanButton } from "./scan-button";
 import { StockCard } from "./stock-card";
 import { AlertPanel } from "./alert-panel";
 import { TickerPanel } from "./ticker-panel";
-import { Nifty50Table } from "./nifty50-table";
+import { Nifty50Rail } from "./nifty50-rail";
 import { AddStockModal } from "./add-stock-modal";
 import { isMarketHours } from "@/lib/market-hours";
 import type { WatchlistStock, ScanResult, Alert } from "@/lib/types";
@@ -225,220 +225,231 @@ export function Dashboard({
         marketOpen={marketOpen}
       />
 
-      <main className="mx-auto max-w-7xl px-6 py-8">
-        {/* Stat Cards */}
-        {scannedCount > 0 && (
-          <div className={`mb-8 grid gap-3 animate-fade-in ${staleCount > 0 ? "grid-cols-4" : "grid-cols-3"}`}>
-            <StatCard
-              label="Stocks Scanned"
-              value={scannedCount.toString()}
-              icon={
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8" />
-                  <path d="m21 21-4.35-4.35" />
-                </svg>
-              }
-            />
-            <StatCard
-              label="Breakouts Found"
-              value={triggeredCount.toString()}
-              accent={triggeredCount > 0}
-              icon={
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                </svg>
-              }
-            />
-            <StatCard
-              label="Total Alerts"
-              value={alerts.length.toString()}
-              icon={
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                </svg>
-              }
-            />
-            {staleCount > 0 && (
-              <StatCard
-                label="Stale Data"
-                value={staleCount.toString()}
-                warning
-                icon={
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                  </svg>
-                }
-              />
-            )}
-          </div>
-        )}
+      {/* NIFTY 50 Horizontal Rail */}
+      <div className="mx-auto max-w-[1440px] px-4 pt-5">
+        <Nifty50Rail />
+      </div>
 
-        <TickerPanel
-          hasCloseWatchStocks={closeWatchCount > 0}
-          scanResults={results}
-        />
-
-        <div className="mb-8">
-          <Nifty50Table />
-        </div>
-
-        {/* Watchlist Header */}
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-3">
-              <h2 className="font-display text-2xl font-bold tracking-tight">Watchlist</h2>
-              <span className="rounded-lg bg-surface-overlay ring-1 ring-surface-border/50 px-2.5 py-0.5 font-mono text-xs font-semibold tabular-nums text-text-muted">
-                {watchlist.length}
-              </span>
-              {closeWatchCount > 0 && (
-                <span className="flex items-center gap-1 rounded-lg bg-warn/8 ring-1 ring-warn/20 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-warn">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1">
-                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                  </svg>
-                  {closeWatchCount}
-                </span>
-              )}
-            </div>
-            <div className="mt-2 flex items-center gap-3">
-              {lastScan && (
-                <p className="flex items-center gap-1.5 text-xs text-text-muted">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="10" />
-                    <polyline points="12 6 12 12 16 14" />
-                  </svg>
-                  Last scan {new Date(lastScan).toLocaleTimeString("en-IN")}
-                </p>
-              )}
-              {autoCheckActive && lastAutoCheck && (
-                <p className="flex items-center gap-1.5 text-xs text-warn/70">
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-warn opacity-75" />
-                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-warn" />
-                  </span>
-                  Auto-check {new Date(lastAutoCheck).toLocaleTimeString("en-IN")}
-                </p>
-              )}
-            </div>
+      {/* Main Layout: Alerts sidebar + Content area */}
+      <main className="mx-auto max-w-[1440px] px-4 py-6">
+        <div className="dashboard-layout gap-5">
+          {/* Left Column: Alerts Sidebar */}
+          <div className="dashboard-sidebar">
+            <AlertPanel alerts={alerts} />
           </div>
 
-          <div className="flex items-center gap-2">
-            {closeWatchCount > 0 && (
-              <button
-                onClick={() => {
-                  const next = !autoCheckActive;
-                  setAutoCheckActive(next);
-                  userToggledOffRef.current = !next;
-                  reportAction(
-                    next ? "autocheck-started" : "autocheck-stopped",
-                    next ? "Started auto-check (30s interval)" : "Stopped auto-check",
-                    { changes: [{ field: "autoCheck", from: !next, to: next }] }
-                  );
-                }}
-                className={`flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-semibold transition-all duration-200 ring-1 ${
-                  autoCheckActive
-                    ? "ring-warn/25 bg-warn/8 text-warn"
-                    : "ring-surface-border bg-surface-raised text-text-secondary hover:ring-warn/25 hover:text-warn"
-                }`}
-                title={autoCheckActive ? "Stop auto-checking starred stocks" : "Auto-check starred stocks every 30s"}
-              >
-                {autoCheckActive ? (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <rect x="6" y="4" width="4" height="16" />
-                    <rect x="14" y="4" width="4" height="16" />
-                  </svg>
-                ) : (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1">
-                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                  </svg>
-                )}
-                {autoCheckActive ? "Watching" : "Auto Watch"}
-              </button>
-            )}
-            <button
-              onClick={() => setModalOpen(true)}
-              className="flex items-center gap-1.5 rounded-xl border border-dashed border-surface-border px-4 py-2.5 text-xs font-semibold text-text-secondary transition-all duration-200 hover:border-accent/25 hover:bg-accent/[0.03] hover:text-accent"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-              Add Stock
-            </button>
-            <ScanButton
-              onScan={runScan}
-              loading={scanning}
-              intraday={intraday}
-              onToggleIntraday={() => {
-                const next = !intraday;
-                setIntraday(next);
-                reportAction(
-                  next ? "intraday-on" : "intraday-off",
-                  next ? "Switched to intraday mode" : "Switched to historical mode",
-                  { changes: [{ field: "intraday", from: !next, to: next }] }
-                );
-              }}
-            />
-          </div>
-        </div>
-
-        {scanning && (
-          <div className="mt-6 overflow-hidden rounded-xl">
-            <div className="h-1 w-full animate-shimmer rounded-full bg-surface-overlay" />
-          </div>
-        )}
-
-        {/* Stock Cards Grid */}
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {watchlist.map((stock, i) => {
-            const result = results.find((r) => r.symbol === stock.symbol);
-            return (
-              <div key={stock.symbol} style={{ animationDelay: `${i * 50}ms` }} className="animate-fade-in">
-                <StockCard
-                  result={
-                    result || {
-                      symbol: stock.symbol,
-                      name: stock.name,
-                      triggered: false,
-                      todayHigh: 0,
-                      todayVolume: 0,
-                      prevMaxHigh: 0,
-                      prevMaxVolume: 0,
-                      highBreakPercent: 0,
-                      volumeBreakPercent: 0,
-                      todayClose: 0,
-                      todayChange: 0,
-                      scannedAt: "",
-                      dataSource: "historical",
-                    }
+          {/* Main Content: Starred Stocks */}
+          <div className="dashboard-main">
+            {/* Stat Cards */}
+            {scannedCount > 0 && (
+              <div className={`mb-6 grid gap-3 animate-fade-in ${staleCount > 0 ? "grid-cols-4" : "grid-cols-3"}`}>
+                <StatCard
+                  label="Scanned"
+                  value={scannedCount.toString()}
+                  icon={
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="11" cy="11" r="8" />
+                      <path d="m21 21-4.35-4.35" />
+                    </svg>
                   }
-                  onRemove={removeStock}
-                  closeWatch={stock.closeWatch}
-                  onToggleCloseWatch={toggleCloseWatch}
+                />
+                <StatCard
+                  label="Breakouts"
+                  value={triggeredCount.toString()}
+                  accent={triggeredCount > 0}
+                  icon={
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                    </svg>
+                  }
+                />
+                <StatCard
+                  label="Alerts"
+                  value={alerts.length.toString()}
+                  icon={
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                    </svg>
+                  }
+                />
+                {staleCount > 0 && (
+                  <StatCard
+                    label="Stale"
+                    value={staleCount.toString()}
+                    warning
+                    icon={
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                      </svg>
+                    }
+                  />
+                )}
+              </div>
+            )}
+
+            <TickerPanel
+              hasCloseWatchStocks={closeWatchCount > 0}
+              scanResults={results}
+            />
+
+            {/* Watchlist Header */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="flex items-center gap-3">
+                  <h2 className="font-display text-xl font-bold tracking-tight">
+                    Starred Stocks
+                  </h2>
+                  <span className="rounded-lg bg-surface-overlay ring-1 ring-surface-border/50 px-2 py-0.5 font-mono text-xs font-semibold tabular-nums text-text-muted">
+                    {watchlist.length}
+                  </span>
+                  {closeWatchCount > 0 && (
+                    <span className="flex items-center gap-1 rounded-lg bg-warn/8 ring-1 ring-warn/20 px-2 py-0.5 text-xs font-semibold tabular-nums text-warn">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                      </svg>
+                      {closeWatchCount}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-1.5 flex items-center gap-3">
+                  {lastScan && (
+                    <p className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                      </svg>
+                      Last scan {new Date(lastScan).toLocaleTimeString("en-IN")}
+                    </p>
+                  )}
+                  {autoCheckActive && lastAutoCheck && (
+                    <p className="flex items-center gap-1.5 text-[10px] text-warn/70">
+                      <span className="relative flex h-1.5 w-1.5">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-warn opacity-75" />
+                        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-warn" />
+                      </span>
+                      Auto-check {new Date(lastAutoCheck).toLocaleTimeString("en-IN")}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {closeWatchCount > 0 && (
+                  <button
+                    onClick={() => {
+                      const next = !autoCheckActive;
+                      setAutoCheckActive(next);
+                      userToggledOffRef.current = !next;
+                      reportAction(
+                        next ? "autocheck-started" : "autocheck-stopped",
+                        next ? "Started auto-check (30s interval)" : "Stopped auto-check",
+                        { changes: [{ field: "autoCheck", from: !next, to: next }] }
+                      );
+                    }}
+                    className={`action-icon-btn ${
+                      autoCheckActive
+                        ? "ring-warn/25 bg-warn/8 text-warn"
+                        : "ring-surface-border bg-surface-raised text-text-secondary hover:ring-warn/25 hover:text-warn"
+                    }`}
+                    title={autoCheckActive ? "Stop auto-checking starred stocks" : "Auto-check starred stocks every 30s"}
+                  >
+                    {autoCheckActive ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <rect x="6" y="4" width="4" height="16" />
+                        <rect x="14" y="4" width="4" height="16" />
+                      </svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                      </svg>
+                    )}
+                  </button>
+                )}
+                <button
+                  onClick={() => setModalOpen(true)}
+                  className="action-icon-btn ring-surface-border/60 bg-surface-raised text-text-secondary hover:ring-accent/25 hover:text-accent"
+                  title="Add stock to watchlist"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </button>
+                <ScanButton
+                  onScan={runScan}
+                  loading={scanning}
+                  intraday={intraday}
+                  onToggleIntraday={() => {
+                    const next = !intraday;
+                    setIntraday(next);
+                    reportAction(
+                      next ? "intraday-on" : "intraday-off",
+                      next ? "Switched to intraday mode" : "Switched to historical mode",
+                      { changes: [{ field: "intraday", from: !next, to: next }] }
+                    );
+                  }}
                 />
               </div>
-            );
-          })}
-        </div>
-
-        <AlertPanel alerts={alerts} />
-
-        {results.length > 0 && triggeredCount === 0 && (
-          <div className="mt-10 overflow-hidden rounded-2xl border border-surface-border bg-surface-raised card-elevated px-6 py-10 text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-overlay ring-1 ring-surface-border">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-text-muted">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                <polyline points="22 4 12 14.01 9 11.01" />
-              </svg>
             </div>
-            <p className="font-display text-base font-semibold text-text-secondary">
-              No breakouts detected
-            </p>
-            <p className="mx-auto mt-2 max-w-sm text-sm text-text-muted">
-              None of your watchlist stocks broke their 5-day high and volume
-              simultaneously. Check back later or add more stocks.
-            </p>
+
+            {scanning && (
+              <div className="mt-4 overflow-hidden rounded-xl">
+                <div className="h-1 w-full animate-shimmer rounded-full bg-surface-overlay" />
+              </div>
+            )}
+
+            {/* Stock Cards Grid */}
+            <div className="stock-grid mt-5">
+              {watchlist.map((stock, i) => {
+                const result = results.find((r) => r.symbol === stock.symbol);
+                return (
+                  <div key={stock.symbol} style={{ animationDelay: `${i * 50}ms` }} className="animate-fade-in">
+                    <StockCard
+                      result={
+                        result || {
+                          symbol: stock.symbol,
+                          name: stock.name,
+                          triggered: false,
+                          todayHigh: 0,
+                          todayVolume: 0,
+                          prevMaxHigh: 0,
+                          prevMaxVolume: 0,
+                          highBreakPercent: 0,
+                          volumeBreakPercent: 0,
+                          todayClose: 0,
+                          todayChange: 0,
+                          scannedAt: "",
+                          dataSource: "historical",
+                        }
+                      }
+                      onRemove={removeStock}
+                      closeWatch={stock.closeWatch}
+                      onToggleCloseWatch={toggleCloseWatch}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+
+            {results.length > 0 && triggeredCount === 0 && (
+              <div className="mt-8 overflow-hidden rounded-2xl border border-surface-border bg-surface-raised card-elevated px-6 py-8 text-center">
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-overlay ring-1 ring-surface-border">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-text-muted">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                    <polyline points="22 4 12 14.01 9 11.01" />
+                  </svg>
+                </div>
+                <p className="font-display text-sm font-semibold text-text-secondary">
+                  No breakouts detected
+                </p>
+                <p className="mx-auto mt-2 max-w-sm text-xs text-text-muted">
+                  None of your watchlist stocks broke their 5-day high and volume
+                  simultaneously. Check back later or add more stocks.
+                </p>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </main>
 
       <AddStockModal
@@ -465,14 +476,14 @@ function StatCard({
   warning?: boolean;
 }) {
   return (
-    <div className={`relative overflow-hidden flex items-center gap-3.5 rounded-2xl p-4 transition-all duration-300 ring-1 ${
+    <div className={`relative overflow-hidden flex items-center gap-3 rounded-xl p-3.5 transition-all duration-300 ring-1 ${
       warning
         ? "ring-warn/15 bg-warn/[0.03]"
         : accent
           ? "ring-accent/15 bg-accent/[0.03]"
           : "ring-surface-border/50 bg-surface-raised"
     } card-elevated`}>
-      <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${
+      <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${
         warning
           ? "bg-warn/10 text-warn"
           : accent
@@ -482,20 +493,13 @@ function StatCard({
         {icon}
       </div>
       <div>
-        <p className={`font-display text-2xl font-bold tabular-nums tracking-tight ${
+        <p className={`font-display text-xl font-bold tabular-nums tracking-tight ${
           warning ? "text-warn" : accent ? "text-accent" : ""
         }`}>
           {value}
         </p>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-text-muted">{label}</p>
+        <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-text-muted">{label}</p>
       </div>
-      {/* Subtle gradient backdrop for accent cards */}
-      {accent && (
-        <div className="pointer-events-none absolute -right-4 -top-4 h-20 w-20 rounded-full bg-accent/[0.04] blur-2xl" />
-      )}
-      {warning && (
-        <div className="pointer-events-none absolute -right-4 -top-4 h-20 w-20 rounded-full bg-warn/[0.04] blur-2xl" />
-      )}
     </div>
   );
 }
