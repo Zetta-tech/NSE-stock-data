@@ -4,18 +4,19 @@ import { makeAlert, makeWatchlistStock } from "@/test-utils/fixtures";
 const mocks = vi.hoisted(() => ({
   getWatchlist: vi.fn(),
   getAlerts: vi.fn(),
+  getNifty50PersistentStats: vi.fn(),
   getScanMeta: vi.fn(),
   getMarketStatus: vi.fn(),
   getHistoricalCacheStats: vi.fn(),
   getNifty50Index: vi.fn(),
   getApiStats: vi.fn(),
-  getNifty50SnapshotStats: vi.fn(),
   getBaselineStats: vi.fn(),
 }));
 
 vi.mock("@/lib/store", () => ({
   getWatchlist: mocks.getWatchlist,
   getAlerts: mocks.getAlerts,
+  getNifty50PersistentStats: mocks.getNifty50PersistentStats,
 }));
 
 vi.mock("@/lib/activity", () => ({
@@ -27,7 +28,6 @@ vi.mock("@/lib/nse-client", () => ({
   getHistoricalCacheStats: mocks.getHistoricalCacheStats,
   getNifty50Index: mocks.getNifty50Index,
   getApiStats: mocks.getApiStats,
-  getNifty50SnapshotStats: mocks.getNifty50SnapshotStats,
 }));
 
 vi.mock("@/lib/baselines", () => ({
@@ -84,7 +84,7 @@ describe("Dev state route contracts", () => {
       recentRate: 0.13,
       last60s: [],
     });
-    mocks.getNifty50SnapshotStats.mockReturnValue({
+    mocks.getNifty50PersistentStats.mockResolvedValue({
       lastRefreshTime: "2025-01-06T10:29:00.000Z",
       snapshotFetchSuccess: true,
       snapshotFetchCount: 7,

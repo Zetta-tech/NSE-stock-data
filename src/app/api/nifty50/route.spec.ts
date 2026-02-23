@@ -8,7 +8,8 @@ import {
 
 const mocks = vi.hoisted(() => ({
   getNifty50Snapshot: vi.fn(),
-  getNifty50SnapshotStats: vi.fn(),
+  getNifty50PersistentStats: vi.fn(),
+  updateNifty50PersistentStats: vi.fn(),
   getMarketStatus: vi.fn(),
   getBaselines: vi.fn(),
   getBaselineStats: vi.fn(),
@@ -21,7 +22,6 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/nse-client", () => ({
   getNifty50Snapshot: mocks.getNifty50Snapshot,
-  getNifty50SnapshotStats: mocks.getNifty50SnapshotStats,
   getMarketStatus: mocks.getMarketStatus,
 }));
 
@@ -35,6 +35,8 @@ vi.mock("@/lib/store", () => ({
   getCloseWatchStocks: mocks.getCloseWatchStocks,
   addAlert: mocks.addAlert,
   getAlerts: mocks.getAlerts,
+  getNifty50PersistentStats: mocks.getNifty50PersistentStats,
+  updateNifty50PersistentStats: mocks.updateNifty50PersistentStats,
 }));
 
 vi.mock("@/lib/activity", () => ({
@@ -56,12 +58,13 @@ describe("Nifty50 route contracts", () => {
     vi.setSystemTime(new Date("2025-01-06T10:30:00.000Z"));
     vi.clearAllMocks();
 
-    mocks.getNifty50SnapshotStats.mockReturnValue({
+    mocks.getNifty50PersistentStats.mockResolvedValue({
       lastRefreshTime: "2025-01-06T10:29:00.000Z",
       snapshotFetchSuccess: true,
       snapshotFetchCount: 1,
       snapshotFailCount: 0,
     });
+    mocks.updateNifty50PersistentStats.mockResolvedValue(undefined);
     mocks.getBaselineStats.mockReturnValue({
       available: 2,
       missing: 48,
