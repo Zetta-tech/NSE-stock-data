@@ -187,6 +187,8 @@ export interface Nifty50TableResponse {
   watchlistSymbols: string[];
   closeWatchSymbols: string[];
   marketOpen: boolean;
+  /** Number of new alerts created in this fetch cycle */
+  newAlertCount?: number;
 }
 
 /** Dev panel tracking for Nifty50 system */
@@ -200,4 +202,25 @@ export interface Nifty50DevStats {
   baselineDate: string;
   alertCount: number;
   discoveryCount: number;
+}
+
+/** A breakout discovery enriched with live price data for the dashboard feed */
+export interface DiscoveryStock {
+  symbol: string;
+  name: string;
+  lastPrice: number;
+  change: number;
+  pChange: number;
+  dayHigh: number;
+  totalTradedVolume: number;
+  highBreakPercent: number;
+  volumeBreakPercent: number;
+}
+
+/** Persistent Nifty 50 stats stored in Redis/filesystem for cross-Lambda visibility */
+export interface Nifty50PersistentStats {
+  lastRefreshTime: string | null;
+  snapshotFetchSuccess: boolean;
+  snapshotFetchCount: number;
+  snapshotFailCount: number;
 }

@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { getWatchlist, getAlerts } from "@/lib/store";
+import { getWatchlist, getAlerts, getNifty50PersistentStats } from "@/lib/store";
 import { getScanMeta } from "@/lib/activity";
-import { getMarketStatus, getHistoricalCacheStats, getNifty50Index, getApiStats, getNifty50SnapshotStats } from "@/lib/nse-client";
+import { getMarketStatus, getHistoricalCacheStats, getNifty50Index, getApiStats } from "@/lib/nse-client";
 import { getBaselineStats } from "@/lib/baselines";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const [watchlist, alerts, scanMeta, marketOpen, cacheStats, nifty] =
+  const [watchlist, alerts, scanMeta, marketOpen, cacheStats, nifty, nifty50Stats] =
     await Promise.all([
       getWatchlist(),
       getAlerts(),
@@ -15,6 +15,7 @@ export async function GET() {
       getMarketStatus().catch(() => false),
       Promise.resolve(getHistoricalCacheStats()),
       getNifty50Index().catch(() => null),
+      getNifty50PersistentStats(),
     ]);
 
   const closeWatchStocks = watchlist.filter((s) => s.closeWatch);
@@ -28,7 +29,7 @@ export async function GET() {
   const apiStats = getApiStats();
   const cacheLayers = {
     historical: cacheStats,
-    snapshot: getNifty50SnapshotStats(),
+    snapshot: nifty50Stats,
     apiThrottle: {
       total: apiStats.total,
       apiCalls: apiStats.apiCalls,
@@ -57,7 +58,7 @@ export async function GET() {
     nifty: nifty ?? null,
     apiStats,
     nifty50Stats: {
-      ...getNifty50SnapshotStats(),
+      ...nifty50Stats,
       baselines: getBaselineStats(),
     },
     serverTime: new Date().toISOString(),

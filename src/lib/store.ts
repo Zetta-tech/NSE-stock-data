@@ -2,7 +2,7 @@ import "server-only";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import { getRedis } from "./redis";
-import type { Alert, ScanResult, WatchlistStock } from "./types";
+import type { Alert, ScanResult, WatchlistStock, Nifty50PersistentStats } from "./types";
 
 /* ── Default watchlist (used on first run) ──────────────────────────── */
 
@@ -17,6 +17,7 @@ const DEFAULT_WATCHLIST: WatchlistStock[] = [
 const WATCHLIST_KEY = "nse:watchlist";
 const ALERTS_KEY = "nse:alerts";
 const SCAN_RESULTS_KEY = "nse:scanResults";
+const NIFTY50_STATS_KEY = "nse:nifty50Stats";
 
 /* ── Filesystem backend (local development) ─────────────────────────── *
  * Falls back to JSON file persistence when Redis is not configured.
@@ -230,4 +231,37 @@ export async function saveScanResults(results: ScanResult[]): Promise<void> {
   }
   memScanResults = results;
   fsPersist();
+}
+
+/* ── Nifty 50 persistent stats (cross-Lambda visibility) ─────────── */
+
+const DEFAULT_NIFTY50_STATS: Nifty50PersistentStats = {
+  lastRefreshTime: null,
+  snapshotFetchSuccess: false,
+  snapshotFetchCount: 0,
+  snapshotFailCount: 0,
+};
+
+let memNifty50Stats: Nifty50PersistentStats | null = null;
+
+export async function getNifty50PersistentStats(): Promise<Nifty50PersistentStats> {
+  const r = getRedis();
+  if (r) {
+    const data = await r.get<Nifty50PersistentStats>(NIFTY50_STATS_KEY);
+    return data ?? { ...DEFAULT_NIFTY50_STATS };
+  }
+  return memNifty50Stats ?? { ...DEFAULT_NIFTY50_STATS };
+}
+
+export async function updateNifty50PersistentStats(
+  update: Partial<Nifty50PersistentStats>
+): Promise<void> {
+  const current = await getNifty50PersistentStats();
+  const merged = { ...current, ...update };
+  const r = getRedis();
+  if (r) {
+    await r.set(NIFTY50_STATS_KEY, merged);
+    return;
+  }
+  memNifty50Stats = merged;
 }

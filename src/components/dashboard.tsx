@@ -7,9 +7,10 @@ import { StockCard } from "./stock-card";
 import { AlertPanel } from "./alert-panel";
 import { TickerPanel } from "./ticker-panel";
 import { Nifty50Rail } from "./nifty50-rail";
+import { DiscoveryFeed } from "./discovery-feed";
 import { AddStockModal } from "./add-stock-modal";
 import { isMarketHours } from "@/lib/market-hours";
-import type { WatchlistStock, ScanResult, Alert } from "@/lib/types";
+import type { WatchlistStock, ScanResult, Alert, DiscoveryStock } from "@/lib/types";
 
 export function Dashboard({
   initialWatchlist,
@@ -30,11 +31,13 @@ export function Dashboard({
   const [lastScan, setLastScan] = useState<string | null>(null);
   const [autoCheckActive, setAutoCheckActive] = useState(false);
   const [lastAutoCheck, setLastAutoCheck] = useState<string | null>(null);
+  const [discoveries, setDiscoveries] = useState<DiscoveryStock[]>([]);
 
   const prevTriggeredRef = useRef<Set<string>>(new Set());
   const autoCheckTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoCheckRunningRef = useRef(false);
   const notifyCooldownRef = useRef<Map<string, number>>(new Map());
+  const discoveryCooldownRef = useRef<Map<string, number>>(new Map());
 
   const closeWatchCount = watchlist.filter((s) => s.closeWatch).length;
   const userToggledOffRef = useRef(false);
@@ -58,6 +61,31 @@ export function Dashboard({
     const interval = setInterval(check, 60_000);
     return () => clearInterval(interval);
   }, [closeWatchCount]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const refreshAlerts = useCallback(async () => {
+    try {
+      const res = await fetch("/api/stocks");
+      const data = await res.json();
+      if (data.alerts) setAlerts(data.alerts);
+    } catch { /* silent */ }
+  }, []);
+
+  const handleDiscoveries = useCallback(
+    (stocks: DiscoveryStock[], newAlertCount: number) => {
+      setDiscoveries(stocks);
+
+      // Refresh alerts from the store if the nifty50 endpoint created new ones
+      if (newAlertCount > 0) {
+        refreshAlerts();
+      }
+
+      // Fire browser notifications for new breakout discoveries
+      if (stocks.length > 0) {
+        notifyDiscoveries(stocks, discoveryCooldownRef.current);
+      }
+    },
+    [refreshAlerts],
+  );
 
   const runScan = useCallback(async () => {
     setScanning(true);
@@ -175,6 +203,15 @@ export function Dashboard({
     if (data.watchlist) setWatchlist(data.watchlist);
   }, []);
 
+  const addDiscoveryToWatchlist = useCallback(
+    async (symbol: string, name: string) => {
+      await addStock(symbol, name);
+      // Remove from discoveries since it's now in the watchlist
+      setDiscoveries((prev) => prev.filter((d) => d.symbol !== symbol));
+    },
+    [addStock],
+  );
+
   const removeStock = useCallback(async (symbol: string) => {
     const res = await fetch("/api/stocks", {
       method: "POST",
@@ -224,8 +261,18 @@ export function Dashboard({
       />
 
       <div className="mx-auto max-w-[1440px] px-5 pt-6">
-        <Nifty50Rail />
+        <Nifty50Rail onDiscoveries={handleDiscoveries} />
       </div>
+
+      {/* Discovery Feed — surfaces Nifty 50 breakouts not in watchlist */}
+      {discoveries.length > 0 && (
+        <div className="mx-auto max-w-[1440px] px-5 pt-4">
+          <DiscoveryFeed
+            discoveries={discoveries}
+            onAddToWatchlist={addDiscoveryToWatchlist}
+          />
+        </div>
+      )}
 
       <main className="mx-auto max-w-[1440px] px-5 py-8">
         <div className="dashboard-layout gap-6">
@@ -437,6 +484,32 @@ function notifyBreakout(
     cooldownMap.set(stock.symbol, now);
     new Notification(`Breakout: ${stock.symbol}`, {
       body: `High \u20B9${stock.todayHigh.toLocaleString("en-IN")} (prev max \u20B9${stock.prevMaxHigh.toLocaleString("en-IN")})\nVol ${formatVol(stock.todayVolume)} (prev max ${formatVol(stock.prevMaxVolume)})`,
+      icon: "/favicon.ico",
+    });
+  }
+}
+
+function notifyDiscoveries(
+  stocks: DiscoveryStock[],
+  cooldownMap: Map<string, number>
+) {
+  if (
+    typeof window === "undefined" ||
+    !("Notification" in window) ||
+    Notification.permission !== "granted"
+  ) {
+    return;
+  }
+
+  const now = Date.now();
+
+  for (const stock of stocks) {
+    const lastNotified = cooldownMap.get(stock.symbol) ?? 0;
+    if (now - lastNotified < NOTIFY_COOLDOWN_MS) continue;
+
+    cooldownMap.set(stock.symbol, now);
+    new Notification(`N50 Discovery: ${stock.symbol}`, {
+      body: `\u20B9${stock.lastPrice.toLocaleString("en-IN")} (${stock.pChange >= 0 ? "+" : ""}${stock.pChange.toFixed(2)}%)\nHigh +${stock.highBreakPercent.toFixed(1)}% \u00B7 Vol +${stock.volumeBreakPercent.toFixed(1)}%`,
       icon: "/favicon.ico",
     });
   }

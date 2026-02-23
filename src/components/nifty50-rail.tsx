@@ -6,6 +6,7 @@ import type {
   Nifty50TableResponse,
   Nifty50StockRow,
   BreakoutDiscovery,
+  DiscoveryStock,
 } from "@/lib/types";
 
 const REFRESH_INTERVAL = 3 * 60_000;
@@ -13,7 +14,11 @@ const MARKET_CHECK_INTERVAL = 60_000;
 const TILE_WIDTH = 148;
 const PIXELS_PER_SECOND = 35;
 
-export function Nifty50Rail() {
+export function Nifty50Rail({
+  onDiscoveries,
+}: {
+  onDiscoveries?: (stocks: DiscoveryStock[], newAlertCount: number) => void;
+}) {
   const [data, setData] = useState<Nifty50TableResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [marketLive, setMarketLive] = useState(() => isMarketHours());
@@ -29,12 +34,34 @@ export function Nifty50Rail() {
       if (!res.ok) return;
       const json: Nifty50TableResponse = await res.json();
       setData(json);
+
+      // Build enriched breakout discoveries for the dashboard
+      if (onDiscoveries) {
+        const stockMap = new Map(json.snapshot.stocks.map((s) => [s.symbol, s]));
+        const breakouts: DiscoveryStock[] = (json.discoveries ?? [])
+          .filter((d) => d.breakout)
+          .map((d) => {
+            const stock = stockMap.get(d.symbol);
+            return {
+              symbol: d.symbol,
+              name: d.name,
+              lastPrice: stock?.lastPrice ?? 0,
+              change: stock?.change ?? 0,
+              pChange: stock?.pChange ?? 0,
+              dayHigh: stock?.dayHigh ?? 0,
+              totalTradedVolume: stock?.totalTradedVolume ?? 0,
+              highBreakPercent: d.highBreakPercent,
+              volumeBreakPercent: d.volumeBreakPercent,
+            };
+          });
+        onDiscoveries(breakouts, json.newAlertCount ?? 0);
+      }
     } catch {
     } finally {
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, []);
+  }, [onDiscoveries]);
 
   useEffect(() => {
     const check = () => setMarketLive(isMarketHours());

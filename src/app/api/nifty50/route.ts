@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { getNifty50Snapshot, getNifty50SnapshotStats, getMarketStatus } from "@/lib/nse-client";
+import { getNifty50Snapshot, getMarketStatus } from "@/lib/nse-client";
 import { getBaselines, getBaselineStats } from "@/lib/baselines";
-import { getWatchlist, getCloseWatchStocks, addAlert, getAlerts } from "@/lib/store";
+import { getWatchlist, getCloseWatchStocks, addAlert, getAlerts, getNifty50PersistentStats, updateNifty50PersistentStats } from "@/lib/store";
 import { addActivity } from "@/lib/activity";
 import { logger } from "@/lib/logger";
 import type {
@@ -186,7 +186,14 @@ export async function GET() {
       );
     }
 
-    const snapshotStats = getNifty50SnapshotStats();
+    // Persist stats for dev dashboard (survives across Lambda boundaries)
+    const prevStats = await getNifty50PersistentStats();
+    await updateNifty50PersistentStats({
+      lastRefreshTime: snapshot.fetchedAt,
+      snapshotFetchSuccess: snapshot.fetchSuccess,
+      snapshotFetchCount: prevStats.snapshotFetchCount + (snapshot.fetchSuccess ? 1 : 0),
+      snapshotFailCount: prevStats.snapshotFailCount + (snapshot.fetchSuccess ? 0 : 1),
+    });
 
     const response: Nifty50TableResponse = {
       snapshot,
@@ -199,6 +206,7 @@ export async function GET() {
       watchlistSymbols,
       closeWatchSymbols,
       marketOpen,
+      newAlertCount: newAlerts.length,
     };
 
     logger.debug(
