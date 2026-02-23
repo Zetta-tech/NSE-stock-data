@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { scanMultipleStocks } from "@/lib/scanner";
-import { getWatchlist, getCloseWatchStocks, addAlert, getAlerts } from "@/lib/store";
+import { getWatchlist, getCloseWatchStocks, addAlert, getAlerts, saveScanResults, getScanResults } from "@/lib/store";
 import { getMarketStatus, getHistoricalCacheStats } from "@/lib/nse-client";
 import { addActivity, setScanMeta } from "@/lib/activity";
 import { logger } from "@/lib/logger";
@@ -107,6 +107,21 @@ export async function POST(request: Request) {
         `${staleCount} stock${staleCount > 1 ? "s" : ""} returned stale data: ${staleSymbols.join(", ")}`,
         { actor: "system", detail: { symbols: staleSymbols, count: staleCount } }
       );
+    }
+
+    // Persist scan results so they survive page refreshes
+    if (closeWatchOnly) {
+      // Merge close-watch results into existing stored results
+      const existing = await getScanResults();
+      const merged = [...existing];
+      for (const r of results) {
+        const idx = merged.findIndex((m) => m.symbol === r.symbol);
+        if (idx >= 0) merged[idx] = r;
+        else merged.push(r);
+      }
+      await saveScanResults(merged);
+    } else {
+      await saveScanResults(results);
     }
 
     const response: ScanResponse = {
