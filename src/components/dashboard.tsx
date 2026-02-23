@@ -14,15 +14,17 @@ import type { WatchlistStock, ScanResult, Alert } from "@/lib/types";
 export function Dashboard({
   initialWatchlist,
   initialAlerts,
+  initialResults = [],
 }: {
   initialWatchlist: WatchlistStock[];
   initialAlerts: Alert[];
+  initialResults?: ScanResult[];
 }) {
   const [watchlist, setWatchlist] = useState(initialWatchlist);
-  const [results, setResults] = useState<ScanResult[]>([]);
+  const [results, setResults] = useState<ScanResult[]>(initialResults);
   const [alerts, setAlerts] = useState<Alert[]>(initialAlerts);
   const [scanning, setScanning] = useState(false);
-  const [intraday, setIntraday] = useState(false);
+  const [intraday, setIntraday] = useState(() => isMarketHours());
   const [modalOpen, setModalOpen] = useState(false);
   const [marketOpen, setMarketOpen] = useState(false);
   const [lastScan, setLastScan] = useState<string | null>(null);

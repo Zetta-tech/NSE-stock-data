@@ -1,7 +1,15 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import type { Alert } from "@/lib/types";
+
+function getTodayIST(): string {
+  return new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+  )
+    .toISOString()
+    .slice(0, 10);
+}
 
 export function NotificationBell({
   alerts,
@@ -14,7 +22,11 @@ export function NotificationBell({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const unread = alerts.filter((a) => !a.read).length;
+  const todayAlerts = useMemo(() => {
+    const today = getTodayIST();
+    return alerts.filter((a) => a.triggeredAt.slice(0, 10) === today);
+  }, [alerts]);
+  const unread = todayAlerts.filter((a) => !a.read).length;
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -71,7 +83,7 @@ export function NotificationBell({
             )}
           </div>
           <div className="max-h-80 overflow-y-auto scrollbar-thin">
-            {alerts.length === 0 ? (
+            {todayAlerts.length === 0 ? (
               <div className="px-4 py-10 text-center">
                 <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-surface-overlay ring-1 ring-surface-border/50">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-text-muted">
@@ -79,11 +91,11 @@ export function NotificationBell({
                     <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                   </svg>
                 </div>
-                <p className="text-sm font-medium text-text-secondary">No alerts yet</p>
+                <p className="text-sm font-medium text-text-secondary">No alerts today</p>
                 <p className="mt-1 text-xs text-text-muted">Run a scan to check for breakouts</p>
               </div>
             ) : (
-              alerts.slice(0, 20).map((alert, i) => (
+              todayAlerts.slice(0, 20).map((alert, i) => (
                 <button
                   key={alert.id}
                   onClick={() => onMarkRead(alert.id)}

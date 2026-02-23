@@ -2,7 +2,7 @@ import "server-only";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import { getRedis } from "./redis";
-import type { Alert, WatchlistStock } from "./types";
+import type { Alert, ScanResult, WatchlistStock } from "./types";
 
 /* ── Default watchlist (used on first run) ──────────────────────────── */
 
@@ -16,6 +16,7 @@ const DEFAULT_WATCHLIST: WatchlistStock[] = [
 
 const WATCHLIST_KEY = "nse:watchlist";
 const ALERTS_KEY = "nse:alerts";
+const SCAN_RESULTS_KEY = "nse:scanResults";
 
 /* ── Filesystem backend (local development) ─────────────────────────── *
  * Falls back to JSON file persistence when Redis is not configured.
@@ -28,10 +29,12 @@ const STATE_FILE = join(DATA_DIR, "state.json");
 interface PersistedState {
   watchlist: WatchlistStock[];
   alerts: Alert[];
+  scanResults?: ScanResult[];
 }
 
 let memWatchlist: WatchlistStock[] | null = null;
 let memAlerts: Alert[] | null = null;
+let memScanResults: ScanResult[] | null = null;
 
 function fsLoad(): void {
   if (memWatchlist !== null) return;
@@ -52,6 +55,7 @@ function fsLoad(): void {
           }))
         : [...DEFAULT_WATCHLIST];
       memAlerts = Array.isArray(state.alerts) ? state.alerts : [];
+      memScanResults = Array.isArray(state.scanResults) ? state.scanResults : [];
       return;
     } catch {
       // corrupted file — fall through to defaults
@@ -60,6 +64,7 @@ function fsLoad(): void {
 
   memWatchlist = [...DEFAULT_WATCHLIST];
   memAlerts = [];
+  memScanResults = [];
 }
 
 function fsPersist(): void {
@@ -70,6 +75,7 @@ function fsPersist(): void {
     const state: PersistedState = {
       watchlist: memWatchlist ?? [],
       alerts: memAlerts ?? [],
+      scanResults: memScanResults ?? [],
     };
     writeFileSync(STATE_FILE, JSON.stringify(state, null, 2), "utf-8");
   } catch {
@@ -203,4 +209,25 @@ export async function markAllAlertsRead(): Promise<void> {
 
 export async function getUnreadAlertCount(): Promise<number> {
   return (await loadAlerts()).filter((a) => !a.read).length;
+}
+
+/* ── Scan Results persistence ─────────────────────────────────────── */
+
+export async function getScanResults(): Promise<ScanResult[]> {
+  const r = getRedis();
+  if (r) {
+    return (await r.get<ScanResult[]>(SCAN_RESULTS_KEY)) ?? [];
+  }
+  fsLoad();
+  return [...(memScanResults ?? [])];
+}
+
+export async function saveScanResults(results: ScanResult[]): Promise<void> {
+  const r = getRedis();
+  if (r) {
+    await r.set(SCAN_RESULTS_KEY, results);
+    return;
+  }
+  memScanResults = results;
+  fsPersist();
 }

@@ -54,6 +54,28 @@ function getNse(): NseIndia {
   return nseInstance;
 }
 
+/** Reset the singleton so the next getNse() creates a fresh instance
+ *  with new cookies / session.  Call this when API calls fail. */
+function resetNse(): void {
+  nseInstance = null;
+}
+
+/** Run an async operation against the NSE client.  If the first attempt
+ *  fails, reset the singleton (stale cookies) and retry once. */
+async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
+  try {
+    return await fn();
+  } catch (firstError) {
+    logger.warn(
+      `${label}: first attempt failed, resetting NSE session and retrying`,
+      { error: firstError instanceof Error ? firstError.message : String(firstError) },
+      "NSE Data Service",
+    );
+    resetNse();
+    return await fn();
+  }
+}
+
 /* ── Historical-data cache ────────────────────────────────────────────
  * Key:   stock symbol (e.g. "INFY")
  * Value: { date: "YYYY-MM-DD", days: requested lookback, data: DayData[] }
@@ -130,12 +152,14 @@ export async function getHistoricalData(
     `Calling the NSE India API to download the last ${days} trading days of price & volume data for ${symbol}. This data is needed to check whether today's numbers are unusually high compared to recent history.`,
   );
 
-  const nse = getNse();
   const end = new Date();
   const start = new Date();
   start.setDate(start.getDate() - days * 2);
 
-  const raw = await nse.getEquityHistoricalData(symbol, { start, end });
+  const raw = await withRetry(
+    () => getNse().getEquityHistoricalData(symbol, { start, end }),
+    `getHistoricalData(${symbol})`,
+  );
   logger.debug(
     `API response received: ${symbol} — ${raw.length} record(s)`,
     { rawCount: raw.length },
@@ -165,27 +189,31 @@ export async function getCurrentDayData(
   symbol: string
 ): Promise<{ high: number; volume: number; close: number; change: number } | null> {
   recordCall("api", "getCurrentDayData", symbol);
-  const nse = getNse();
 
   try {
-    const [details, tradeInfo] = await Promise.all([
-      nse.getEquityDetails(symbol),
-      nse.getEquityTradeInfo(symbol),
-    ]);
+    const result = await withRetry(async () => {
+      const nse = getNse();
+      const [details, tradeInfo] = await Promise.all([
+        nse.getEquityDetails(symbol),
+        nse.getEquityTradeInfo(symbol),
+      ]);
 
-    const high = details.priceInfo.intraDayHighLow.max;
-    const close = details.priceInfo.lastPrice || details.priceInfo.close;
-    const change = details.priceInfo.pChange;
-    const volume =
-      tradeInfo.marketDeptOrderBook.tradeInfo.totalTradedVolume;
+      const high = details.priceInfo.intraDayHighLow.max;
+      const close = details.priceInfo.lastPrice || details.priceInfo.close;
+      const change = details.priceInfo.pChange;
+      const volume =
+        tradeInfo.marketDeptOrderBook.tradeInfo.totalTradedVolume;
+
+      return { high, volume, close, change };
+    }, `getCurrentDayData(${symbol})`);
 
     logger.debug(
-      `Live data received: ${symbol} — ₹${close} (${change >= 0 ? '+' : ''}${change.toFixed(2)}%)`,
-      { high, volume, close, change },
+      `Live data received: ${symbol} — ₹${result.close} (${result.change >= 0 ? '+' : ''}${result.change.toFixed(2)}%)`,
+      { high: result.high, volume: result.volume, close: result.close, change: result.change },
       'NSE Data Service',
-      `Successfully fetched real-time intraday data for ${symbol}. Current price is ₹${close} with a ${change >= 0 ? 'gain' : 'loss'} of ${Math.abs(change).toFixed(2)}% today. Today's high so far is ₹${high} on volume of ${volume.toLocaleString()} shares.`,
+      `Successfully fetched real-time intraday data for ${symbol}. Current price is ₹${result.close} with a ${result.change >= 0 ? 'gain' : 'loss'} of ${Math.abs(result.change).toFixed(2)}% today. Today's high so far is ₹${result.high} on volume of ${result.volume.toLocaleString()} shares.`,
     );
-    return { high, volume, close, change };
+    return result;
   } catch (error) {
     logger.error(
       `Live data fetch failed: ${symbol}`,
@@ -215,9 +243,11 @@ export async function getMarketStatus(): Promise<boolean> {
   }
 
   recordCall("api", "getMarketStatus");
-  const nse = getNse();
   try {
-    const status = await nse.getMarketStatus();
+    const status = await withRetry(
+      () => getNse().getMarketStatus(),
+      "getMarketStatus",
+    );
     const open = status.marketState.some(
       (s) =>
         s.market === "Capital Market" &&
@@ -258,10 +288,12 @@ export async function getNifty50Index(): Promise<NiftyIndex | null> {
   }
 
   recordCall("api", "getNifty50Index");
-  const nse = getNse();
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const raw: any = await nse.getEquityStockIndices("NIFTY 50");
+    const raw: any = await withRetry(
+      () => getNse().getEquityStockIndices("NIFTY 50"),
+      "getNifty50Index",
+    );
     const meta = raw?.metadata;
     if (!meta) {
       logger.warn("Nifty 50 index response missing metadata", { keys: raw ? Object.keys(raw) : null }, "NSE Data Service");
@@ -306,7 +338,6 @@ export async function searchStocks(
   query: string
 ): Promise<NseSearchResult[]> {
   recordCall("api", "searchStocks");
-  const nse = getNse();
   try {
     logger.api(
       `Searching NSE for "${query}"`,
@@ -316,8 +347,11 @@ export async function searchStocks(
     );
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data: any = await nse.getDataByEndpoint(
-      `/api/search/autocomplete?q=${encodeURIComponent(query)}`
+    const data: any = await withRetry(
+      () => getNse().getDataByEndpoint(
+        `/api/search/autocomplete?q=${encodeURIComponent(query)}`
+      ),
+      `searchStocks(${query})`,
     );
 
     if (!data || !Array.isArray(data.symbols)) {
@@ -407,11 +441,13 @@ export async function getNifty50Snapshot(): Promise<Nifty50Snapshot> {
 
   recordCall("api", "getNifty50Snapshot");
   snapshotFetchCount++;
-  const nse = getNse();
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const raw: any = await nse.getEquityStockIndices("NIFTY 50");
+    const raw: any = await withRetry(
+      () => getNse().getEquityStockIndices("NIFTY 50"),
+      "getNifty50Snapshot",
+    );
     const dataArray = raw?.data;
 
     if (!Array.isArray(dataArray) || dataArray.length === 0) {

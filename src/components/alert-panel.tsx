@@ -2,11 +2,19 @@
 
 import type { Alert } from "@/lib/types";
 
+function getTodayIST(): string {
+  return new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+  )
+    .toISOString()
+    .slice(0, 10);
+}
+
 export function AlertPanel({ alerts }: { alerts: Alert[] }) {
-  const recentAlerts = alerts.filter((a) => {
-    const age = Date.now() - new Date(a.triggeredAt).getTime();
-    return age < 7 * 24 * 60 * 60 * 1000;
-  });
+  const today = getTodayIST();
+  const recentAlerts = alerts.filter(
+    (a) => a.triggeredAt.slice(0, 10) === today
+  );
 
   const unreadCount = recentAlerts.filter((a) => !a.read).length;
 
@@ -59,7 +67,7 @@ export function AlertPanel({ alerts }: { alerts: Alert[] }) {
       {recentAlerts.length > 0 && (
         <div className="border-t border-surface-border/30 px-4 py-2.5">
           <p className="text-[10px] text-text-muted text-center">
-            {recentAlerts.length} alert{recentAlerts.length !== 1 ? "s" : ""} in last 7 days
+            {recentAlerts.length} alert{recentAlerts.length !== 1 ? "s" : ""} today
           </p>
         </div>
       )}
