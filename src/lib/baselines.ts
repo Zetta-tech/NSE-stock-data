@@ -51,7 +51,8 @@ export async function getBaseline(symbol: string): Promise<StockBaseline | null>
     const baseline: StockBaseline = {
       symbol,
       maxHigh5d: Math.max(...recentDays.map((d) => d.high)),
-      maxVolume5d: Math.max(...recentDays.map((d) => d.volume)),
+      maxVolume5d:
+        recentDays.reduce((sum, d) => sum + d.volume, 0) / recentDays.length,
       computedDate: today,
     };
 

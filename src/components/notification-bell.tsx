@@ -125,7 +125,7 @@ export function NotificationBell({
                     </div>
                     <div className="text-text-secondary">
                       Vol: <span className="font-mono text-accent tabular-nums">{formatVolume(alert.todayVolume)}</span>
-                      <span className="text-text-muted"> vs {formatVolume(alert.prevMaxVolume)}</span>
+                      <span className="text-text-muted"> vs 3×avg {formatVolume(alert.prevMaxVolume * 3)}</span>
                     </div>
                   </div>
                   <div className={`mt-1.5 font-mono text-[10px] text-text-muted ${!alert.read ? "ml-[18px]" : ""}`}>
