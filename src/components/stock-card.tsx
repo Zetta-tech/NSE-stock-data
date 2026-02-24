@@ -24,7 +24,7 @@ export function StockCard({
   const isStale = result.dataSource === "stale";
   const isLive = result.dataSource === "live";
   const highBreaks = hasData && !isStale && result.todayHigh > result.prevMaxHigh;
-  const volBreaks = hasData && !isStale && result.todayVolume > result.prevMaxVolume;
+  const volBreaks = hasData && !isStale && result.todayVolume >= result.prevMaxVolume * 3;
 
   useEffect(() => {
     if (prevCloseWatch.current === closeWatch) return;
@@ -64,7 +64,7 @@ export function StockCard({
   return (
     <div
       ref={cardRef}
-      className={`stock-card group relative overflow-hidden rounded-2xl p-5 transition-all duration-300 hover:-translate-y-0.5 ring-1 ${
+      className={`stock-card group relative flex h-full flex-col overflow-hidden rounded-2xl p-5 transition-all duration-300 hover:-translate-y-0.5 ring-1 ${
         isStale
           ? "ring-warn/25 bg-surface-raised card-glow-warn"
           : result.triggered
@@ -191,53 +191,57 @@ export function StockCard({
         )}
       </div>
 
-      {hasData ? (
-        <div className="mt-5 space-y-4">
-          <MetricBar
-            label="High"
-            todayVal={result.todayHigh}
-            prevVal={result.prevMaxHigh}
-            todayStr={`\u20B9${result.todayHigh.toLocaleString("en-IN")}`}
-            prevStr={`\u20B9${result.prevMaxHigh.toLocaleString("en-IN")}`}
-            breakPercent={result.highBreakPercent}
-            breaks={highBreaks}
-          />
-          <MetricBar
-            label="Volume"
-            todayVal={result.todayVolume}
-            prevVal={result.prevMaxVolume}
-            todayStr={formatVolume(result.todayVolume)}
-            prevStr={formatVolume(result.prevMaxVolume)}
-            breakPercent={result.volumeBreakPercent}
-            breaks={volBreaks}
-          />
-        </div>
-      ) : (
-        <div className="mt-5 flex items-center justify-center rounded-xl border border-dashed border-surface-border/40 bg-surface-overlay/10 px-3 py-6">
-          <div className="text-center">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto mb-2 text-text-muted">
-              <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-              <polyline points="16 7 22 7 22 13" />
-            </svg>
-            <p className="text-xs text-text-muted">Run a scan to fetch data</p>
+      <div className="mt-5 flex flex-1 flex-col">
+        {hasData ? (
+          <div className="space-y-4">
+            <MetricBar
+              label="High"
+              todayVal={result.todayHigh}
+              prevVal={result.prevMaxHigh}
+              todayStr={`\u20B9${result.todayHigh.toLocaleString("en-IN")}`}
+              prevStr={`\u20B9${result.prevMaxHigh.toLocaleString("en-IN")}`}
+              breakPercent={result.highBreakPercent}
+              breaks={highBreaks}
+            />
+            <MetricBar
+              label="Volume"
+              todayVal={result.todayVolume}
+              prevVal={result.prevMaxVolume}
+              todayStr={formatVolume(result.todayVolume)}
+              prevStr={formatVolume(result.prevMaxVolume)}
+              breakPercent={result.volumeBreakPercent}
+              breaks={volBreaks}
+            />
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-surface-border/40 bg-surface-overlay/10 px-3 py-6">
+            <div className="text-center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto mb-2 text-text-muted">
+                <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+                <polyline points="16 7 22 7 22 13" />
+              </svg>
+              <p className="text-xs text-text-muted">Run a scan to fetch data</p>
+            </div>
+          </div>
+        )}
 
-      {hasData && isStale && (
-        <div className="mt-4 rounded-xl border border-warn/15 bg-warn/[0.04] px-3 py-2">
-          <p className="text-[11px] font-medium text-warn">
-            Live data unavailable — showing last historical candle. Breakout detection paused for this stock.
-          </p>
-        </div>
-      )}
+        <div className="mt-auto">
+          {hasData && isStale && (
+            <div className="mt-4 rounded-xl border border-warn/15 bg-warn/[0.04] px-3 py-2">
+              <p className="text-[11px] font-medium text-warn">
+                Live data unavailable — showing last historical candle. Breakout detection paused for this stock.
+              </p>
+            </div>
+          )}
 
-      {hasData && !isStale && (
-        <div className="mt-4 flex gap-2">
-          <StatusPill active={highBreaks} label="High Break" />
-          <StatusPill active={volBreaks} label="Vol Break" />
+          {hasData && !isStale && (
+            <div className="mt-4 flex gap-2">
+              <StatusPill active={highBreaks} label="High Break" />
+              <StatusPill active={volBreaks} label="Vol Break" />
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Background glow effects */}
       {result.triggered && (

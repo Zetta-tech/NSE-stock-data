@@ -177,6 +177,7 @@ body {
   display: grid;
   gap: 1.125rem;
   grid-template-columns: 1fr;
+  align-items: stretch;
 }
 
 .stock-grid > * {
@@ -190,9 +191,15 @@ body {
   }
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 1024px) {
   .stock-grid {
     grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1280px) {
+  .stock-grid {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
