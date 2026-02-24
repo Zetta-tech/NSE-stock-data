@@ -487,7 +487,7 @@ function notifyBreakout(
 
     cooldownMap.set(stock.symbol, now);
     new Notification(`Breakout: ${stock.symbol}`, {
-      body: `High \u20B9${stock.todayHigh.toLocaleString("en-IN")} (prev max \u20B9${stock.prevMaxHigh.toLocaleString("en-IN")})\nVol ${formatVol(stock.todayVolume)} (prev max ${formatVol(stock.prevMaxVolume)})`,
+      body: `High \u20B9${stock.todayHigh.toLocaleString("en-IN")} (prev max \u20B9${stock.prevMaxHigh.toLocaleString("en-IN")})\nVol ${formatVol(stock.todayVolume)} (3\u00D7 avg ${formatVol(stock.prevMaxVolume * 3)})`,
       icon: "/favicon.ico",
     });
   }

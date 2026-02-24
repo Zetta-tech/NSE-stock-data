@@ -99,7 +99,7 @@ describe("Nifty50 route contracts", () => {
             symbol: "TCS",
             name: "TCS",
             dayHigh: 120,
-            totalTradedVolume: 1500,
+            totalTradedVolume: 3100, // >= 3×1000 avg threshold
             lastPrice: 118,
             pChange: 2,
           }),
@@ -107,7 +107,7 @@ describe("Nifty50 route contracts", () => {
             symbol: "ITC",
             name: "ITC",
             dayHigh: 210,
-            totalTradedVolume: 900,
+            totalTradedVolume: 900, // < 3×1000 avg threshold
             lastPrice: 205,
             pChange: 1,
           }),

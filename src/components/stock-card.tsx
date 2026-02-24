@@ -24,7 +24,7 @@ export function StockCard({
   const isStale = result.dataSource === "stale";
   const isLive = result.dataSource === "live";
   const highBreaks = hasData && !isStale && result.todayHigh > result.prevMaxHigh;
-  const volBreaks = hasData && !isStale && result.todayVolume > result.prevMaxVolume;
+  const volBreaks = hasData && !isStale && result.todayVolume >= result.prevMaxVolume * 3;
 
   useEffect(() => {
     if (prevCloseWatch.current === closeWatch) return;

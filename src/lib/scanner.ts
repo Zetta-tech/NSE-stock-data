@@ -10,16 +10,18 @@ function analyzeBreakout(
   previousDays: DayData[]
 ): Omit<ScanResult, "symbol" | "name" | "scannedAt" | "dataSource"> {
   const prevMaxHigh = Math.max(...previousDays.map((d) => d.high));
-  const prevMaxVolume = Math.max(...previousDays.map((d) => d.volume));
+  const prevAvgVolume =
+    previousDays.reduce((sum, d) => sum + d.volume, 0) / previousDays.length;
+  const volumeThreshold = prevAvgVolume * 3;
 
   const highBreak = today.high > prevMaxHigh;
-  const volumeBreak = today.volume > prevMaxVolume;
+  const volumeBreak = today.volume >= volumeThreshold;
 
   const highBreakPercent =
     prevMaxHigh > 0 ? ((today.high - prevMaxHigh) / prevMaxHigh) * 100 : 0;
   const volumeBreakPercent =
-    prevMaxVolume > 0
-      ? ((today.volume - prevMaxVolume) / prevMaxVolume) * 100
+    volumeThreshold > 0
+      ? ((today.volume - volumeThreshold) / volumeThreshold) * 100
       : 0;
 
   return {
@@ -27,7 +29,7 @@ function analyzeBreakout(
     todayHigh: today.high,
     todayVolume: today.volume,
     prevMaxHigh,
-    prevMaxVolume,
+    prevMaxVolume: prevAvgVolume,
     highBreakPercent: Math.round(highBreakPercent * 100) / 100,
     volumeBreakPercent: Math.round(volumeBreakPercent * 100) / 100,
     todayClose: today.close,
@@ -113,7 +115,7 @@ export async function scanStock(
         `BREAKOUT: ${symbol} — High +${analysis.highBreakPercent}%, Vol +${analysis.volumeBreakPercent}%`,
         { symbol, highBreakPercent: analysis.highBreakPercent, volumeBreakPercent: analysis.volumeBreakPercent, dataSource },
         'Stock Scanner',
-        `🚨 ${name} (${symbol}) is showing unusual activity! Today's highest price is ${analysis.highBreakPercent}% above the highest price of the last ${LOOKBACK_DAYS} trading days, AND trading volume is up ${analysis.volumeBreakPercent}% beyond its recent peak. This combination of a new price high with surging volume is a classic "breakout" signal that may indicate the start of a strong upward move.`,
+        `🚨 ${name} (${symbol}) is showing unusual activity! Today's highest price is ${analysis.highBreakPercent}% above the highest price of the last ${LOOKBACK_DAYS} trading days, AND trading volume exceeds 3× the 5-day average (${analysis.volumeBreakPercent}% above the threshold). This combination of a new price high with surging volume is a classic "breakout" signal that may indicate the start of a strong upward move.`,
       );
     }
 

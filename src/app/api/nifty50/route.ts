@@ -86,14 +86,15 @@ export async function GET() {
       }
 
       const highBreak = stock.dayHigh > baseline.maxHigh5d;
-      const volumeBreak = stock.totalTradedVolume > baseline.maxVolume5d;
+      const volumeThreshold = baseline.maxVolume5d * 3;
+      const volumeBreak = stock.totalTradedVolume >= volumeThreshold;
       const breakout = highBreak && volumeBreak;
 
       const highBreakPercent = baseline.maxHigh5d > 0
         ? Math.round(((stock.dayHigh - baseline.maxHigh5d) / baseline.maxHigh5d) * 10000) / 100
         : 0;
-      const volumeBreakPercent = baseline.maxVolume5d > 0
-        ? Math.round(((stock.totalTradedVolume - baseline.maxVolume5d) / baseline.maxVolume5d) * 10000) / 100
+      const volumeBreakPercent = volumeThreshold > 0
+        ? Math.round(((stock.totalTradedVolume - volumeThreshold) / volumeThreshold) * 10000) / 100
         : 0;
 
       discoveries.push({
