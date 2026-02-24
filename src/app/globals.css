@@ -167,39 +167,6 @@ body {
 
 /* ── Dashboard Layout ────────────────────────────────────────────────── */
 
-.dashboard-layout {
-  display: grid;
-  grid-template-columns: 1fr;
-}
-
-@media (min-width: 1024px) {
-  .dashboard-layout {
-    grid-template-columns: 260px 1fr;
-  }
-}
-
-@media (min-width: 1280px) {
-  .dashboard-layout {
-    grid-template-columns: 280px 1fr;
-  }
-}
-
-.dashboard-sidebar {
-  display: none;
-}
-
-@media (min-width: 1024px) {
-  .dashboard-sidebar {
-    display: block;
-  }
-}
-
-.alert-sidebar {
-  position: sticky;
-  top: 80px;
-  max-height: calc(100vh - 96px);
-}
-
 .dashboard-main {
   min-width: 0;
 }
@@ -211,6 +178,11 @@ body {
   gap: 1.125rem;
   grid-template-columns: 1fr;
   align-items: stretch;
+}
+
+.stock-grid > * {
+  min-width: 0;
+  overflow: hidden;
 }
 
 @media (min-width: 640px) {

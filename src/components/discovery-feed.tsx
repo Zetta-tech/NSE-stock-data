@@ -162,32 +162,56 @@ function DiscoveryCard({
   onAdd: (symbol: string, name: string) => void;
 }) {
   const isUp = stock.pChange >= 0;
+  const isRadar = !stock.fullBreakout;
 
   return (
     <div
-      className="group relative flex flex-col rounded-xl px-3.5 py-3 ring-1 ring-accent/12 bg-accent/[0.02] hover:ring-accent/25 hover:bg-accent/[0.04] transition-all duration-200 animate-fade-in"
+      className={`group relative flex flex-col rounded-xl px-3.5 py-3 transition-all duration-200 animate-fade-in ${
+        isRadar
+          ? "ring-1 ring-amber-500/15 border border-dashed border-amber-500/20 bg-amber-500/[0.02] hover:ring-amber-500/30 hover:bg-amber-500/[0.04]"
+          : "ring-1 ring-accent/12 bg-accent/[0.02] hover:ring-accent/25 hover:bg-accent/[0.04]"
+      }`}
       style={{
         minWidth: 172,
         width: 172,
         animationDelay: `${index * 60}ms`,
       }}
     >
-      {/* Breakout pulse dot */}
+      {/* Status indicator */}
       <div className="absolute right-2 top-2">
-        <span className="relative flex h-1.5 w-1.5">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-50" />
-          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent shadow-[0_0_6px_rgba(0,230,138,0.4)]" />
-        </span>
+        {isRadar ? (
+          /* Steady amber dot — "on radar" */
+          <span className="flex h-1.5 w-1.5">
+            <span className="inline-flex h-1.5 w-1.5 rounded-full bg-amber-400/70" />
+          </span>
+        ) : (
+          /* Pulsing green dot — confirmed breakout */
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-50" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent shadow-[0_0_6px_rgba(0,230,138,0.4)]" />
+          </span>
+        )}
       </div>
 
       {/* Symbol & Badge */}
       <div className="flex items-center gap-1.5">
-        <span className="font-display text-[11px] font-bold tracking-tight text-accent">
+        <span className={`font-display text-[11px] font-bold tracking-tight ${isRadar ? "text-amber-400" : "text-accent"}`}>
           {stock.symbol}
         </span>
-        <span className="rounded bg-accent/8 ring-1 ring-accent/15 px-1 py-px text-[7px] font-bold uppercase tracking-wider text-accent/70">
-          N50
-        </span>
+        {stock.fullBreakout ? (
+          <span className="rounded bg-accent/8 ring-1 ring-accent/15 px-1 py-px text-[7px] font-bold uppercase tracking-wider text-accent/70">
+            Breakout
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/8 ring-1 ring-amber-500/15 px-1 py-px text-[7px] font-bold uppercase tracking-wider text-amber-400/70">
+            <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-amber-400/70">
+              <circle cx="12" cy="12" r="10" />
+              <circle cx="12" cy="12" r="6" />
+              <circle cx="12" cy="12" r="2" />
+            </svg>
+            On Radar
+          </span>
+        )}
       </div>
 
       {/* Price & Change */}
@@ -250,7 +274,9 @@ function DiscoveryCard({
         className={`mt-2.5 flex items-center justify-center gap-1 rounded-lg px-2 py-1 text-[9px] font-semibold transition-all duration-200 ring-1 ${
           added
             ? "ring-accent/10 bg-accent/[0.04] text-accent/40 cursor-default"
-            : "ring-accent/15 bg-accent/[0.06] text-accent hover:ring-accent/30 hover:bg-accent/[0.1]"
+            : isRadar
+              ? "ring-amber-500/15 bg-amber-500/[0.06] text-amber-400 hover:ring-amber-500/30 hover:bg-amber-500/[0.1]"
+              : "ring-accent/15 bg-accent/[0.06] text-accent hover:ring-accent/30 hover:bg-accent/[0.1]"
         }`}
       >
         {added ? (

@@ -274,177 +274,168 @@ export function Dashboard({
         </div>
       )}
 
-      <main className="mx-auto max-w-[1440px] px-5 py-8">
-        {/* Sidebar + Live Ticker row */}
-        <div className="dashboard-layout gap-6">
-          <div className="dashboard-sidebar">
-            <AlertPanel alerts={alerts} />
+      <main className="mx-auto max-w-[1440px] px-5 py-8 space-y-6">
+        {/* Alerts — horizontal scrollable strip */}
+        <AlertPanel alerts={alerts} />
+
+        <TickerPanel
+          hasCloseWatchStocks={closeWatchCount > 0}
+          scanResults={results}
+        />
+
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="flex items-center gap-3">
+              <h2 className="font-display text-xl font-bold tracking-tight">
+                Starred Stocks
+              </h2>
+              <span className="rounded-lg bg-surface-overlay ring-1 ring-surface-border/50 px-2.5 py-0.5 font-mono text-xs font-semibold tabular-nums text-text-muted">
+                {watchlist.length}
+              </span>
+              {closeWatchCount > 0 && (
+                <span className="flex items-center gap-1 rounded-lg bg-warn/8 ring-1 ring-warn/20 px-2 py-0.5 text-xs font-semibold tabular-nums text-warn">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                  {closeWatchCount}
+                </span>
+              )}
+            </div>
+            <div className="mt-2 flex items-center gap-3">
+              {lastScan && (
+                <p className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                  Last scan {new Date(lastScan).toLocaleTimeString("en-IN")}
+                </p>
+              )}
+              {autoCheckActive && lastAutoCheck && (
+                <p className="flex items-center gap-1.5 text-[10px] text-warn/70">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-warn opacity-75" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-warn" />
+                  </span>
+                  Auto-check {new Date(lastAutoCheck).toLocaleTimeString("en-IN")}
+                </p>
+              )}
+            </div>
           </div>
 
-          <div className="dashboard-main">
-            <TickerPanel
-              hasCloseWatchStocks={closeWatchCount > 0}
-              scanResults={results}
+          <div className="flex items-center gap-2.5">
+            {closeWatchCount > 0 && (
+              <button
+                onClick={() => {
+                  const next = !autoCheckActive;
+                  setAutoCheckActive(next);
+                  userToggledOffRef.current = !next;
+                  reportAction(
+                    next ? "autocheck-started" : "autocheck-stopped",
+                    next ? "Started auto-check (30s interval)" : "Stopped auto-check",
+                    { changes: [{ field: "autoCheck", from: !next, to: next }] }
+                  );
+                }}
+                className={`action-icon-btn ${
+                  autoCheckActive
+                    ? "ring-warn/25 bg-warn/8 text-warn"
+                    : "ring-surface-border bg-surface-raised text-text-secondary hover:ring-warn/25 hover:text-warn"
+                }`}
+                title={autoCheckActive ? "Stop auto-checking starred stocks" : "Auto-check starred stocks every 30s"}
+              >
+                {autoCheckActive ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <rect x="6" y="4" width="4" height="16" />
+                    <rect x="14" y="4" width="4" height="16" />
+                  </svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                )}
+              </button>
+            )}
+            <button
+              onClick={() => setModalOpen(true)}
+              className="action-icon-btn ring-surface-border/60 bg-surface-raised text-text-secondary hover:ring-accent/25 hover:text-accent"
+              title="Add stock to watchlist"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+            <ScanButton
+              onScan={runScan}
+              loading={scanning}
+              intraday={intraday}
+              onToggleIntraday={() => {
+                const next = !intraday;
+                setIntraday(next);
+                reportAction(
+                  next ? "intraday-on" : "intraday-off",
+                  next ? "Switched to intraday mode" : "Switched to historical mode",
+                  { changes: [{ field: "intraday", from: !next, to: next }] }
+                );
+              }}
             />
           </div>
         </div>
 
-        {/* Starred Stocks — full width, outside sidebar constraint */}
-        <div className="mt-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="flex items-center gap-3">
-                <h2 className="font-display text-xl font-bold tracking-tight">
-                  Starred Stocks
-                </h2>
-                <span className="rounded-lg bg-surface-overlay ring-1 ring-surface-border/50 px-2.5 py-0.5 font-mono text-xs font-semibold tabular-nums text-text-muted">
-                  {watchlist.length}
-                </span>
-                {closeWatchCount > 0 && (
-                  <span className="flex items-center gap-1 rounded-lg bg-warn/8 ring-1 ring-warn/20 px-2 py-0.5 text-xs font-semibold tabular-nums text-warn">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1">
-                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                    </svg>
-                    {closeWatchCount}
-                  </span>
-                )}
-              </div>
-              <div className="mt-2 flex items-center gap-3">
-                {lastScan && (
-                  <p className="flex items-center gap-1.5 text-[10px] text-text-muted">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="12" cy="12" r="10" />
-                      <polyline points="12 6 12 12 16 14" />
-                    </svg>
-                    Last scan {new Date(lastScan).toLocaleTimeString("en-IN")}
-                  </p>
-                )}
-                {autoCheckActive && lastAutoCheck && (
-                  <p className="flex items-center gap-1.5 text-[10px] text-warn/70">
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-warn opacity-75" />
-                      <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-warn" />
-                    </span>
-                    Auto-check {new Date(lastAutoCheck).toLocaleTimeString("en-IN")}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2.5">
-              {closeWatchCount > 0 && (
-                <button
-                  onClick={() => {
-                    const next = !autoCheckActive;
-                    setAutoCheckActive(next);
-                    userToggledOffRef.current = !next;
-                    reportAction(
-                      next ? "autocheck-started" : "autocheck-stopped",
-                      next ? "Started auto-check (30s interval)" : "Stopped auto-check",
-                      { changes: [{ field: "autoCheck", from: !next, to: next }] }
-                    );
-                  }}
-                  className={`action-icon-btn ${
-                    autoCheckActive
-                      ? "ring-warn/25 bg-warn/8 text-warn"
-                      : "ring-surface-border bg-surface-raised text-text-secondary hover:ring-warn/25 hover:text-warn"
-                  }`}
-                  title={autoCheckActive ? "Stop auto-checking starred stocks" : "Auto-check starred stocks every 30s"}
-                >
-                  {autoCheckActive ? (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <rect x="6" y="4" width="4" height="16" />
-                      <rect x="14" y="4" width="4" height="16" />
-                    </svg>
-                  ) : (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1">
-                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                    </svg>
-                  )}
-                </button>
-              )}
-              <button
-                onClick={() => setModalOpen(true)}
-                className="action-icon-btn ring-surface-border/60 bg-surface-raised text-text-secondary hover:ring-accent/25 hover:text-accent"
-                title="Add stock to watchlist"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-              </button>
-              <ScanButton
-                onScan={runScan}
-                loading={scanning}
-                intraday={intraday}
-                onToggleIntraday={() => {
-                  const next = !intraday;
-                  setIntraday(next);
-                  reportAction(
-                    next ? "intraday-on" : "intraday-off",
-                    next ? "Switched to intraday mode" : "Switched to historical mode",
-                    { changes: [{ field: "intraday", from: !next, to: next }] }
-                  );
-                }}
-              />
-            </div>
+        {scanning && (
+          <div className="overflow-hidden rounded-xl">
+            <div className="h-1 w-full animate-shimmer rounded-full bg-surface-overlay" />
           </div>
+        )}
 
-          {scanning && (
-            <div className="mt-5 overflow-hidden rounded-xl">
-              <div className="h-1 w-full animate-shimmer rounded-full bg-surface-overlay" />
-            </div>
-          )}
-
-          <div className="stock-grid mt-6">
-            {watchlist.map((stock, i) => {
-              const result = results.find((r) => r.symbol === stock.symbol);
-              return (
-                <div key={stock.symbol} style={{ animationDelay: `${i * 50}ms` }} className="animate-fade-in h-full">
-                  <StockCard
-                    result={
-                      result || {
-                        symbol: stock.symbol,
-                        name: stock.name,
-                        triggered: false,
-                        todayHigh: 0,
-                        todayVolume: 0,
-                        prevMaxHigh: 0,
-                        prevMaxVolume: 0,
-                        highBreakPercent: 0,
-                        volumeBreakPercent: 0,
-                        todayClose: 0,
-                        todayChange: 0,
-                        scannedAt: "",
-                        dataSource: "historical",
-                      }
+        <div className="stock-grid">
+          {watchlist.map((stock, i) => {
+            const result = results.find((r) => r.symbol === stock.symbol);
+            return (
+              <div key={stock.symbol} style={{ animationDelay: `${i * 50}ms` }} className="animate-fade-in h-full">
+                <StockCard
+                  result={
+                    result || {
+                      symbol: stock.symbol,
+                      name: stock.name,
+                      triggered: false,
+                      todayHigh: 0,
+                      todayVolume: 0,
+                      prevMaxHigh: 0,
+                      prevMaxVolume: 0,
+                      highBreakPercent: 0,
+                      volumeBreakPercent: 0,
+                      todayClose: 0,
+                      todayChange: 0,
+                      scannedAt: "",
+                      dataSource: "historical",
                     }
-                    onRemove={removeStock}
-                    closeWatch={stock.closeWatch}
-                    onToggleCloseWatch={toggleCloseWatch}
-                  />
-                </div>
-              );
-            })}
-          </div>
-
-          {results.length > 0 && triggeredCount === 0 && (
-            <div className="mt-10 overflow-hidden rounded-2xl border border-surface-border bg-surface-raised card-elevated px-6 py-10 text-center">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-overlay ring-1 ring-surface-border">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-text-muted">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                  <polyline points="22 4 12 14.01 9 11.01" />
-                </svg>
+                  }
+                  onRemove={removeStock}
+                  closeWatch={stock.closeWatch}
+                  onToggleCloseWatch={toggleCloseWatch}
+                />
               </div>
-              <p className="font-display text-sm font-semibold text-text-secondary">
-                No breakouts detected
-              </p>
-              <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-text-muted">
-                None of your watchlist stocks broke their 5-day high and volume
-                simultaneously. Check back later or add more stocks.
-              </p>
-            </div>
-          )}
+            );
+          })}
         </div>
+
+        {results.length > 0 && triggeredCount === 0 && (
+          <div className="overflow-hidden rounded-2xl border border-surface-border bg-surface-raised card-elevated px-6 py-10 text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-overlay ring-1 ring-surface-border">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-text-muted">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+            </div>
+            <p className="font-display text-sm font-semibold text-text-secondary">
+              No breakouts detected
+            </p>
+            <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-text-muted">
+              None of your watchlist stocks broke their 5-day high and volume
+              simultaneously. Check back later or add more stocks.
+            </p>
+          </div>
+        )}
       </main>
 
       <AddStockModal

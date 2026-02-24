@@ -127,10 +127,10 @@ export function StockCard({
         </button>
       </div>
 
-      <div className="flex items-start justify-between pr-16">
-        <div className="flex items-center gap-3">
+      <div className="flex items-start justify-between pr-16 min-w-0">
+        <div className="flex items-center gap-3 min-w-0">
           <div
-            className={`flex h-10 w-10 items-center justify-center rounded-xl font-display text-xs font-bold transition-colors ring-1 ${
+            className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl font-display text-xs font-bold transition-colors ring-1 ${
               result.triggered
                 ? "bg-accent/10 text-accent ring-accent/15"
                 : closeWatch
@@ -140,7 +140,7 @@ export function StockCard({
           >
             {result.symbol.slice(0, 2)}
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h3 className="font-display font-bold tracking-tight">{result.symbol}</h3>
               {closeWatch && !result.triggered && (
@@ -171,11 +171,11 @@ export function StockCard({
                 </span>
               )}
             </div>
-            <p className="mt-0.5 text-xs text-text-muted">{result.name}</p>
+            <p className="mt-0.5 text-xs text-text-muted truncate">{result.name}</p>
           </div>
         </div>
         {hasData && (
-          <div className="text-right">
+          <div className="text-right flex-shrink-0">
             <p className="font-mono text-lg font-bold tabular-nums tracking-tight">
               &#x20B9;{result.todayClose.toLocaleString("en-IN")}
             </p>

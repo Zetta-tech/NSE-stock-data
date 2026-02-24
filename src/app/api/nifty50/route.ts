@@ -164,10 +164,13 @@ export async function GET() {
 
     if (breakoutCount > 0 || highBreakOnly > 0 || volBreakOnly > 0) {
       const breakoutSymbols = discoveries.filter((d) => d.breakout).map((d) => d.symbol);
+      const highBreakSymbols = discoveries.filter((d) => d.highBreak && !d.breakout).map((d) => d.symbol);
+      const volBreakSymbols = discoveries.filter((d) => d.volumeBreak && !d.breakout).map((d) => d.symbol);
+      const allSignalSymbols = [...breakoutSymbols, ...highBreakSymbols, ...volBreakSymbols];
       const parts: string[] = [];
       if (breakoutCount > 0) parts.push(`${breakoutCount} breakout(s) — ${breakoutSymbols.join(", ")}`);
-      if (highBreakOnly > 0) parts.push(`${highBreakOnly} high-only break(s)`);
-      if (volBreakOnly > 0) parts.push(`${volBreakOnly} volume-only break(s)`);
+      if (highBreakOnly > 0) parts.push(`${highBreakOnly} high-only break(s) — ${highBreakSymbols.join(", ")}`);
+      if (volBreakOnly > 0) parts.push(`${volBreakOnly} volume-only break(s) — ${volBreakSymbols.join(", ")}`);
 
       await addActivity(
         "system",
@@ -179,7 +182,10 @@ export async function GET() {
             breakoutCount,
             highBreakOnly,
             volBreakOnly,
-            symbols: breakoutSymbols,
+            symbols: allSignalSymbols,
+            breakoutSymbols,
+            highBreakSymbols,
+            volBreakSymbols,
             snapshotStale: snapshot.stale,
             alertsCreated: newAlerts.length,
           },

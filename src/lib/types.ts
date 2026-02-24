@@ -215,6 +215,8 @@ export interface DiscoveryStock {
   totalTradedVolume: number;
   highBreakPercent: number;
   volumeBreakPercent: number;
+  /** true = full breakout (high + volume), false = high-only break */
+  fullBreakout?: boolean;
 }
 
 /** Persistent Nifty 50 stats stored in Redis/filesystem for cross-Lambda visibility */

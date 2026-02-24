@@ -136,6 +136,7 @@ describe("Nifty50 route contracts", () => {
     expect(itc.highBreak).toBe(true);
     expect(itc.volumeBreak).toBe(false);
 
+    // Only full breakouts (high + volume) trigger alerts
     expect(mocks.addAlert).toHaveBeenCalledTimes(1);
     expect(mocks.addAlert).toHaveBeenCalledWith(
       expect.objectContaining({
