@@ -394,7 +394,7 @@ export function Dashboard({
               {watchlist.map((stock, i) => {
                 const result = results.find((r) => r.symbol === stock.symbol);
                 return (
-                  <div key={stock.symbol} style={{ animationDelay: `${i * 50}ms` }} className="animate-fade-in">
+                  <div key={stock.symbol} style={{ animationDelay: `${i * 50}ms` }} className="animate-fade-in h-full">
                     <StockCard
                       result={
                         result || {
