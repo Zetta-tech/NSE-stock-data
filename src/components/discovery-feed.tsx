@@ -185,9 +185,15 @@ function DiscoveryCard({
         <span className="font-display text-[11px] font-bold tracking-tight text-accent">
           {stock.symbol}
         </span>
-        <span className="rounded bg-accent/8 ring-1 ring-accent/15 px-1 py-px text-[7px] font-bold uppercase tracking-wider text-accent/70">
-          N50
-        </span>
+        {stock.fullBreakout ? (
+          <span className="rounded bg-accent/8 ring-1 ring-accent/15 px-1 py-px text-[7px] font-bold uppercase tracking-wider text-accent/70">
+            N50
+          </span>
+        ) : (
+          <span className="rounded bg-amber-500/8 ring-1 ring-amber-500/15 px-1 py-px text-[7px] font-bold uppercase tracking-wider text-amber-400/70">
+            HB
+          </span>
+        )}
       </div>
 
       {/* Price & Change */}

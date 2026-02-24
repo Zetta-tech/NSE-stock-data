@@ -36,10 +36,11 @@ export function Nifty50Rail({
       setData(json);
 
       // Build enriched breakout discoveries for the dashboard
+      // Include full breakouts AND high-only breaks (price signal without volume confirmation)
       if (onDiscoveries) {
         const stockMap = new Map(json.snapshot.stocks.map((s) => [s.symbol, s]));
         const breakouts: DiscoveryStock[] = (json.discoveries ?? [])
-          .filter((d) => d.breakout)
+          .filter((d) => d.breakout || d.highBreak)
           .map((d) => {
             const stock = stockMap.get(d.symbol);
             return {
@@ -52,6 +53,7 @@ export function Nifty50Rail({
               totalTradedVolume: stock?.totalTradedVolume ?? 0,
               highBreakPercent: d.highBreakPercent,
               volumeBreakPercent: d.volumeBreakPercent,
+              fullBreakout: d.breakout,
             };
           });
         onDiscoveries(breakouts, json.newAlertCount ?? 0);

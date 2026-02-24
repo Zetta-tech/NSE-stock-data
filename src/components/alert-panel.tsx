@@ -95,9 +95,15 @@ function AlertRow({ alert, index }: { alert: Alert; index: number }) {
               <span className="font-display text-xs font-bold tracking-tight">
                 {alert.symbol}
               </span>
-              <span className="rounded-md bg-accent/8 ring-1 ring-accent/15 px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-accent">
-                BO
-              </span>
+              {alert.alertType === "high-break" ? (
+                <span className="rounded-md bg-amber-500/8 ring-1 ring-amber-500/15 px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-amber-400">
+                  HB
+                </span>
+              ) : (
+                <span className="rounded-md bg-accent/8 ring-1 ring-accent/15 px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-accent">
+                  BO
+                </span>
+              )}
             </div>
           </div>
 
@@ -108,12 +114,14 @@ function AlertRow({ alert, index }: { alert: Alert; index: number }) {
                 +{alert.highBreakPercent.toFixed(1)}%
               </span>
             </div>
-            <div className="text-[10px] text-text-muted">
-              <span className="text-text-secondary">V</span>{" "}
-              <span className="font-mono text-accent tabular-nums text-[9px]">
-                +{alert.volumeBreakPercent.toFixed(1)}%
-              </span>
-            </div>
+            {alert.alertType !== "high-break" && (
+              <div className="text-[10px] text-text-muted">
+                <span className="text-text-secondary">V</span>{" "}
+                <span className="font-mono text-accent tabular-nums text-[9px]">
+                  +{alert.volumeBreakPercent.toFixed(1)}%
+                </span>
+              </div>
+            )}
           </div>
 
           <p className="mt-1 font-mono text-[9px] text-text-muted/60">

@@ -136,11 +136,17 @@ describe("Nifty50 route contracts", () => {
     expect(itc.highBreak).toBe(true);
     expect(itc.volumeBreak).toBe(false);
 
-    expect(mocks.addAlert).toHaveBeenCalledTimes(1);
+    expect(mocks.addAlert).toHaveBeenCalledTimes(2);
     expect(mocks.addAlert).toHaveBeenCalledWith(
       expect.objectContaining({
         symbol: "TCS",
         alertType: "breakout",
+      }),
+    );
+    expect(mocks.addAlert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        symbol: "ITC",
+        alertType: "high-break",
       }),
     );
   });

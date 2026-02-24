@@ -153,6 +153,48 @@ export async function GET() {
             },
           );
         }
+      } else if (highBreak) {
+        // Fire alert for high-only breaks — price breakout without volume confirmation
+        const alertId = `${stock.symbol}-nifty50-high-break-${today}`;
+        const alert: Alert = {
+          id: alertId,
+          symbol: stock.symbol,
+          name: stock.name,
+          alertType: "high-break",
+          todayHigh: stock.dayHigh,
+          todayVolume: stock.totalTradedVolume,
+          prevMaxHigh: baseline.maxHigh5d,
+          prevMaxVolume: baseline.maxVolume5d,
+          highBreakPercent,
+          volumeBreakPercent,
+          todayClose: stock.lastPrice,
+          todayChange: stock.pChange,
+          prev10DayLow: 0,
+          lowBreakPercent: 0,
+          triggeredAt: new Date().toISOString(),
+          read: false,
+        };
+        const added = await addAlert(alert);
+        newAlerts.push(alert);
+
+        if (added) {
+          await addActivity(
+            "system",
+            "alert-fired",
+            `Nifty 50 alert: ${stock.symbol} high-only break — High +${highBreakPercent}%`,
+            {
+              actor: "system",
+              detail: {
+                source: "nifty50",
+                symbol: stock.symbol,
+                alertType: "high-break",
+                highBreakPercent,
+                todayHigh: stock.dayHigh,
+                prevMaxHigh: baseline.maxHigh5d,
+              },
+            },
+          );
+        }
       }
     }
 
@@ -163,10 +205,13 @@ export async function GET() {
 
     if (breakoutCount > 0 || highBreakOnly > 0 || volBreakOnly > 0) {
       const breakoutSymbols = discoveries.filter((d) => d.breakout).map((d) => d.symbol);
+      const highBreakSymbols = discoveries.filter((d) => d.highBreak && !d.breakout).map((d) => d.symbol);
+      const volBreakSymbols = discoveries.filter((d) => d.volumeBreak && !d.breakout).map((d) => d.symbol);
+      const allSignalSymbols = [...breakoutSymbols, ...highBreakSymbols, ...volBreakSymbols];
       const parts: string[] = [];
       if (breakoutCount > 0) parts.push(`${breakoutCount} breakout(s) — ${breakoutSymbols.join(", ")}`);
-      if (highBreakOnly > 0) parts.push(`${highBreakOnly} high-only break(s)`);
-      if (volBreakOnly > 0) parts.push(`${volBreakOnly} volume-only break(s)`);
+      if (highBreakOnly > 0) parts.push(`${highBreakOnly} high-only break(s) — ${highBreakSymbols.join(", ")}`);
+      if (volBreakOnly > 0) parts.push(`${volBreakOnly} volume-only break(s) — ${volBreakSymbols.join(", ")}`);
 
       await addActivity(
         "system",
@@ -178,7 +223,10 @@ export async function GET() {
             breakoutCount,
             highBreakOnly,
             volBreakOnly,
-            symbols: breakoutSymbols,
+            symbols: allSignalSymbols,
+            breakoutSymbols,
+            highBreakSymbols,
+            volBreakSymbols,
             snapshotStale: snapshot.stale,
             alertsCreated: newAlerts.length,
           },
