@@ -35,7 +35,7 @@ export interface Alert {
   id: string;
   symbol: string;
   name: string;
-  alertType?: "breakout" | "high-break" | "scan";
+  alertType?: "breakout" | "scan";
   todayHigh: number;
   todayVolume: number;
   prevMaxHigh: number;

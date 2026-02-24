@@ -274,13 +274,10 @@ export function Dashboard({
         </div>
       )}
 
-      <main className="mx-auto max-w-[1440px] px-5 py-8">
-        <div className="dashboard-layout gap-6">
-          <div className="dashboard-sidebar">
-            <AlertPanel alerts={alerts} />
-          </div>
+      <main className="mx-auto max-w-[1440px] px-5 py-8 space-y-6">
+          {/* Alerts — horizontal scrollable strip */}
+          <AlertPanel alerts={alerts} />
 
-          <div className="dashboard-main">
             <TickerPanel
               hasCloseWatchStocks={closeWatchCount > 0}
               scanResults={results}
@@ -439,8 +436,6 @@ export function Dashboard({
                 </p>
               </div>
             )}
-          </div>
-        </div>
       </main>
 
       <AddStockModal
