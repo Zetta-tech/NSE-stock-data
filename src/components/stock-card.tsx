@@ -72,6 +72,7 @@ export function StockCard({
     const tiltY = gsap.quickTo(card, "rotationY", { duration: 0.5, ease: "power3" });
 
     const onPointerMove = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse") return;
       const rect = card.getBoundingClientRect();
       const px = (e.clientX - rect.left) / rect.width;
       const py = (e.clientY - rect.top) / rect.height;
@@ -79,17 +80,27 @@ export function StockCard({
       tiltY(gsap.utils.interpolate(-8, 8, px));
     };
 
-    const onPointerLeave = () => {
+    const onPointerLeave = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse") return;
+      tiltX(0);
+      tiltY(0);
+    };
+
+    const onTouchReset = () => {
       tiltX(0);
       tiltY(0);
     };
 
     card.addEventListener("pointermove", onPointerMove);
     card.addEventListener("pointerleave", onPointerLeave);
+    card.addEventListener("touchend", onTouchReset);
+    card.addEventListener("touchcancel", onTouchReset);
 
     return () => {
       card.removeEventListener("pointermove", onPointerMove);
       card.removeEventListener("pointerleave", onPointerLeave);
+      card.removeEventListener("touchend", onTouchReset);
+      card.removeEventListener("touchcancel", onTouchReset);
     };
   }, []);
 
