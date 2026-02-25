@@ -56,15 +56,58 @@ export function StockCard({
     if (!cardRef.current) return;
     gsap.fromTo(
       cardRef.current,
-      { opacity: 0, y: 14 },
+      { opacity: 0, y: 14, transformPerspective: 800 },
       { opacity: 1, y: 0, duration: 0.45, ease: "power2.out" }
     );
+  }, []);
+
+  /* ── 3D tilt on pointer move (adapted from GSAP CodePen qBzaNQy) ── */
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card) return;
+
+    gsap.set(card, { transformPerspective: 800 });
+
+    const tiltX = gsap.quickTo(card, "rotationX", { duration: 0.5, ease: "power3" });
+    const tiltY = gsap.quickTo(card, "rotationY", { duration: 0.5, ease: "power3" });
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse") return;
+      const rect = card.getBoundingClientRect();
+      const px = (e.clientX - rect.left) / rect.width;
+      const py = (e.clientY - rect.top) / rect.height;
+      tiltX(gsap.utils.interpolate(8, -8, py));
+      tiltY(gsap.utils.interpolate(-8, 8, px));
+    };
+
+    const onPointerLeave = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse") return;
+      tiltX(0);
+      tiltY(0);
+    };
+
+    const onTouchReset = () => {
+      tiltX(0);
+      tiltY(0);
+    };
+
+    card.addEventListener("pointermove", onPointerMove);
+    card.addEventListener("pointerleave", onPointerLeave);
+    card.addEventListener("touchend", onTouchReset);
+    card.addEventListener("touchcancel", onTouchReset);
+
+    return () => {
+      card.removeEventListener("pointermove", onPointerMove);
+      card.removeEventListener("pointerleave", onPointerLeave);
+      card.removeEventListener("touchend", onTouchReset);
+      card.removeEventListener("touchcancel", onTouchReset);
+    };
   }, []);
 
   return (
     <div
       ref={cardRef}
-      className={`stock-card group relative flex h-full flex-col overflow-hidden rounded-2xl p-5 transition-all duration-300 hover:-translate-y-0.5 ring-1 ${
+      className={`stock-card group relative flex h-full flex-col overflow-hidden rounded-2xl p-5 transition-shadow duration-300 ring-1 ${
         isStale
           ? "ring-warn/25 bg-surface-raised card-glow-warn"
           : result.triggered
