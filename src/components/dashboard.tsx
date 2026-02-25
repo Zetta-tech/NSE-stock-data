@@ -498,7 +498,11 @@ function notifyDiscoveries(
 
   const now = Date.now();
 
-  for (const stock of stocks) {
+  // Only notify for true breakouts (high + volume); high-only breaks stay
+  // visible in the Nifty 50 discovery feed without triggering notifications.
+  const trueBreakouts = stocks.filter((s) => s.fullBreakout);
+
+  for (const stock of trueBreakouts) {
     const lastNotified = cooldownMap.get(stock.symbol) ?? 0;
     if (now - lastNotified < NOTIFY_COOLDOWN_MS) continue;
 
