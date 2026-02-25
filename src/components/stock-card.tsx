@@ -141,8 +141,9 @@ export function StockCard({
             {result.symbol.slice(0, 2)}
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="font-display font-bold tracking-tight">{result.symbol}</h3>
+            <h3 className="font-display font-bold tracking-tight truncate">{result.symbol}</h3>
+            <p className="mt-0.5 text-xs text-text-muted truncate">{result.name}</p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               {closeWatch && !result.triggered && (
                 <span className="inline-flex items-center gap-0.5 rounded-md bg-warn/8 ring-1 ring-warn/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warn/80">
                   <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1">
@@ -171,7 +172,6 @@ export function StockCard({
                 </span>
               )}
             </div>
-            <p className="mt-0.5 text-xs text-text-muted truncate">{result.name}</p>
           </div>
         </div>
         {hasData && (
