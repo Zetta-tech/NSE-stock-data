@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import gsap from 'gsap';
 import type { LogEntry, LogLevel } from '@/lib/logger';
 import type { ActivityEvent, ActivityCategory, ActivityActor, ActivityChange, ScanMeta, NiftyIndex } from '@/lib/types';
+import { AdminControls } from '@/components/admin-controls';
 
 interface ApiCallRecord {
   ts: number;
@@ -720,6 +721,11 @@ export default function DevDashboard() {
 
           <div ref={sidebarRef} className="space-y-3" style={{ flexBasis: '38%', maxWidth: '420px', minWidth: '320px' }}>
             <div className="sticky top-[60px] space-y-3 overflow-y-auto scrollbar-thin" style={{ maxHeight: 'calc(100vh - 100px)' }}>
+
+              <div>
+                <p className="text-[9px] uppercase tracking-widest font-semibold text-text-muted/60 mb-2 px-0.5">Security</p>
+                <AdminControls variant="inline" />
+              </div>
 
               <div>
                 <p className="text-[9px] uppercase tracking-widest font-semibold text-text-muted/60 mb-2 px-0.5">System Status</p>

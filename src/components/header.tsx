@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { NotificationBell } from "./notification-bell";
-import { AdminControls } from "./admin-controls";
 import { isExtendedHours } from "@/lib/market-hours";
 import type { Alert, NiftyIndex } from "@/lib/types";
 
@@ -143,7 +142,6 @@ export function Header({
               {marketOpen ? "Open" : "Closed"}
             </span>
           </div>
-          <AdminControls />
           <NotificationBell
             alerts={alerts}
             onMarkAllRead={onMarkAllRead}

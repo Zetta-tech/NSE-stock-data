@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 interface LockdownStatus {
   active: boolean;
@@ -9,12 +9,10 @@ interface LockdownStatus {
   durationMinutes?: number;
 }
 
-export function AdminControls() {
-  const [open, setOpen] = useState(false);
+export function AdminControls({ variant = "inline" }: { variant?: "inline" }) {
   const [lockdown, setLockdown] = useState<LockdownStatus>({ active: false });
   const [loading, setLoading] = useState(false);
   const [duration, setDuration] = useState(60);
-  const panelRef = useRef<HTMLDivElement>(null);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -26,27 +24,15 @@ export function AdminControls() {
   }, []);
 
   useEffect(() => {
-    if (open) fetchStatus();
-  }, [open, fetchStatus]);
+    fetchStatus();
+  }, [fetchStatus]);
 
-  // Refresh lockdown status while panel is open
+  // Refresh lockdown status periodically when active
   useEffect(() => {
-    if (!open || !lockdown.active) return;
+    if (!lockdown.active) return;
     const interval = setInterval(fetchStatus, 30_000);
     return () => clearInterval(interval);
-  }, [open, lockdown.active, fetchStatus]);
-
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
+  }, [lockdown.active, fetchStatus]);
 
   const activateLockdown = async () => {
     setLoading(true);
@@ -85,106 +71,104 @@ export function AdminControls() {
   };
 
   return (
-    <div className="relative" ref={panelRef}>
-      <button
-        onClick={() => setOpen(!open)}
-        className={`flex h-9 w-9 items-center justify-center rounded-xl ring-1 transition-all ${
-          lockdown.active
-            ? "ring-danger/40 bg-danger/10 text-danger"
-            : "ring-surface-border/40 bg-surface-overlay/20 text-text-secondary hover:text-text-primary"
-        }`}
-        title="Security Controls"
-      >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-        </svg>
-      </button>
-
-      {open && (
-        <div className="absolute right-0 top-full mt-2 w-72 rounded-2xl border border-surface-border/40 bg-surface-raised p-4 shadow-xl z-50 animate-scale-in">
-          <h3 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted mb-3">
-            Security Controls
-          </h3>
-
-          {/* ── Lockdown Section ────────────────────────────────────── */}
-          <div className="mb-3 rounded-xl bg-surface-overlay/40 p-3 ring-1 ring-surface-border/30">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-text-secondary">
-                Lockdown Mode
-              </span>
-              {lockdown.active && (
-                <span className="text-[10px] font-bold uppercase tracking-wider text-danger animate-pulse">
-                  Active
-                </span>
-              )}
-            </div>
-
-            {lockdown.active ? (
-              <div>
-                <p className="text-[11px] text-text-muted mb-2">
-                  Expires in {lockdown.remainingMinutes ?? "?"}m
-                </p>
-                <button
-                  onClick={deactivateLockdown}
-                  disabled={loading}
-                  className="w-full rounded-lg bg-surface-overlay/50 px-3 py-1.5 text-xs font-semibold text-text-secondary ring-1 ring-surface-border/40 transition-all hover:bg-surface-overlay/70 disabled:opacity-50"
-                >
-                  Deactivate Lockdown
-                </button>
-              </div>
-            ) : (
-              <div>
-                <div className="mb-2">
-                  <select
-                    value={duration}
-                    onChange={(e) => setDuration(Number(e.target.value))}
-                    className="w-full rounded-lg bg-surface px-2 py-1.5 text-xs text-text-primary ring-1 ring-surface-border/40 outline-none"
-                  >
-                    <option value={15}>15 minutes</option>
-                    <option value={30}>30 minutes</option>
-                    <option value={60}>1 hour</option>
-                    <option value={180}>3 hours</option>
-                    <option value={360}>6 hours</option>
-                    <option value={720}>12 hours</option>
-                    <option value={1440}>24 hours</option>
-                  </select>
-                </div>
-                <button
-                  onClick={activateLockdown}
-                  disabled={loading}
-                  className="w-full rounded-lg bg-danger/10 px-3 py-1.5 text-xs font-semibold text-danger ring-1 ring-danger/20 transition-all hover:bg-danger/20 disabled:opacity-50"
-                >
-                  Activate Lockdown
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* ── Session Rotation Section ────────────────────────────── */}
-          <div className="rounded-xl bg-surface-overlay/40 p-3 ring-1 ring-surface-border/30">
-            <span className="text-xs font-semibold text-text-secondary block mb-1">
-              Session Rotation
+    <div className="space-y-2">
+      {/* ── Lockdown Section ────────────────────────────────────── */}
+      <div className="rounded-lg border border-surface-border/60 bg-surface-raised/50 px-3 py-2.5">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5">
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className={lockdown.active ? "text-red-400" : "text-text-muted"}
+            >
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+            <span className="text-[10px] font-semibold text-text-secondary">
+              Lockdown
             </span>
-            <p className="text-[11px] text-text-muted mb-2">
-              Invalidate all sessions. Everyone except you must re-login.
+          </div>
+          {lockdown.active && (
+            <span className="text-[9px] font-bold uppercase tracking-wider text-red-400 animate-pulse">
+              Active
+            </span>
+          )}
+        </div>
+
+        {lockdown.active ? (
+          <div>
+            <p className="text-[10px] text-text-muted mb-2">
+              Expires in {lockdown.remainingMinutes ?? "?"}m
             </p>
             <button
-              onClick={rotateSessions}
+              onClick={deactivateLockdown}
               disabled={loading}
-              className="w-full rounded-lg bg-warn/10 px-3 py-1.5 text-xs font-semibold text-warn ring-1 ring-warn/20 transition-all hover:bg-warn/20 disabled:opacity-50"
+              className="w-full rounded-md bg-surface-overlay/50 px-2.5 py-1.5 text-[10px] font-semibold text-text-secondary ring-1 ring-surface-border/40 transition-all hover:bg-surface-overlay/70 disabled:opacity-50"
             >
-              Rotate All Sessions
+              Deactivate
             </button>
           </div>
+        ) : (
+          <div>
+            <select
+              value={duration}
+              onChange={(e) => setDuration(Number(e.target.value))}
+              className="w-full rounded-md bg-surface px-2 py-1 text-[10px] text-text-primary ring-1 ring-surface-border/40 outline-none mb-2"
+            >
+              <option value={15}>15 minutes</option>
+              <option value={30}>30 minutes</option>
+              <option value={60}>1 hour</option>
+              <option value={180}>3 hours</option>
+              <option value={360}>6 hours</option>
+              <option value={720}>12 hours</option>
+              <option value={1440}>24 hours</option>
+            </select>
+            <button
+              onClick={activateLockdown}
+              disabled={loading}
+              className="w-full rounded-md bg-red-500/[0.08] px-2.5 py-1.5 text-[10px] font-semibold text-red-400 border border-red-500/20 transition-all hover:bg-red-500/15 disabled:opacity-50"
+            >
+              Activate Lockdown
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Session Rotation Section ────────────────────────────── */}
+      <div className="rounded-lg border border-surface-border/60 bg-surface-raised/50 px-3 py-2.5">
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <svg
+            width="10"
+            height="10"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="text-text-muted"
+          >
+            <path d="M21.5 2v6h-6" />
+            <path d="M2.5 22v-6h6" />
+            <path d="M2.5 11.5a10 10 0 0 1 18.1-4.5" />
+            <path d="M21.5 12.5a10 10 0 0 1-18.1 4.5" />
+          </svg>
+          <span className="text-[10px] font-semibold text-text-secondary">
+            Session Rotation
+          </span>
         </div>
-      )}
+        <p className="text-[9px] text-text-muted mb-2">
+          Invalidate all sessions. Everyone except you must re-login.
+        </p>
+        <button
+          onClick={rotateSessions}
+          disabled={loading}
+          className="w-full rounded-md bg-amber-500/[0.08] px-2.5 py-1.5 text-[10px] font-semibold text-amber-400 border border-amber-500/20 transition-all hover:bg-amber-500/15 disabled:opacity-50"
+        >
+          Rotate All Sessions
+        </button>
+      </div>
     </div>
   );
 }
