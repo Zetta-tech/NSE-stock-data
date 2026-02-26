@@ -33,10 +33,18 @@ export async function POST(request: NextRequest) {
 
   const { username, password } = await request.json();
 
-  if (
-    username !== process.env.AUTH_USERNAME ||
-    password !== process.env.AUTH_PASSWORD
-  ) {
+  // Check admin credentials first, then regular credentials
+  const isAdmin =
+    !!process.env.ADMIN_USERNAME &&
+    !!process.env.ADMIN_PASSWORD &&
+    username === process.env.ADMIN_USERNAME &&
+    password === process.env.ADMIN_PASSWORD;
+
+  const isRegular =
+    username === process.env.AUTH_USERNAME &&
+    password === process.env.AUTH_PASSWORD;
+
+  if (!isAdmin && !isRegular) {
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
   }
 
@@ -52,10 +60,17 @@ export async function POST(request: NextRequest) {
     path: "/",
   });
 
-  // NOTE: We intentionally do NOT grant the lockdown-bypass cookie here.
-  // The bypass is only issued when lockdown is activated from the admin
-  // panel.  If we handed it out on every successful login, anyone who
-  // knows the credentials could bypass lockdown — defeating its purpose.
+  // Only admin credentials can bypass lockdown.
+  // Regular credentials get a valid session but remain blocked during lockdown.
+  if (isAdmin && state.lockdown?.active) {
+    response.cookies.set("lockdown-bypass", state.lockdown.bypassToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24,
+      path: "/",
+    });
+  }
 
   return response;
 }
