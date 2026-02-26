@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
   }
 
-  // Read current security state for epoch + lockdown
+  // Read current security state for epoch
   const state = await getSecurityState();
 
   const response = NextResponse.json({ ok: true });
@@ -52,16 +52,10 @@ export async function POST(request: NextRequest) {
     path: "/",
   });
 
-  // If lockdown is active, grant bypass to the authenticated owner
-  if (state.lockdown?.active) {
-    response.cookies.set("lockdown-bypass", state.lockdown.bypassToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24, // 24 hours
-      path: "/",
-    });
-  }
+  // NOTE: We intentionally do NOT grant the lockdown-bypass cookie here.
+  // The bypass is only issued when lockdown is activated from the admin
+  // panel.  If we handed it out on every successful login, anyone who
+  // knows the credentials could bypass lockdown — defeating its purpose.
 
   return response;
 }
