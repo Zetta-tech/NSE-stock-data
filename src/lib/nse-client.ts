@@ -2,45 +2,9 @@ import { logger } from "./logger";
 import { NseIndia } from "stock-nse-india";
 import { isExtendedHours } from "./market-hours";
 import type { DayData, NiftyIndex, Nifty50StockRow, Nifty50Snapshot } from "./types";
+import { recordCall, getApiStats } from "./api-stats";
 
-/* ── API call tracking ──────────────────────────────────────────────── */
-
-interface ApiCallRecord {
-  ts: number;       // epoch ms
-  type: "api" | "cache";
-  method: string;   // e.g. "getHistoricalData", "getCurrentDayData"
-  symbol?: string;
-}
-
-const API_CALL_LOG: ApiCallRecord[] = [];
-const MAX_CALL_LOG = 500;
-
-function recordCall(type: "api" | "cache", method: string, symbol?: string) {
-  API_CALL_LOG.push({ ts: Date.now(), type, method, symbol });
-  if (API_CALL_LOG.length > MAX_CALL_LOG) API_CALL_LOG.splice(0, API_CALL_LOG.length - MAX_CALL_LOG);
-}
-
-export function getApiStats(): {
-  total: number;
-  apiCalls: number;
-  cacheHits: number;
-  recentRate: number;   // API calls per second in last 60s
-  last60s: ApiCallRecord[];
-} {
-  const now = Date.now();
-  const cutoff = now - 60_000;
-  const recent = API_CALL_LOG.filter((r) => r.ts >= cutoff);
-  const recentApi = recent.filter((r) => r.type === "api");
-  const allApi = API_CALL_LOG.filter((r) => r.type === "api");
-  const allCache = API_CALL_LOG.filter((r) => r.type === "cache");
-  return {
-    total: API_CALL_LOG.length,
-    apiCalls: allApi.length,
-    cacheHits: allCache.length,
-    recentRate: recentApi.length > 0 ? parseFloat((recentApi.length / 60).toFixed(2)) : 0,
-    last60s: recent,
-  };
-}
+export { getApiStats };
 
 /* Singleton per Lambda invocation.  On Vercel each cold start creates a
  * fresh instance (new cookies, empty cache).  Warm invocations reuse
