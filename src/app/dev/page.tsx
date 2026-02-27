@@ -35,18 +35,27 @@ interface Nifty50StatsData {
 }
 
 interface CacheLayersData {
-  historical: { size: number; symbols: string[]; date: string };
+  historical: { size: number; symbols: string[]; date: string; scope?: string };
   snapshot: {
     lastRefreshTime: string | null;
     snapshotFetchSuccess: boolean;
     snapshotFetchCount: number;
     snapshotFailCount: number;
+    scope?: string;
   };
   apiThrottle: {
     total: number;
     apiCalls: number;
     cacheHits: number;
     hitRate: number;
+    scope?: string;
+  };
+  persisted?: {
+    apiCalls: number;
+    cacheHits: number;
+    lastFlushed: string | null;
+    methodBreakdown: Record<string, { api: number; cache: number }>;
+    scope?: string;
   };
 }
 
@@ -158,6 +167,20 @@ function DataHealthBar({ live, historical, stale }: { live: number; historical: 
         {stale > 0 && <span className="flex items-center gap-1"><span className="h-1 w-1 rounded-full bg-amber-400" />{stale}</span>}
       </div>
     </div>
+  );
+}
+
+function ScopeBadge({ scope }: { scope?: string }) {
+  if (!scope) return null;
+  const isPerInstance = scope === 'per-instance';
+  return (
+    <span className={`inline-flex items-center gap-0.5 rounded px-1 py-px text-[7px] font-bold uppercase tracking-wider ${
+      isPerInstance
+        ? 'bg-blue-500/10 text-blue-400/70 border border-blue-500/15'
+        : 'bg-violet-500/10 text-violet-400/70 border border-violet-500/15'
+    }`}>
+      {isPerInstance ? 'Per-Instance' : 'Cross-Instance'}
+    </span>
   );
 }
 
@@ -419,12 +442,13 @@ function CompactActionFlow({ events }: { events: ActivityEvent[] }) {
   );
 }
 
-function CollapsibleSection({ title, icon, badge, badgeColor, defaultOpen, children }: {
+function CollapsibleSection({ title, icon, badge, badgeColor, defaultOpen, scopeBadge, children }: {
   title: string;
   icon: React.ReactNode;
   badge?: string;
   badgeColor?: string;
   defaultOpen?: boolean;
+  scopeBadge?: string;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen ?? false);
@@ -436,6 +460,7 @@ function CollapsibleSection({ title, icon, badge, badgeColor, defaultOpen, child
       >
         <span className="text-text-muted">{icon}</span>
         <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted flex-1">{title}</span>
+        {scopeBadge && <ScopeBadge scope={scopeBadge} />}
         {badge && (
           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${badgeColor || 'bg-surface-overlay text-text-muted'}`}>
             {badge}
@@ -893,6 +918,7 @@ export default function DevDashboard() {
                         <div className="flex items-center gap-1.5">
                           <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
                           <span className="text-[10px] font-semibold text-blue-400">Historical</span>
+                          <ScopeBadge scope={cl.historical.scope} />
                         </div>
                         <span className="text-xs font-bold tabular-nums">{cl.historical.size} <span className="text-text-muted text-[9px] font-normal">symbols</span></span>
                       </div>
@@ -900,6 +926,7 @@ export default function DevDashboard() {
                         <div className="flex items-center gap-1.5">
                           <span className={`h-1.5 w-1.5 rounded-full ${cl.snapshot.snapshotFetchSuccess ? 'bg-emerald-400' : 'bg-amber-400'}`} />
                           <span className="text-[10px] font-semibold text-emerald-400">Snapshot</span>
+                          <ScopeBadge scope={cl.snapshot.scope} />
                         </div>
                         <div className="flex items-baseline gap-1.5">
                           <span className="text-xs font-bold tabular-nums">{cl.snapshot.snapshotFetchCount}</span>
@@ -913,6 +940,7 @@ export default function DevDashboard() {
                         <div className="flex items-center gap-1.5">
                           <span className={`h-1.5 w-1.5 rounded-full ${cl.apiThrottle.hitRate >= 50 ? 'bg-violet-400' : 'bg-amber-400'}`} />
                           <span className="text-[10px] font-semibold text-violet-400">API Throttle</span>
+                          <ScopeBadge scope={cl.apiThrottle.scope} />
                         </div>
                         <div className="flex items-baseline gap-1.5">
                           <span className="text-xs font-bold tabular-nums text-cyan-400">{cl.apiThrottle.apiCalls}</span>
@@ -932,6 +960,28 @@ export default function DevDashboard() {
                         )}
                       </div>
                       <p className="text-[8px] text-text-muted/40">{cl.apiThrottle.total} total · {cl.historical.date} · TTL: midnight IST</p>
+                      {cl.persisted && (
+                        <>
+                          <div className="border-t border-surface-border/30 pt-2.5 mt-1">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5">
+                                <span className="h-1.5 w-1.5 rounded-full bg-violet-400" />
+                                <span className="text-[10px] font-semibold text-violet-400">Cumulative</span>
+                                <ScopeBadge scope={cl.persisted.scope} />
+                              </div>
+                              <div className="flex items-baseline gap-1.5">
+                                <span className="text-xs font-bold tabular-nums text-cyan-400">{cl.persisted.apiCalls.toLocaleString()}</span>
+                                <span className="text-[9px] text-text-muted">api</span>
+                                <span className="text-xs font-bold tabular-nums text-emerald-400">{cl.persisted.cacheHits.toLocaleString()}</span>
+                                <span className="text-[9px] text-text-muted">cache</span>
+                              </div>
+                            </div>
+                            {cl.persisted.lastFlushed && (
+                              <p className="text-[8px] text-text-muted/40 mt-1">Last synced {timeAgo(cl.persisted.lastFlushed)}</p>
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
                   </CollapsibleSection>
                 );
@@ -947,6 +997,7 @@ export default function DevDashboard() {
                   <CollapsibleSection
                     title="API Rate"
                     icon={<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>}
+                    scopeBadge="per-instance"
                     badge={`${s.recentRate}/s ${rateOk ? 'OK' : 'HIGH'}`}
                     badgeColor={rateOk ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}
                   >
