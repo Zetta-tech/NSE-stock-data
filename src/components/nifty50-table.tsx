@@ -147,39 +147,39 @@ export function Nifty50Table() {
 
   const sortedStocks = data
     ? [...data.snapshot.stocks].sort((a, b) => {
-        let va: number | string;
-        let vb: number | string;
-        switch (sortKey) {
-          case "symbol":
-            va = a.symbol;
-            vb = b.symbol;
-            return sortDir === "asc"
-              ? (va as string).localeCompare(vb as string)
-              : (vb as string).localeCompare(va as string);
-          case "lastPrice":
-            va = a.lastPrice;
-            vb = b.lastPrice;
-            break;
-          case "pChange":
-            va = a.pChange;
-            vb = b.pChange;
-            break;
-          case "dayHigh":
-            va = a.dayHigh;
-            vb = b.dayHigh;
-            break;
-          case "totalTradedVolume":
-            va = a.totalTradedVolume;
-            vb = b.totalTradedVolume;
-            break;
-          default:
-            va = 0;
-            vb = 0;
-        }
-        return sortDir === "asc"
-          ? (va as number) - (vb as number)
-          : (vb as number) - (va as number);
-      })
+      let va: number | string;
+      let vb: number | string;
+      switch (sortKey) {
+        case "symbol":
+          va = a.symbol;
+          vb = b.symbol;
+          return sortDir === "asc"
+            ? (va as string).localeCompare(vb as string)
+            : (vb as string).localeCompare(va as string);
+        case "lastPrice":
+          va = a.lastPrice;
+          vb = b.lastPrice;
+          break;
+        case "pChange":
+          va = a.pChange;
+          vb = b.pChange;
+          break;
+        case "dayHigh":
+          va = a.dayHigh;
+          vb = b.dayHigh;
+          break;
+        case "totalTradedVolume":
+          va = a.totalTradedVolume;
+          vb = b.totalTradedVolume;
+          break;
+        default:
+          va = 0;
+          vb = 0;
+      }
+      return sortDir === "asc"
+        ? (va as number) - (vb as number)
+        : (vb as number) - (va as number);
+    })
     : [];
 
   const watchlistSet = new Set(data?.watchlistSymbols ?? []);
@@ -205,20 +205,18 @@ export function Nifty50Table() {
 
   return (
     <div className="animate-fade-in">
-      <div className={`overflow-hidden rounded-2xl bg-surface-raised transition-all duration-300 ring-1 card-elevated ${
-        breakoutCount > 0
+      <div className={`overflow-hidden rounded-[2rem] bg-surface-raised transition-all duration-300 ring-1 card-elevated ${breakoutCount > 0
           ? "ring-accent/20 shadow-[0_0_40px_-12px_rgba(0,230,138,0.08)]"
-          : "ring-surface-border/50"
-      }`}>
+          : "ring-surface-border shadow-xl shadow-black/20"
+        }`}>
         {/* Header */}
         <div className="flex items-center justify-between border-b border-surface-border/60 px-5 py-3.5">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2.5">
-              <div className={`flex h-8 w-8 items-center justify-center rounded-xl transition-colors duration-300 ring-1 ${
-                breakoutCount > 0
+              <div className={`flex h-9 w-9 items-center justify-center rounded-[1rem] transition-colors duration-300 ring-1 ${breakoutCount > 0
                   ? "bg-accent/10 text-accent ring-accent/15"
                   : "bg-blue-500/8 text-blue-400 ring-blue-500/15"
-              }`}>
+                }`}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="3" y="3" width="7" height="7" />
                   <rect x="14" y="3" width="7" height="7" />
@@ -297,11 +295,10 @@ export function Nifty50Table() {
             <button
               onClick={fetchData}
               disabled={loading}
-              className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all duration-200 ring-1 ${
-                loading
+              className={`flex items-center gap-1.5 rounded-[1.2rem] px-4 py-2 text-xs font-bold tracking-wide transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:scale-[1.03] ring-1 ${loading
                   ? "ring-surface-border bg-surface-overlay text-text-muted cursor-not-allowed"
-                  : "ring-surface-border bg-surface-overlay text-text-secondary hover:ring-accent/25 hover:text-accent"
-              }`}
+                  : "ring-surface-border bg-surface-overlay text-text-secondary hover:ring-accent/25 hover:text-accent hover:shadow-lg hover:shadow-black/30"
+                }`}
             >
               <svg
                 width="12"
@@ -322,7 +319,7 @@ export function Nifty50Table() {
 
             <button
               onClick={() => setCollapsed(!collapsed)}
-              className="flex h-8 w-8 items-center justify-center rounded-xl ring-1 ring-surface-border bg-surface-overlay text-text-muted transition-all hover:text-text-secondary hover:ring-surface-border-bright"
+              className="flex h-9 w-9 items-center justify-center rounded-[1rem] ring-1 ring-surface-border bg-surface-overlay text-text-muted transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:scale-[1.05] hover:text-text-secondary hover:ring-surface-border-bright hover:shadow-lg hover:shadow-black/30"
             >
               <svg
                 width="12"
@@ -637,9 +634,8 @@ function StockRow({
             </div>
           )}
           <span
-            className={`font-mono text-xs font-semibold tabular-nums ${
-              stock.pChange > 0 ? "text-accent" : stock.pChange < 0 ? "text-danger" : "text-text-muted"
-            }`}
+            className={`font-mono text-xs font-semibold tabular-nums ${stock.pChange > 0 ? "text-accent" : stock.pChange < 0 ? "text-danger" : "text-text-muted"
+              }`}
           >
             {stock.pChange > 0 ? "+" : ""}
             {stock.pChange.toFixed(2)}%

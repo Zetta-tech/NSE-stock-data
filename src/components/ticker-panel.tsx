@@ -111,7 +111,7 @@ export function TickerPanel({
 
   return (
     <div className="mb-8 animate-fade-in">
-      <div className="overflow-hidden rounded-2xl bg-surface-raised ring-1 ring-surface-border/50 card-elevated">
+      <div className="overflow-hidden rounded-[2rem] bg-surface-raised ring-1 ring-surface-border card-elevated shadow-xl shadow-black/20">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-surface-border/40 px-5 py-3">
           <div className="flex items-center gap-2.5">
@@ -124,7 +124,7 @@ export function TickerPanel({
               ) : (
                 <span className="inline-flex h-2 w-2 rounded-full bg-text-muted/30" />
               )}
-              <span className="font-display text-sm font-bold tracking-tight">
+              <span className="font-display text-base font-bold tracking-tight">
                 Live Ticker
               </span>
             </div>
@@ -147,11 +147,10 @@ export function TickerPanel({
             )}
             <button
               onClick={handleToggle}
-              className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all duration-200 ring-1 ${
-                active
-                  ? "bg-accent/8 text-accent ring-accent/20 hover:bg-accent/12"
-                  : "bg-surface-overlay text-text-secondary ring-surface-border hover:text-text-primary hover:ring-surface-border-bright"
-              }`}
+              className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold tracking-wide transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:scale-[1.05] ring-1 ${active
+                  ? "bg-accent/10 text-accent ring-accent/20 hover:bg-accent/15 shadow-[0_0_10px_rgba(0,230,138,0.1)]"
+                  : "bg-surface-overlay text-text-secondary ring-surface-border hover:text-text-primary hover:ring-surface-border-bright hover:shadow-lg hover:shadow-black/30"
+                }`}
             >
               {active ? (
                 <>
@@ -183,15 +182,13 @@ export function TickerPanel({
                 return (
                   <div
                     key={q.symbol}
-                    className={`relative flex min-w-[180px] flex-1 flex-col gap-1 px-5 py-4 transition-colors duration-300 ${
-                      i > 0 ? "border-l border-surface-border/40" : ""
-                    } ${
-                      flash === "up"
+                    className={`relative flex min-w-[200px] flex-1 flex-col gap-1.5 px-6 py-4 transition-colors duration-300 ${i > 0 ? "border-l border-surface-border/40" : ""
+                      } ${flash === "up"
                         ? "ticker-flash-up"
                         : flash === "down"
                           ? "ticker-flash-down"
                           : ""
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-2">
                       <span className="font-display text-xs font-bold tracking-tight">
@@ -209,9 +206,8 @@ export function TickerPanel({
                         &#x20B9;{q.price.toLocaleString("en-IN")}
                       </span>
                       <span
-                        className={`font-mono text-xs font-semibold tabular-nums ${
-                          q.change >= 0 ? "text-accent" : "text-danger"
-                        }`}
+                        className={`font-mono text-xs font-semibold tabular-nums ${q.change >= 0 ? "text-accent" : "text-danger"
+                          }`}
                       >
                         {q.change >= 0 ? "+" : ""}
                         {q.change.toFixed(2)}%
@@ -238,7 +234,7 @@ export function TickerPanel({
           <div>
             <div className="flex gap-0 overflow-x-auto scrollbar-thin opacity-40">
               {quotes.map((q, i) => (
-                <div key={q.symbol} className={`relative flex min-w-[180px] flex-1 flex-col gap-1 px-5 py-4 ${i > 0 ? "border-l border-surface-border/40" : ""}`}>
+                <div key={q.symbol} className={`relative flex min-w-[200px] flex-1 flex-col gap-1.5 px-6 py-4 ${i > 0 ? "border-l border-surface-border/40" : ""}`}>
                   <span className="font-display text-xs font-bold tracking-tight">{q.symbol}</span>
                   <div className="flex items-baseline gap-2">
                     <span className="font-mono text-lg font-bold tabular-nums tracking-tight">&#x20B9;{q.price.toLocaleString("en-IN")}</span>

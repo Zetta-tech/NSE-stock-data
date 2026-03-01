@@ -42,11 +42,10 @@ export function NotificationBell({
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 ring-1 ${
-          open
-            ? "ring-accent/25 bg-surface-overlay text-accent"
-            : "ring-surface-border bg-surface-raised text-text-secondary hover:ring-accent/15 hover:bg-surface-overlay hover:text-text-primary"
-        }`}
+        className={`relative flex h-11 w-11 items-center justify-center rounded-[1.2rem] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:scale-[1.03] ring-1 ${open
+            ? "ring-accent/25 bg-surface-overlay text-accent shadow-[0_0_15px_rgba(0,230,138,0.15)]"
+            : "ring-surface-border bg-surface-raised text-text-secondary hover:ring-surface-border-bright hover:bg-surface-overlay hover:text-text-primary hover:shadow-lg hover:shadow-black/30"
+          }`}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -63,12 +62,12 @@ export function NotificationBell({
       </button>
 
       {open && (
-        <div className="absolute right-0 top-14 z-40 w-[400px] overflow-hidden rounded-2xl bg-surface-raised ring-1 ring-surface-border/60 shadow-2xl shadow-black/50 animate-scale-in card-elevated">
-          <div className="flex items-center justify-between border-b border-surface-border/40 px-4 py-3">
+        <div className="absolute right-0 top-14 z-40 w-[400px] overflow-hidden rounded-[2rem] bg-surface-raised ring-1 ring-surface-border shadow-2xl shadow-black/50 animate-scale-in card-elevated">
+          <div className="flex items-center justify-between border-b border-surface-border/40 px-5 py-4">
             <div className="flex items-center gap-2">
-              <h3 className="font-display text-sm font-bold">Alerts</h3>
+              <h3 className="font-display text-base tracking-tight font-bold">Alerts</h3>
               {unread > 0 && (
-                <span className="rounded-full bg-accent/10 ring-1 ring-accent/15 px-2 py-0.5 font-mono text-[10px] font-bold tabular-nums text-accent">
+                <span className="rounded-md bg-accent/10 ring-1 ring-accent/15 px-2 py-0.5 font-mono text-[10px] font-bold tabular-nums text-accent">
                   {unread} new
                 </span>
               )}
@@ -84,9 +83,9 @@ export function NotificationBell({
           </div>
           <div className="max-h-80 overflow-y-auto scrollbar-thin">
             {todayAlerts.length === 0 ? (
-              <div className="px-4 py-10 text-center">
-                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-surface-overlay ring-1 ring-surface-border/50">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-text-muted">
+              <div className="px-5 py-10 text-center">
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-overlay ring-1 ring-surface-border/50">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-text-muted">
                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
                     <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                   </svg>
@@ -99,9 +98,8 @@ export function NotificationBell({
                 <button
                   key={alert.id}
                   onClick={() => onMarkRead(alert.id)}
-                  className={`w-full border-b border-surface-border/30 px-4 py-3 text-left transition-all duration-200 hover:bg-surface-overlay/40 ${
-                    !alert.read ? "bg-accent/[0.03]" : ""
-                  }`}
+                  className={`w-full border-b border-surface-border/30 px-4 py-3 text-left transition-all duration-200 hover:bg-surface-overlay/40 ${!alert.read ? "bg-accent/[0.03]" : ""
+                    }`}
                   style={{ animationDelay: `${i * 30}ms` }}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -114,11 +112,10 @@ export function NotificationBell({
                         <span className="ml-2 text-xs text-text-muted">{alert.name}</span>
                       </div>
                     </div>
-                    <span className={`flex-shrink-0 rounded-md px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-wider ring-1 ${
-                      alert.alertType === "low-breakout"
+                    <span className={`flex-shrink-0 rounded-md px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-wider ring-1 ${alert.alertType === "low-breakout"
                         ? "bg-amber-500/10 ring-amber-500/15 text-amber-400"
                         : "bg-accent/10 ring-accent/15 text-accent"
-                    }`}>
+                      }`}>
                       {alert.alertType === "low-breakout" ? "LOW BREAK" : "BREAKOUT"}
                     </span>
                   </div>

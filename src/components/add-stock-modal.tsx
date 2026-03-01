@@ -201,7 +201,7 @@ export function AddStockModal({
         onClick={onClose}
       />
       <div className="relative w-full max-w-lg animate-scale-in">
-        <div className="overflow-hidden rounded-2xl bg-surface-raised ring-1 ring-surface-border/60 shadow-2xl shadow-black/50 card-elevated">
+        <div className="overflow-hidden rounded-[2rem] bg-surface-raised ring-1 ring-surface-border shadow-2xl shadow-black/80 card-elevated">
           {/* Search input */}
           <div className="relative border-b border-surface-border/40">
             <svg
@@ -231,7 +231,7 @@ export function AddStockModal({
             />
             <button
               onClick={onClose}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md ring-1 ring-surface-border px-1.5 py-0.5 font-mono text-[10px] font-semibold text-text-muted transition-colors hover:bg-surface-overlay hover:text-text-secondary"
+              className="absolute right-4 top-1/2 -translate-y-1/2 rounded-[0.5rem] ring-1 ring-surface-border px-2 py-1 font-mono text-[10px] font-bold tracking-wider text-text-muted transition-colors hover:bg-surface-overlay hover:text-text-secondary"
             >
               ESC
             </button>
@@ -241,21 +241,18 @@ export function AddStockModal({
           <div className="flex items-center justify-between border-b border-surface-border/40 px-4 py-2.5">
             <button
               onClick={() => setWideSearch(!wideSearch)}
-              className={`flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-all duration-200 ${
-                wideSearch
+              className={`flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-all duration-200 ${wideSearch
                   ? "bg-accent/8 text-accent"
                   : "text-text-muted hover:bg-surface-overlay hover:text-text-secondary"
-              }`}
+                }`}
             >
               <div
-                className={`relative h-4 w-7 rounded-full transition-colors duration-200 ${
-                  wideSearch ? "bg-accent" : "bg-surface-border"
-                }`}
+                className={`relative h-4 w-7 rounded-full transition-colors duration-200 ${wideSearch ? "bg-accent" : "bg-surface-border"
+                  }`}
               >
                 <div
-                  className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform duration-200 ${
-                    wideSearch ? "translate-x-3.5" : "translate-x-0.5"
-                  }`}
+                  className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform duration-200 ${wideSearch ? "translate-x-3.5" : "translate-x-0.5"
+                    }`}
                 />
               </div>
               Search beyond Nifty 50
@@ -361,18 +358,16 @@ export function AddStockModal({
                   <button
                     onClick={() => handleSelect(stock)}
                     onMouseEnter={() => setHighlightIndex(i)}
-                    className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
-                      i === highlightIndex
+                    className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${i === highlightIndex
                         ? "bg-accent/[0.06]"
                         : "hover:bg-surface-overlay/40"
-                    }`}
+                      }`}
                   >
                     <div
-                      className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl font-display text-xs font-bold ring-1 ${
-                        stock.source === "nse"
+                      className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl font-display text-xs font-bold ring-1 ${stock.source === "nse"
                           ? "bg-accent/8 text-accent/70 ring-accent/15"
                           : "bg-surface-overlay text-text-secondary ring-surface-border/50"
-                      }`}
+                        }`}
                     >
                       {stock.symbol.slice(0, 2)}
                     </div>

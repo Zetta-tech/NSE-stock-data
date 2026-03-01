@@ -63,13 +63,13 @@ export function AlertBuilder({ onSubmitted }: { onSubmitted?: () => void } = {})
   return (
     <div className="animate-fade-in">
       <div
-        className="rounded-2xl p-[1px]"
+        className="rounded-[1.8rem] p-[1.5px] shadow-lg shadow-black/30"
         style={{
           background: "linear-gradient(135deg, rgba(0, 230, 138, 0.15), rgba(0, 120, 255, 0.08), rgba(0, 230, 138, 0.05))",
         }}
       >
         <div
-          className="rounded-2xl px-4 py-3"
+          className="rounded-[1.8rem] px-5 py-3.5"
           style={{ background: "var(--surface-raised)" }}
         >
           <div className="flex items-center gap-3">
@@ -94,7 +94,7 @@ export function AlertBuilder({ onSubmitted }: { onSubmitted?: () => void } = {})
               onKeyDown={handleKeyDown}
               placeholder="e.g. notify me when RELIANCE drops 3%"
               disabled={loading}
-              className="flex-1 bg-transparent text-sm outline-none placeholder:opacity-40"
+              className="flex-1 bg-transparent text-sm font-medium outline-none placeholder:font-normal placeholder:opacity-50"
               style={{ color: "var(--text-primary)" }}
             />
 

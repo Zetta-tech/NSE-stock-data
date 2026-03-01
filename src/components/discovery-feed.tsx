@@ -31,7 +31,7 @@ export function DiscoveryFeed({
   return (
     <div className="animate-slide-down">
       <div
-        className="overflow-hidden rounded-2xl ring-1 ring-accent/15 card-elevated"
+        className="overflow-hidden rounded-[2rem] ring-1 ring-accent/15 shadow-2xl shadow-[rgba(0,230,138,0.06)] card-elevated"
         style={{
           background:
             "linear-gradient(135deg, rgba(0,230,138,0.02) 0%, var(--surface-raised) 40%, var(--surface-raised) 60%, rgba(0,180,214,0.015) 100%)",
@@ -40,12 +40,12 @@ export function DiscoveryFeed({
         }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-accent/[0.06]">
-          <div className="flex items-center gap-2.5">
-            <div className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-accent/10 ring-1 ring-accent/20">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-accent/[0.06]">
+          <div className="flex items-center gap-3">
+            <div className="relative flex h-8 w-8 items-center justify-center rounded-xl bg-accent/10 ring-1 ring-accent/20">
               <svg
-                width="12"
-                height="12"
+                width="14"
+                height="14"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -57,10 +57,10 @@ export function DiscoveryFeed({
               <div className="absolute -inset-0.5 rounded-lg bg-accent/8 blur-sm animate-glow-pulse" />
             </div>
             <div className="flex items-center gap-2">
-              <h2 className="font-display text-xs font-bold uppercase tracking-wider text-accent">
+              <h2 className="font-display text-sm font-bold uppercase tracking-widest text-accent">
                 Nifty 50 Discoveries
               </h2>
-              <span className="rounded-full bg-accent/10 ring-1 ring-accent/20 px-2 py-0.5 font-mono text-[9px] font-bold tabular-nums text-accent">
+              <span className="rounded-md bg-accent/10 ring-1 ring-accent/20 px-2 py-0.5 font-mono text-[10px] font-bold tabular-nums text-accent">
                 {discoveries.length}
               </span>
             </div>
@@ -166,11 +166,10 @@ function DiscoveryCard({
 
   return (
     <div
-      className={`group relative flex flex-col rounded-xl px-3.5 py-3 transition-all duration-200 animate-fade-in ${
-        isRadar
+      className={`group relative flex flex-col rounded-[1.5rem] px-4 py-3.5 transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-1 hover:shadow-lg hover:shadow-[rgba(0,230,138,0.1)] animate-fade-in ${isRadar
           ? "ring-1 ring-amber-500/15 border border-dashed border-amber-500/20 bg-amber-500/[0.02] hover:ring-amber-500/30 hover:bg-amber-500/[0.04]"
           : "ring-1 ring-accent/12 bg-accent/[0.02] hover:ring-accent/25 hover:bg-accent/[0.04]"
-      }`}
+        }`}
       style={{
         minWidth: 172,
         width: 172,
@@ -222,9 +221,8 @@ function DiscoveryCard({
             : "\u2014"}
         </span>
         <span
-          className={`font-mono text-[10px] font-semibold tabular-nums ${
-            isUp ? "text-accent" : "text-danger"
-          }`}
+          className={`font-mono text-[10px] font-semibold tabular-nums ${isUp ? "text-accent" : "text-danger"
+            }`}
         >
           {isUp ? "+" : ""}
           {stock.pChange.toFixed(2)}%
@@ -271,13 +269,12 @@ function DiscoveryCard({
           if (!added) onAdd(stock.symbol, stock.name);
         }}
         disabled={added}
-        className={`mt-2.5 flex items-center justify-center gap-1 rounded-lg px-2 py-1 text-[9px] font-semibold transition-all duration-200 ring-1 ${
-          added
+        className={`mt-2.5 flex items-center justify-center gap-1 rounded-[1rem] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:scale-[1.03] ring-1 ${added
             ? "ring-accent/10 bg-accent/[0.04] text-accent/40 cursor-default"
             : isRadar
-              ? "ring-amber-500/15 bg-amber-500/[0.06] text-amber-400 hover:ring-amber-500/30 hover:bg-amber-500/[0.1]"
-              : "ring-accent/15 bg-accent/[0.06] text-accent hover:ring-accent/30 hover:bg-accent/[0.1]"
-        }`}
+              ? "ring-amber-500/15 bg-amber-500/[0.06] text-amber-400 hover:ring-amber-500/30 hover:bg-amber-500/[0.1] hover:shadow-lg hover:shadow-[rgba(245,158,11,0.2)]"
+              : "ring-accent/15 bg-accent/[0.06] text-accent hover:ring-accent/30 hover:bg-accent/[0.1] hover:shadow-lg hover:shadow-[rgba(0,230,138,0.2)]"
+          }`}
       >
         {added ? (
           <>

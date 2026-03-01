@@ -71,10 +71,10 @@ export function AdminControls({ variant = "inline" }: { variant?: "inline" }) {
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {/* ── Lockdown Section ────────────────────────────────────── */}
-      <div className="rounded-lg border border-surface-border/60 bg-surface-raised/50 px-3 py-2.5">
-        <div className="flex items-center justify-between mb-2">
+      <div className="rounded-[1.2rem] border border-surface-border bg-[rgba(16,24,38,0.5)] px-4 py-3 shadow-lg shadow-black/20">
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-1.5">
             <svg
               width="10"
@@ -138,8 +138,8 @@ export function AdminControls({ variant = "inline" }: { variant?: "inline" }) {
       </div>
 
       {/* ── Session Rotation Section ────────────────────────────── */}
-      <div className="rounded-lg border border-surface-border/60 bg-surface-raised/50 px-3 py-2.5">
-        <div className="flex items-center gap-1.5 mb-1.5">
+      <div className="rounded-[1.2rem] border border-surface-border bg-[rgba(16,24,38,0.5)] px-4 py-3 shadow-lg shadow-black/20">
+        <div className="flex items-center gap-1.5 mb-2">
           <svg
             width="10"
             height="10"

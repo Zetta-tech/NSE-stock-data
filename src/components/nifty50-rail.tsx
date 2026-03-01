@@ -161,7 +161,7 @@ export function Nifty50Rail({
           <button
             onClick={fetchData}
             disabled={loading}
-            className="flex h-6 w-6 items-center justify-center rounded-lg ring-1 ring-surface-border/50 bg-surface-overlay/30 text-text-muted transition-all hover:text-text-secondary hover:ring-surface-border-bright disabled:opacity-40"
+            className="flex h-7 w-7 items-center justify-center rounded-[0.8rem] ring-1 ring-surface-border/50 bg-surface-overlay/30 text-text-muted transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:scale-[1.05] hover:text-text-secondary hover:ring-surface-border-bright disabled:opacity-40"
           >
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={loading ? "animate-spin" : ""}>
               <path d="M21.5 2v6h-6" />
@@ -217,11 +217,10 @@ function RailTile({
 
   return (
     <div
-      className={`rail-tile group relative rounded-xl px-3.5 py-2.5 text-left transition-all duration-200 ring-1 ${
-        isBreakout
+      className={`rail-tile group relative rounded-[1.2rem] px-3.5 py-2.5 text-left transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] ring-1 ${isBreakout
           ? "ring-accent/20 bg-accent/[0.04] hover:ring-accent/30 hover:bg-accent/[0.07]"
           : "ring-surface-border/40 bg-surface-overlay/40 hover:ring-surface-border-bright/60 hover:bg-surface-overlay/70"
-      }`}
+        }`}
     >
       {isBreakout && (
         <div className="absolute right-1.5 top-1.5">
@@ -233,9 +232,8 @@ function RailTile({
       )}
 
       <div className="flex items-center gap-2">
-        <span className={`font-display text-[11px] font-bold tracking-tight ${
-          isBreakout ? "text-accent" : "text-text-secondary"
-        }`}>
+        <span className={`font-display text-[11px] font-bold tracking-tight ${isBreakout ? "text-accent" : "text-text-secondary"
+          }`}>
           {stock.symbol}
         </span>
         {(highBreak || volBreak) && !isBreakout && (
