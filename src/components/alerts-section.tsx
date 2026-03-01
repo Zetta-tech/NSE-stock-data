@@ -9,7 +9,7 @@ import { AlertBuilder } from "./alert-builder";
 
 const CONFIGURED_ALERT_TYPES = [
   { id: "true-breakout", name: "True Breakout", status: "active" as const },
-  { id: "low-breakout", name: "Low Breakout", status: "planned" as const },
+  { id: "low-breakout", name: "Low Breakout", status: "active" as const },
 ];
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */

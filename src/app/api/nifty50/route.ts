@@ -155,6 +155,52 @@ export async function GET() {
           );
         }
       }
+
+      // Fire alert for high-only breaks (price new high, volume below threshold)
+      if (highBreak && !volumeBreak) {
+        const alertId = `${stock.symbol}-nifty50-low-breakout-${today}`;
+        const alert: Alert = {
+          id: alertId,
+          symbol: stock.symbol,
+          name: stock.name,
+          alertType: "low-breakout",
+          todayHigh: stock.dayHigh,
+          todayVolume: stock.totalTradedVolume,
+          prevMaxHigh: baseline.maxHigh5d,
+          prevMaxVolume: baseline.maxVolume5d,
+          highBreakPercent,
+          volumeBreakPercent,
+          todayClose: stock.lastPrice,
+          todayChange: stock.pChange,
+          prev10DayLow: 0,
+          lowBreakPercent: 0,
+          triggeredAt: new Date().toISOString(),
+          read: false,
+        };
+        const added = await addAlert(alert);
+        newAlerts.push(alert);
+
+        if (added) {
+          await addActivity(
+            "system",
+            "alert-fired",
+            `Nifty 50 alert: ${stock.symbol} high-only break — High +${highBreakPercent}%`,
+            {
+              actor: "system",
+              detail: {
+                source: "nifty50",
+                symbol: stock.symbol,
+                highBreakPercent,
+                volumeBreakPercent,
+                todayHigh: stock.dayHigh,
+                todayVolume: stock.totalTradedVolume,
+                prevMaxHigh: baseline.maxHigh5d,
+                prevMaxVolume: baseline.maxVolume5d,
+              },
+            },
+          );
+        }
+      }
     }
 
     // Activity tracking for discoveries
