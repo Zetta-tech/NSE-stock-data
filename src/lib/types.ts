@@ -29,13 +29,14 @@ export interface ScanResult {
   todayChange: number;
   scannedAt: string;
   dataSource: DataSource;
+  yearHigh?: number;
 }
 
 export interface Alert {
   id: string;
   symbol: string;
   name: string;
-  alertType?: "breakout" | "low-breakout" | "scan";
+  alertType?: "breakout" | "low-breakout" | "scan" | "week-high";
   todayHigh: number;
   todayVolume: number;
   prevMaxHigh: number;
@@ -46,6 +47,7 @@ export interface Alert {
   todayChange: number;
   prev10DayLow?: number;
   lowBreakPercent?: number;
+  yearHigh?: number;
   triggeredAt: string;
   read: boolean;
 }

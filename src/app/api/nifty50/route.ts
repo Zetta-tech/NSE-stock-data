@@ -49,6 +49,40 @@ export async function GET() {
       // Skip stocks already in the watchlist — they have their own scan
       if (watchlistSet.has(stock.symbol)) continue;
 
+      // 52-week high alert (no baseline required — data comes from snapshot)
+      if (snapshot.fetchSuccess && stock.yearHigh > 0 && stock.dayHigh >= stock.yearHigh) {
+        const weekHighAlert: Alert = {
+          id: `${stock.symbol}-nifty50-week-high-${today}`,
+          symbol: stock.symbol,
+          name: stock.name,
+          alertType: "week-high",
+          todayHigh: stock.dayHigh,
+          todayVolume: stock.totalTradedVolume,
+          prevMaxHigh: 0,
+          prevMaxVolume: 0,
+          highBreakPercent: 0,
+          volumeBreakPercent: 0,
+          todayClose: stock.lastPrice,
+          todayChange: stock.pChange,
+          yearHigh: stock.yearHigh,
+          triggeredAt: new Date().toISOString(),
+          read: false,
+        };
+        const added = await addAlert(weekHighAlert);
+        newAlerts.push(weekHighAlert);
+        if (added) {
+          await addActivity(
+            "system",
+            "alert-fired",
+            `Nifty 50 alert: ${stock.symbol} touched 52-week high of ₹${stock.yearHigh}`,
+            {
+              actor: "system",
+              detail: { source: "nifty50", symbol: stock.symbol, alertType: "week-high", yearHigh: stock.yearHigh, dayHigh: stock.dayHigh },
+            },
+          );
+        }
+      }
+
       const baseline = baselines.get(stock.symbol);
 
       if (!baseline) {
