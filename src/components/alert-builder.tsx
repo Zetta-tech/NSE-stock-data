@@ -5,7 +5,7 @@ import { Sparkles, Send, Loader2, CheckCircle2, AlertCircle } from "lucide-react
 
 type FeedbackState = { type: "success" | "error"; message: string } | null;
 
-export function AlertBuilder() {
+export function AlertBuilder({ onSubmitted }: { onSubmitted?: () => void } = {}) {
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackState>(null);
@@ -43,6 +43,7 @@ export function AlertBuilder() {
 
       setText("");
       showFeedback("success", "Alert submitted — a GitHub Issue has been created for review.");
+      onSubmitted?.();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong";
       showFeedback("error", message);
