@@ -4,6 +4,8 @@ import { getWatchlist, getCloseWatchStocks, addAlert, getAlerts, saveScanResults
 import { getMarketStatus, getHistoricalCacheStats } from "@/lib/nse-client";
 import { addActivity, setScanMeta } from "@/lib/activity";
 import { logger } from "@/lib/logger";
+import { getPriceThresholds } from "@/lib/price-thresholds";
+import { checkAllPriceThresholds } from "@/lib/price-threshold-scanner";
 import type { Alert, ScanResponse, ScanMeta } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -51,6 +53,44 @@ export async function POST(request: Request) {
         };
         await addAlert(alert);
         newAlerts.push(alert);
+      }
+    }
+
+    // ── Price threshold checks ─────────────────────────────────────────
+    const thresholdConfigs = await getPriceThresholds();
+    const thresholdResults = await checkAllPriceThresholds(thresholdConfigs, useIntraday, marketOpen);
+    for (const tr of thresholdResults) {
+      if (tr.triggered) {
+        const alert: Alert = {
+          id: `${tr.symbol}-price-below-${Date.now()}`,
+          symbol: tr.symbol,
+          name: tr.name,
+          alertType: "price-below",
+          todayHigh: 0,
+          todayVolume: 0,
+          prevMaxHigh: 0,
+          prevMaxVolume: 0,
+          highBreakPercent: 0,
+          volumeBreakPercent: 0,
+          todayClose: tr.currentPrice,
+          todayChange: tr.currentChange,
+          threshold: tr.threshold,
+          triggeredAt: new Date().toISOString(),
+          read: false,
+        };
+        const isNew = await addAlert(alert);
+        if (isNew) {
+          newAlerts.push(alert);
+          await addActivity(
+            "system",
+            "alert-fired",
+            `Alert: ${tr.symbol} price ₹${tr.currentPrice.toFixed(2)} fell below ₹${tr.threshold}`,
+            {
+              actor: "system",
+              detail: { symbol: tr.symbol, currentPrice: tr.currentPrice, threshold: tr.threshold, alertType: "price-below" },
+            }
+          );
+        }
       }
     }
 
