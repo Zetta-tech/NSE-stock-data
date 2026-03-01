@@ -62,12 +62,14 @@ export async function scanStock(
     };
     let previousDays: DayData[];
     let dataSource: DataSource;
+    let yearHigh = 0;
 
     if (useIntraday) {
       const liveDayData = await getCurrentDayData(symbol);
 
       if (liveDayData && liveDayData.high > 0) {
         todayData = liveDayData;
+        yearHigh = liveDayData.yearHigh;
         previousDays = historical.slice(-LOOKBACK_DAYS);
         dataSource = "live";
       } else {
@@ -119,7 +121,7 @@ export async function scanStock(
       );
     }
 
-    return { symbol, name, scannedAt, dataSource, ...analysis, triggered };
+    return { symbol, name, scannedAt, dataSource, ...analysis, triggered, yearHigh };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error(
