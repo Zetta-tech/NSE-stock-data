@@ -54,6 +54,43 @@ export async function POST(request: Request) {
       }
     }
 
+    for (const result of results) {
+      if (result.dataSource !== "live") continue;
+      if (!result.yearHigh || result.yearHigh <= 0) continue;
+      if (result.todayHigh < result.yearHigh) continue;
+
+      const alert: Alert = {
+        id: `${result.symbol}-week-high-${Date.now()}`,
+        symbol: result.symbol,
+        name: result.name,
+        alertType: "week-high",
+        todayHigh: result.todayHigh,
+        todayVolume: result.todayVolume,
+        prevMaxHigh: result.prevMaxHigh,
+        prevMaxVolume: result.prevMaxVolume,
+        highBreakPercent: result.highBreakPercent,
+        volumeBreakPercent: result.volumeBreakPercent,
+        todayClose: result.todayClose,
+        todayChange: result.todayChange,
+        yearHigh: result.yearHigh,
+        triggeredAt: result.scannedAt,
+        read: false,
+      };
+      const added = await addAlert(alert);
+      if (added) {
+        newAlerts.push(alert);
+        await addActivity(
+          "system",
+          "alert-fired",
+          `Alert: ${result.symbol} touched 52-week high of ₹${result.yearHigh}`,
+          {
+            actor: "system",
+            detail: { symbol: result.symbol, alertType: "week-high", yearHigh: result.yearHigh, todayHigh: result.todayHigh },
+          }
+        );
+      }
+    }
+
     // ── Activity tracking ──────────────────────────────────────────────
     const staleCount = results.filter((r) => r.dataSource === "stale").length;
     const liveCount = results.filter((r) => r.dataSource === "live").length;

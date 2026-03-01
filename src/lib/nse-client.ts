@@ -151,7 +151,7 @@ export async function getHistoricalData(
 
 export async function getCurrentDayData(
   symbol: string
-): Promise<{ high: number; volume: number; close: number; change: number } | null> {
+): Promise<{ high: number; volume: number; close: number; change: number; yearHigh: number } | null> {
   recordCall("api", "getCurrentDayData", symbol);
 
   try {
@@ -167,8 +167,10 @@ export async function getCurrentDayData(
       const change = details.priceInfo.pChange;
       const volume =
         tradeInfo.marketDeptOrderBook.tradeInfo.totalTradedVolume;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const yearHigh = (details.priceInfo as any).weekHighLow?.max ?? 0;
 
-      return { high, volume, close, change };
+      return { high, volume, close, change, yearHigh };
     }, `getCurrentDayData(${symbol})`);
 
     logger.debug(
