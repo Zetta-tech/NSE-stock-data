@@ -59,10 +59,25 @@ interface CacheLayersData {
   };
 }
 
+interface AlertRequestSummary {
+  total: number;
+  inProgress: number;
+  byStatus: Record<string, number>;
+  recent: {
+    id: string;
+    text: string;
+    status: string;
+    createdAt: string;
+    githubIssueNumber?: number;
+    githubPrNumber?: number;
+  }[];
+}
+
 interface SystemState {
   market: { open: boolean };
   watchlist: { total: number; closeWatch: number; closeWatchSymbols: string[] };
   alerts: { total: number; unread: number; nifty50Alerts?: number; scanAlerts?: number; recentSymbols?: string[] };
+  alertRequests?: AlertRequestSummary;
   scan: ScanMeta | null;
   cache: { size: number; symbols: string[]; date: string };
   cacheLayers?: CacheLayersData;
@@ -1031,6 +1046,114 @@ export default function DevDashboard() {
                                 <span className="text-text-secondary font-mono truncate">{r.method}{r.symbol ? ` (${r.symbol})` : ''}</span>
                               </div>
                             ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CollapsibleSection>
+                );
+              })()}
+
+              {state?.alertRequests && (() => {
+                const ar = state.alertRequests;
+                const STATUS_COLORS: Record<string, { dot: string; text: string; bg: string }> = {
+                  pending:       { dot: 'bg-amber-400',   text: 'text-amber-400',   bg: 'bg-amber-500/10' },
+                  issue_created: { dot: 'bg-blue-400',    text: 'text-blue-400',    bg: 'bg-blue-500/10' },
+                  pr_created:    { dot: 'bg-violet-400',  text: 'text-violet-400',  bg: 'bg-violet-500/10' },
+                  implemented:   { dot: 'bg-emerald-400', text: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+                  rejected:      { dot: 'bg-red-400',     text: 'text-red-400',     bg: 'bg-red-500/10' },
+                };
+                const STATUS_LABELS: Record<string, string> = {
+                  pending: 'Pending',
+                  issue_created: 'Issue',
+                  pr_created: 'PR',
+                  implemented: 'Done',
+                  rejected: 'Rejected',
+                };
+                return (
+                  <CollapsibleSection
+                    title="Alert Requests"
+                    icon={<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>}
+                    badge={ar.inProgress > 0 ? `${ar.inProgress} active` : `${ar.total} total`}
+                    badgeColor={ar.inProgress > 0 ? 'bg-amber-500/10 text-amber-400' : 'bg-surface-overlay text-text-muted'}
+                    defaultOpen={ar.inProgress > 0}
+                  >
+                    <div className="space-y-3 pt-2.5">
+                      {/* Summary stats */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <p className="text-[9px] text-text-muted font-semibold mb-1">Total</p>
+                          <p className="text-sm font-bold tabular-nums">{ar.total}</p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] text-text-muted font-semibold mb-1">In Progress</p>
+                          <p className={`text-sm font-bold tabular-nums ${ar.inProgress > 0 ? 'text-amber-400' : 'text-text-muted'}`}>
+                            {ar.inProgress}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Status breakdown */}
+                      {Object.keys(ar.byStatus).length > 0 && (
+                        <div>
+                          <p className="text-[9px] text-text-muted/50 font-semibold mb-1.5">Status Breakdown</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {Object.entries(ar.byStatus).map(([status, count]) => {
+                              const colors = STATUS_COLORS[status] ?? { dot: 'bg-slate-400', text: 'text-slate-400', bg: 'bg-slate-500/10' };
+                              const label = STATUS_LABELS[status] ?? status;
+                              return (
+                                <span key={status} className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[9px] font-semibold ${colors.bg} ${colors.text}`}>
+                                  <span className={`h-1 w-1 rounded-full ${colors.dot}`} />
+                                  {label}: {count}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Progress bar */}
+                      {ar.total > 0 && (
+                        <div>
+                          <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-surface-overlay">
+                            {Object.entries(ar.byStatus).map(([status, count]) => {
+                              const colors = STATUS_COLORS[status];
+                              const pct = (count / ar.total) * 100;
+                              return pct > 0 ? (
+                                <div key={status} className={`${colors?.dot ?? 'bg-slate-400'} transition-all duration-500`} style={{ width: `${pct}%` }} />
+                              ) : null;
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Recent requests */}
+                      {ar.recent.length > 0 && (
+                        <div>
+                          <p className="text-[9px] text-text-muted/50 font-semibold mb-1.5">Recent Requests</p>
+                          <div className="space-y-1.5">
+                            {ar.recent.map((req) => {
+                              const colors = STATUS_COLORS[req.status] ?? { dot: 'bg-slate-400', text: 'text-slate-400', bg: 'bg-slate-500/10' };
+                              const label = STATUS_LABELS[req.status] ?? req.status;
+                              return (
+                                <div key={req.id} className="flex items-start gap-2 rounded-lg border border-surface-border/30 bg-surface/40 px-2.5 py-2">
+                                  <span className={`mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full ${colors.dot}`} />
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-[10px] text-text-primary font-medium leading-relaxed truncate">{req.text}</p>
+                                    <div className="mt-0.5 flex items-center gap-2">
+                                      <span className={`text-[8px] font-bold uppercase tracking-wider ${colors.text}`}>{label}</span>
+                                      <span className="text-[8px] text-text-muted/40 font-mono tabular-nums">{timeAgo(req.createdAt)}</span>
+                                      {req.githubIssueNumber && (
+                                        <span className="text-[8px] text-blue-400/60">#{req.githubIssueNumber}</span>
+                                      )}
+                                      {req.githubPrNumber && (
+                                        <span className="text-[8px] text-violet-400/60">PR #{req.githubPrNumber}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       )}

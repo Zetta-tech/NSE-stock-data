@@ -4,6 +4,7 @@ import { getScanMeta } from "@/lib/activity";
 import { getMarketStatus, getHistoricalCacheStats, getNifty50Index, getApiStats } from "@/lib/nse-client";
 import { getBaselineStats } from "@/lib/baselines";
 import { flushStats, getPersistedStats } from "@/lib/api-stats";
+import { getAlertRequests } from "@/lib/alert-requests";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,7 @@ export async function GET() {
   // Lazy flush: write pending API stat deltas to Redis on each poll
   await flushStats().catch(() => {});
 
-  const [watchlist, alerts, scanMeta, marketOpen, cacheStats, nifty, nifty50Stats, persistedApiStats] =
+  const [watchlist, alerts, scanMeta, marketOpen, cacheStats, nifty, nifty50Stats, persistedApiStats, alertRequests] =
     await Promise.all([
       getWatchlist(),
       getAlerts(),
@@ -21,6 +22,7 @@ export async function GET() {
       getNifty50Index().catch(() => null),
       getNifty50PersistentStats(),
       getPersistedStats(),
+      getAlertRequests().catch(() => [] as import("@/lib/types").AlertRequest[]),
     ]);
 
   const closeWatchStocks = watchlist.filter((s) => s.closeWatch);
@@ -51,6 +53,15 @@ export async function GET() {
     },
   };
 
+  // Alert request status breakdown
+  const alertRequestsByStatus: Record<string, number> = {};
+  for (const r of alertRequests) {
+    alertRequestsByStatus[r.status] = (alertRequestsByStatus[r.status] ?? 0) + 1;
+  }
+  const inProgressCount = alertRequests.filter(
+    (r) => r.status !== "implemented" && r.status !== "rejected"
+  ).length;
+
   return NextResponse.json({
     market: { open: marketOpen },
     watchlist: {
@@ -64,6 +75,19 @@ export async function GET() {
       nifty50Alerts: nifty50Alerts.length,
       scanAlerts: scanAlerts.length,
       recentSymbols: alerts.slice(0, 5).map((a) => a.symbol),
+    },
+    alertRequests: {
+      total: alertRequests.length,
+      inProgress: inProgressCount,
+      byStatus: alertRequestsByStatus,
+      recent: alertRequests.slice(0, 5).map((r) => ({
+        id: r.id,
+        text: r.text.replace(/^Create Alert:\s*/i, ""),
+        status: r.status,
+        createdAt: r.createdAt,
+        githubIssueNumber: r.githubIssueNumber,
+        githubPrNumber: r.githubPrNumber,
+      })),
     },
     scan: scanMeta,
     cache: cacheStats,

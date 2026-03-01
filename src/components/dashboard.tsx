@@ -4,12 +4,11 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { Header } from "./header";
 import { ScanButton } from "./scan-button";
 import { StockCard } from "./stock-card";
-import { AlertPanel } from "./alert-panel";
 import { TickerPanel } from "./ticker-panel";
 import { Nifty50Rail } from "./nifty50-rail";
 import { DiscoveryFeed } from "./discovery-feed";
 import { AddStockModal } from "./add-stock-modal";
-import { AlertBuilder } from "./alert-builder";
+import { AlertsSection } from "./alerts-section";
 import { isMarketHours } from "@/lib/market-hours";
 import type { WatchlistStock, ScanResult, Alert, DiscoveryStock } from "@/lib/types";
 
@@ -276,10 +275,8 @@ export function Dashboard({
       )}
 
       <main className="mx-auto max-w-[1440px] px-5 py-8 space-y-6">
-        <AlertBuilder />
-
-        {/* Alerts — horizontal scrollable strip */}
-        <AlertPanel alerts={alerts} />
+        {/* Alerts — Configured + In Progress */}
+        <AlertsSection alerts={alerts} />
 
         <TickerPanel
           hasCloseWatchStocks={closeWatchCount > 0}
