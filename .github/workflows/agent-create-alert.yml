@@ -1,0 +1,56 @@
+name: Agent — Create Alert
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  create-alert:
+    if: github.event.label.name == 'agent:create-alert'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Claude Code
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are implementing a new alert type for the NSE stock scanner.
+
+            Read these files first:
+            - AGENTS.md (master instructions)
+            - docs/ARCHITECTURE.md
+            - docs/ALERTS.md
+            - docs/api-capability-map.md
+            - docs/AI_CONSTRAINTS.md
+
+            The alert request is in the issue body. Parse it and implement the alert.
+
+            Follow the implementation checklist in AGENTS.md exactly.
+            Create a PR when done using the format in AGENTS.md.
+
+            Adding tests is encouraged but not required. You may run typecheck
+            or tests at your discretion for verification.
+
+            IMPORTANT: Do not modify protected files listed in AGENTS.md.
+          claude_args: "--allowed-tools Bash Edit Read Write Glob Grep"

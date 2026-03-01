@@ -226,3 +226,17 @@ export interface Nifty50PersistentStats {
   snapshotFetchCount: number;
   snapshotFailCount: number;
 }
+
+export type AlertRequestStatus = "pending" | "issue_created" | "pr_created" | "implemented" | "rejected";
+
+export interface AlertRequest {
+  id: string;
+  text: string;
+  status: AlertRequestStatus;
+  createdAt: string;
+  githubIssueNumber?: number;
+  githubIssueUrl?: string;
+  githubPrNumber?: number;
+  githubPrUrl?: string;
+  errorMessage?: string;
+}
