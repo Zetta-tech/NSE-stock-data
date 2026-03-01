@@ -43,16 +43,30 @@ export function Dashboard({
   const closeWatchCount = watchlist.filter((s) => s.closeWatch).length;
   const userToggledOffRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [expandedSymbol, setExpandedSymbol] = useState<string | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
     const ctx = gsap.context(() => {
+      const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
       // Stagger entrance for main sections
       gsap.fromTo(
         ".dashboard-section",
-        { y: 30, opacity: 0 },
+        { y: prefersReducedMotion ? 0 : 30, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.8, stagger: 0.15, ease: "power3.out" }
       );
+
+      // Cards entrance
+      gsap.to(".stock-card-wrapper", {
+        y: 0,
+        opacity: 1,
+        scale: 1,
+        duration: prefersReducedMotion ? 0.01 : 0.5,
+        stagger: prefersReducedMotion ? 0 : 0.08,
+        ease: "back.out(1.2)",
+        delay: 0.3
+      });
     }, containerRef);
     return () => ctx.revert();
   }, [watchlist.length]);
@@ -351,8 +365,8 @@ export function Dashboard({
                   );
                 }}
                 className={`action-icon-btn ${autoCheckActive
-                    ? "ring-warn/25 bg-warn/8 text-warn"
-                    : "ring-surface-border bg-surface-raised text-text-secondary hover:ring-warn/25 hover:text-warn"
+                  ? "ring-warn/25 bg-warn/8 text-warn"
+                  : "ring-surface-border bg-surface-raised text-text-secondary hover:ring-warn/25 hover:text-warn"
                   }`}
                 title={autoCheckActive ? "Stop auto-checking starred stocks" : "Auto-check starred stocks every 30s"}
               >
@@ -404,7 +418,7 @@ export function Dashboard({
           {watchlist.map((stock, i) => {
             const result = results.find((r) => r.symbol === stock.symbol);
             return (
-              <div key={stock.symbol} style={{ animationDelay: `${i * 50}ms` }} className="animate-fade-in h-full">
+              <div key={stock.symbol} className="stock-card-wrapper h-full opacity-0 translate-y-6 scale-[0.96]">
                 <StockCard
                   result={
                     result || {
@@ -426,6 +440,10 @@ export function Dashboard({
                   onRemove={removeStock}
                   closeWatch={stock.closeWatch}
                   onToggleCloseWatch={toggleCloseWatch}
+                  isExpanded={expandedSymbol === stock.symbol}
+                  onToggleExpand={() =>
+                    setExpandedSymbol((prev) => (prev === stock.symbol ? null : stock.symbol))
+                  }
                 />
               </div>
             );
