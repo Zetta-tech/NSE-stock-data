@@ -18,6 +18,14 @@ function stripPrefix(text: string): string {
   return text.replace(/^Create Alert:\s*/i, "");
 }
 
+/** Derive a concise alert type name from a raw user prompt */
+function deriveAlertName(text: string): string {
+  const raw = stripPrefix(text).trim();
+  // Capitalise first letter, truncate to a reasonable display length
+  const capped = raw.charAt(0).toUpperCase() + raw.slice(1);
+  return capped.length > 40 ? capped.slice(0, 37) + "..." : capped;
+}
+
 /* ── Main Component ─────────────────────────────────────────────────── */
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -25,8 +33,6 @@ export function AlertsSection({ alerts }: { alerts: Alert[] }) {
   const [alertRequests, setAlertRequests] = useState<AlertRequest[]>([]);
   const [configuredOpen, setConfiguredOpen] = useState(false);
   const [inProgressOpen, setInProgressOpen] = useState(false);
-  const fetchedRef = useRef(false);
-
   const configuredWrapperRef = useRef<HTMLDivElement>(null);
   const configuredBubbleRef = useRef<HTMLDivElement>(null);
   const inProgressWrapperRef = useRef<HTMLDivElement>(null);
@@ -39,11 +45,11 @@ export function AlertsSection({ alerts }: { alerts: Alert[] }) {
   const configuredAlertTypes = [
     ...BUILTIN_ALERT_TYPES,
     ...alertRequests
-      .filter((r) => r.status === "implemented")
+      .filter((r) => r.status !== "rejected")
       .map((r) => ({
         id: r.id,
-        name: stripPrefix(r.text),
-        status: "active" as const,
+        name: deriveAlertName(r.text),
+        status: r.status === "implemented" ? ("active" as const) : ("building" as const),
       })),
   ];
 
@@ -58,10 +64,7 @@ export function AlertsSection({ alerts }: { alerts: Alert[] }) {
   }, []);
 
   useEffect(() => {
-    if (!fetchedRef.current) {
-      fetchedRef.current = true;
-      fetchRequests();
-    }
+    fetchRequests();
   }, [fetchRequests]);
 
   const handleRequestSubmitted = useCallback(() => {
@@ -158,7 +161,7 @@ export function AlertsSection({ alerts }: { alerts: Alert[] }) {
                 <path d="M13.73 21a2 2 0 0 1-3.46 0" />
               </svg>
             </div>
-            <h2 className="font-display text-sm font-bold tracking-tight">Alerts</h2>
+            <h2 className="font-display text-sm font-bold tracking-tight">Alert Types</h2>
           </div>
 
           {/* Counter badges */}
@@ -198,13 +201,13 @@ export function AlertsSection({ alerts }: { alerts: Alert[] }) {
                         className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${
                           type.status === "active"
                             ? "bg-accent shadow-[0_0_4px_rgba(0,230,138,0.4)]"
-                            : "bg-text-muted/40"
+                            : "bg-amber-400 shadow-[0_0_4px_rgba(245,158,11,0.3)]"
                         }`}
                       />
-                      <span className="text-[11px] font-medium text-text-primary">{type.name}</span>
+                      <span className="text-[11px] font-medium text-text-primary truncate">{type.name}</span>
                       <span
-                        className={`ml-auto text-[8px] font-bold uppercase tracking-wider ${
-                          type.status === "active" ? "text-accent/60" : "text-text-muted/50"
+                        className={`ml-auto flex-shrink-0 text-[8px] font-bold uppercase tracking-wider ${
+                          type.status === "active" ? "text-accent/60" : "text-amber-400/60"
                         }`}
                       >
                         {type.status}
