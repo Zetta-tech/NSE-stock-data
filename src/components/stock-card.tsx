@@ -211,7 +211,7 @@ export function StockCard({
       tabIndex={0}
       onClick={onToggleExpand}
       onKeyDown={handleKeyDown}
-      className={`stock-card group text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background relative flex h-full flex-col rounded-[2rem] p-6 transition-all duration-400 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] active:scale-[0.97] active:duration-100 ${isExpanded ? "ring-2 ring-accent/30 hover:-translate-y-1 shadow-2xl z-10" : "hover:-translate-y-1 hover:ring-2 hover:ring-surface-border-bright/60 ring-1 z-0"} ${isStale
+      className={`stock-card group text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background relative flex h-full flex-col overflow-hidden rounded-[2rem] p-6 transition-all duration-400 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] active:scale-[0.97] active:duration-100 ${isExpanded ? "ring-2 ring-accent/30 hover:-translate-y-1 shadow-2xl z-10" : "hover:-translate-y-1 hover:ring-2 hover:ring-surface-border-bright/60 ring-1 z-0"} ${isStale
         ? "ring-warn/25 bg-surface card-glow-warn"
         : result.triggered
           ? "ring-accent/25 card-glow bg-surface"
