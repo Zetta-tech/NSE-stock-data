@@ -5,9 +5,9 @@ import gsap from "gsap";
 import type { Alert, AlertRequest } from "@/lib/types";
 import { AlertBuilder } from "./alert-builder";
 
-/* ── Static alert types ────────────────────────────────────────────── */
+/* ── Built-in alert types (pre-date the request system) ────────────── */
 
-const CONFIGURED_ALERT_TYPES = [
+const BUILTIN_ALERT_TYPES = [
   { id: "true-breakout", name: "True Breakout", status: "active" as const },
   { id: "low-breakout", name: "Low Breakout", status: "active" as const },
 ];
@@ -35,6 +35,17 @@ export function AlertsSection({ alerts }: { alerts: Alert[] }) {
   const inProgressRequests = alertRequests.filter(
     (r) => r.status !== "implemented" && r.status !== "rejected"
   );
+
+  const configuredAlertTypes = [
+    ...BUILTIN_ALERT_TYPES,
+    ...alertRequests
+      .filter((r) => r.status === "implemented")
+      .map((r) => ({
+        id: r.id,
+        name: stripPrefix(r.text),
+        status: "active" as const,
+      })),
+  ];
 
   const fetchRequests = useCallback(async () => {
     try {
@@ -169,7 +180,7 @@ export function AlertsSection({ alerts }: { alerts: Alert[] }) {
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="flex-shrink-0">
                   <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
                 </svg>
-                {CONFIGURED_ALERT_TYPES.length}
+                {configuredAlertTypes.length}
                 <span className="text-[8px] font-semibold uppercase tracking-wider opacity-60">cfg</span>
               </button>
 
@@ -181,7 +192,7 @@ export function AlertsSection({ alerts }: { alerts: Alert[] }) {
               >
                 <div className="px-3 py-2.5 space-y-1">
                   <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted mb-1.5">Alert Types</p>
-                  {CONFIGURED_ALERT_TYPES.map((type) => (
+                  {configuredAlertTypes.map((type) => (
                     <div key={type.id} className="flex items-center gap-2 py-1">
                       <span
                         className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${
