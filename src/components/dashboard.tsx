@@ -9,6 +9,7 @@ import { TickerPanel } from "./ticker-panel";
 import { Nifty50Rail } from "./nifty50-rail";
 import { DiscoveryFeed } from "./discovery-feed";
 import { AddStockModal } from "./add-stock-modal";
+import { AlertBuilder } from "./alert-builder";
 import { isMarketHours } from "@/lib/market-hours";
 import type { WatchlistStock, ScanResult, Alert, DiscoveryStock } from "@/lib/types";
 
@@ -275,6 +276,8 @@ export function Dashboard({
       )}
 
       <main className="mx-auto max-w-[1440px] px-5 py-8 space-y-6">
+        <AlertBuilder />
+
         {/* Alerts — horizontal scrollable strip */}
         <AlertPanel alerts={alerts} />
 
