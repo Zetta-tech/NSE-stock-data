@@ -514,6 +514,7 @@ export default function DevDashboard() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [timelineFilter, setTimelineFilter] = useState<TimelineFilter>('all');
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
+  const [updatingAlertId, setUpdatingAlertId] = useState<string | null>(null);
 
   const timelineRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -549,6 +550,19 @@ export default function DevDashboard() {
       setEvents(activityData.events || []);
     } catch { }
   }, []);
+
+  const patchAlertStatus = useCallback(async (id: string, status: string) => {
+    setUpdatingAlertId(id);
+    try {
+      await fetch(`/api/alert-requests/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      await fetchAll();
+    } catch { }
+    finally { setUpdatingAlertId(null); }
+  }, [fetchAll]);
 
   const fetchLogs = useCallback(async () => {
     try {
@@ -1140,7 +1154,7 @@ export default function DevDashboard() {
                                   <span className={`mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full ${colors.dot}`} />
                                   <div className="min-w-0 flex-1">
                                     <p className="text-[10px] text-text-primary font-medium leading-relaxed truncate">{req.text}</p>
-                                    <div className="mt-0.5 flex items-center gap-2">
+                                    <div className="mt-0.5 flex items-center gap-2 flex-wrap">
                                       <span className={`text-[8px] font-bold uppercase tracking-wider ${colors.text}`}>{label}</span>
                                       <span className="text-[8px] text-text-muted/40 font-mono tabular-nums">{timeAgo(req.createdAt)}</span>
                                       {req.githubIssueNumber && (
@@ -1150,6 +1164,24 @@ export default function DevDashboard() {
                                         <span className="text-[8px] text-violet-400/60">PR #{req.githubPrNumber}</span>
                                       )}
                                     </div>
+                                    {req.status !== 'implemented' && req.status !== 'rejected' && (
+                                      <div className="mt-1.5 flex items-center gap-1.5">
+                                        <button
+                                          onClick={() => patchAlertStatus(req.id, 'implemented')}
+                                          disabled={updatingAlertId === req.id}
+                                          className="rounded px-1.5 py-0.5 text-[8px] font-semibold text-emerald-400 border border-emerald-500/20 bg-emerald-500/[0.07] hover:bg-emerald-500/15 transition-colors disabled:opacity-40"
+                                        >
+                                          {updatingAlertId === req.id ? '…' : '✓ Implemented'}
+                                        </button>
+                                        <button
+                                          onClick={() => patchAlertStatus(req.id, 'rejected')}
+                                          disabled={updatingAlertId === req.id}
+                                          className="rounded px-1.5 py-0.5 text-[8px] font-semibold text-red-400 border border-red-500/20 bg-red-500/[0.07] hover:bg-red-500/15 transition-colors disabled:opacity-40"
+                                        >
+                                          Reject
+                                        </button>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               );

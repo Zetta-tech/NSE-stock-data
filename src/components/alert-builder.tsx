@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { Sparkles, Send, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Sparkles, Send, Loader2, CheckCircle2, AlertCircle, Info } from "lucide-react";
 
 type FeedbackState = { type: "success" | "error"; message: string } | null;
 
@@ -9,8 +9,21 @@ export function AlertBuilder({ onSubmitted }: { onSubmitted?: () => void } = {})
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackState>(null);
+  const [showHint, setShowHint] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const hintRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showHint) return;
+    const handler = (e: MouseEvent) => {
+      if (hintRef.current && !hintRef.current.contains(e.target as Node)) {
+        setShowHint(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showHint]);
 
   const showFeedback = (type: "success" | "error", message: string) => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -61,7 +74,7 @@ export function AlertBuilder({ onSubmitted }: { onSubmitted?: () => void } = {})
   };
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in relative" ref={hintRef}>
       <div
         className="rounded-[1.8rem] p-[1.5px] shadow-lg shadow-black/30"
         style={{
@@ -84,6 +97,15 @@ export function AlertBuilder({ onSubmitted }: { onSubmitted?: () => void } = {})
               >
                 Create Alert
               </span>
+              <button
+                onClick={() => setShowHint((v) => !v)}
+                className="flex items-center justify-center w-4 h-4 rounded-full opacity-40 hover:opacity-80 transition-opacity"
+                style={{ color: "var(--text-muted)" }}
+                aria-label="Alert tips"
+                tabIndex={-1}
+              >
+                <Info size={12} />
+              </button>
             </div>
 
             <input
@@ -116,6 +138,28 @@ export function AlertBuilder({ onSubmitted }: { onSubmitted?: () => void } = {})
           </div>
         </div>
       </div>
+
+      {showHint && (
+        <div
+          className="mt-2 px-4 py-3 rounded-2xl text-xs space-y-2 animate-slide-down"
+          style={{ background: "var(--surface-raised)", border: "1px solid var(--surface-border)" }}
+        >
+          <p className="font-semibold" style={{ color: "var(--text-primary)" }}>Tips for best results</p>
+          <ul className="space-y-1" style={{ color: "var(--text-secondary)" }}>
+            <li>• Include the <span className="font-medium" style={{ color: "var(--text-primary)" }}>stock symbol</span> — e.g. RELIANCE, HDFCBANK, NIFTY50</li>
+            <li>• Describe the <span className="font-medium" style={{ color: "var(--text-primary)" }}>condition</span> — price breakout, volume spike, % drop, MA cross</li>
+            <li>• Add a <span className="font-medium" style={{ color: "var(--text-primary)" }}>threshold</span> where relevant — e.g. "drops 3%", "volume 2× average"</li>
+          </ul>
+          <div className="pt-1 space-y-0.5" style={{ color: "var(--text-muted)", borderTop: "1px solid var(--surface-border)" }}>
+            <p className="font-medium text-[11px] pt-1" style={{ color: "var(--text-secondary)" }}>Examples</p>
+            <p className="font-mono text-[10px]">"HDFCBANK breaks 52-week high with volume confirmation"</p>
+            <p className="font-mono text-[10px]">"INFY drops more than 4% intraday"</p>
+          </div>
+          <p className="text-[10px] pt-0.5" style={{ color: "var(--text-muted)" }}>
+            Desktop notifications fire automatically for all alerts when the app is open — no need to request them separately.
+          </p>
+        </div>
+      )}
 
       {feedback && (
         <div
