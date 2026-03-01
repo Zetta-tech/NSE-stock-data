@@ -9,15 +9,22 @@ export function StockCard({
   onRemove,
   closeWatch,
   onToggleCloseWatch,
+  isExpanded,
+  onToggleExpand,
 }: {
   result: ScanResult;
   onRemove: (symbol: string) => void;
   closeWatch: boolean;
   onToggleCloseWatch: (symbol: string) => void;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const starRef = useRef<HTMLButtonElement>(null);
   const borderRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const spotlightRef = useRef<HTMLDivElement>(null);
+  const thumbRef = useRef<HTMLDivElement>(null);
   const prevCloseWatch = useRef(closeWatch);
 
   const hasData = result.todayHigh > 0;
@@ -61,7 +68,7 @@ export function StockCard({
     );
   }, []);
 
-  /* ── 3D tilt on pointer move (adapted from GSAP CodePen qBzaNQy) ── */
+  /* ── 3D tilt and Parallax on pointer move ── */
   useEffect(() => {
     const card = cardRef.current;
     if (!card) return;
@@ -71,24 +78,63 @@ export function StockCard({
     const tiltX = gsap.quickTo(card, "rotationX", { duration: 0.5, ease: "power3" });
     const tiltY = gsap.quickTo(card, "rotationY", { duration: 0.5, ease: "power3" });
 
+    const spotlight = spotlightRef.current;
+    const thumb = thumbRef.current;
+
+    let spotX: gsap.QuickToFunc | null = null;
+    let spotY: gsap.QuickToFunc | null = null;
+    let tX: gsap.QuickToFunc | null = null;
+    let tY: gsap.QuickToFunc | null = null;
+
+    if (spotlight) {
+      spotX = gsap.quickTo(spotlight, "x", { duration: 0.15, ease: "power3" });
+      spotY = gsap.quickTo(spotlight, "y", { duration: 0.15, ease: "power3" });
+    }
+
+    if (thumb) {
+      tX = gsap.quickTo(thumb, "x", { duration: 0.4, ease: "power3.out" });
+      tY = gsap.quickTo(thumb, "y", { duration: 0.4, ease: "power3.out" });
+    }
+
     const onPointerMove = (e: PointerEvent) => {
       if (e.pointerType !== "mouse") return;
       const rect = card.getBoundingClientRect();
-      const px = (e.clientX - rect.left) / rect.width;
-      const py = (e.clientY - rect.top) / rect.height;
-      tiltX(gsap.utils.interpolate(8, -8, py));
-      tiltY(gsap.utils.interpolate(-8, 8, px));
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      const px = x / rect.width;
+      const py = y / rect.height;
+
+      tiltX(gsap.utils.interpolate(6, -6, py));
+      tiltY(gsap.utils.interpolate(-6, 6, px));
+
+      if (spotX && spotY) {
+        spotX(x);
+        spotY(y);
+      }
+      if (tX && tY) {
+        tX(gsap.utils.interpolate(15, -15, px));
+        tY(gsap.utils.interpolate(15, -15, py));
+      }
     };
 
     const onPointerLeave = (e: PointerEvent) => {
       if (e.pointerType !== "mouse") return;
       tiltX(0);
       tiltY(0);
+      if (tX && tY) {
+        tX(0);
+        tY(0);
+      }
     };
 
     const onTouchReset = () => {
       tiltX(0);
       tiltY(0);
+      if (tX && tY) {
+        tX(0);
+        tY(0);
+      }
     };
 
     card.addEventListener("pointermove", onPointerMove);
@@ -104,18 +150,95 @@ export function StockCard({
     };
   }, []);
 
+  useEffect(() => {
+    if (!contentRef.current) return;
+    const content = contentRef.current;
+    const inner = content.firstElementChild as HTMLElement;
+
+    // Check if motion is reduced
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (isExpanded) {
+      if (prefersReducedMotion) {
+        gsap.set(content, { height: "auto" });
+        gsap.set(inner, { opacity: 1, y: 0 });
+      } else {
+        gsap.to(content, {
+          height: "auto",
+          duration: 0.45,
+          ease: "power2.inOut",
+        });
+        gsap.to(inner, {
+          opacity: 1,
+          y: 0,
+          duration: 0.35,
+          delay: 0.15,
+          ease: "power2.out"
+        });
+      }
+    } else {
+      if (prefersReducedMotion) {
+        gsap.set(content, { height: 0 });
+        gsap.set(inner, { opacity: 0, y: 8 });
+      } else {
+        gsap.to(inner, {
+          opacity: 0,
+          y: 8,
+          duration: 0.25,
+          ease: "power2.in"
+        });
+        gsap.to(content, {
+          height: 0,
+          duration: 0.4,
+          delay: 0.05,
+          ease: "power2.inOut",
+        });
+      }
+    }
+  }, [isExpanded]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onToggleExpand();
+    }
+  };
+
   return (
     <div
       ref={cardRef}
-      className={`stock-card group relative flex h-full flex-col overflow-hidden rounded-[1.5rem] p-6 transition-all duration-400 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-1 ring-1 ${isStale
-          ? "ring-warn/25 bg-surface-raised card-glow-warn"
-          : result.triggered
-            ? "ring-accent/25 card-glow bg-surface-raised"
-            : closeWatch
-              ? "ring-warn/15 bg-surface-raised hover:shadow-2xl hover:shadow-warn/10"
-              : "ring-surface-border/40 bg-surface-raised hover:ring-surface-border-bright/60 hover:shadow-2xl hover:shadow-black/50"
+      role="button"
+      tabIndex={0}
+      onClick={onToggleExpand}
+      onKeyDown={handleKeyDown}
+      className={`stock-card group text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background relative flex h-full flex-col rounded-[2rem] p-6 transition-all duration-400 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] active:scale-[0.97] active:duration-100 ${isExpanded ? "ring-2 ring-accent/30 hover:-translate-y-1 shadow-2xl z-10" : "hover:-translate-y-1 hover:ring-2 hover:ring-surface-border-bright/60 ring-1 z-0"} ${isStale
+        ? "ring-warn/25 bg-surface card-glow-warn"
+        : result.triggered
+          ? "ring-accent/25 card-glow bg-surface"
+          : closeWatch
+            ? "ring-warn/15 bg-surface hover:shadow-2xl hover:shadow-warn/10"
+            : "ring-surface-border/30 bg-surface hover:shadow-2xl hover:shadow-black/60"
         } card-elevated`}
     >
+      {/* Background container to clip things */}
+      <div className="absolute inset-0 rounded-[2rem] overflow-hidden pointer-events-none z-0">
+        {/* Spotlight hover effect */}
+        <div
+          ref={spotlightRef}
+          className={`absolute h-[600px] w-[600px] rounded-full blur-[70px] transition-all duration-500 ${isExpanded ? 'bg-white/[0.01] opacity-100' : 'bg-white/[0.03] mix-blend-plus-lighter opacity-0 group-hover:opacity-100'}`}
+          style={{ top: -300, left: -300 }}
+        />
+      </div>
+
+      {/* Thumbnail Area */}
+      <div className="absolute top-0 right-0 w-32 h-32 -mr-10 -mt-10 pointer-events-none transition-transform duration-500 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] group-hover:-mt-9 group-hover:-mr-9 z-0">
+        <div ref={thumbRef} className="w-full h-full relative">
+          <div className={`absolute inset-0 bg-gradient-radial from-text-muted/10 to-transparent blur-xl transition-all duration-700 ${isExpanded ? 'scale-[1.5] from-accent/10' : 'scale-100'}`} />
+          <div className={`absolute inset-0 border border-surface-border-bright/20 rounded-full transition-all duration-700 ${isExpanded ? 'scale-[1.2] rotate-180 border-accent/10' : 'scale-[0.8] rotate-0'} `} style={{ borderStyle: 'dashed' }} />
+          <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 border border-text-muted/10 rounded-lg transition-all duration-700 ${isExpanded ? 'scale-110 rotate-45 border-accent/20 bg-accent/[0.02]' : 'scale-75 rotate-0'} shadow-sm`} />
+        </div>
+      </div>
+
       {/* Top edge highlight */}
       {result.triggered && !isStale && (
         <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-accent/50 to-transparent" />
@@ -136,13 +259,13 @@ export function StockCard({
       )}
 
       {/* Action buttons */}
-      <div className="absolute right-4 top-4 flex items-center gap-1">
+      <div className="absolute right-4 top-4 flex items-center gap-1 z-10">
         <button
           ref={starRef}
-          onClick={() => onToggleCloseWatch(result.symbol)}
+          onClick={(e) => { e.stopPropagation(); onToggleCloseWatch(result.symbol); }}
           className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:scale-[1.1] ${closeWatch
-              ? "text-warn opacity-100 hover:bg-warn/10"
-              : "text-text-muted opacity-0 hover:bg-surface-overlay hover:text-warn group-hover:opacity-100"
+            ? "text-warn opacity-100 hover:bg-warn/10"
+            : "text-text-muted opacity-0 hover:bg-surface-overlay hover:text-warn group-hover:opacity-100"
             }`}
           aria-label={`${closeWatch ? "Remove from" : "Add to"} close watch`}
           title={closeWatch ? "Remove from Close Watch" : "Add to Close Watch"}
@@ -158,7 +281,7 @@ export function StockCard({
           )}
         </button>
         <button
-          onClick={() => onRemove(result.symbol)}
+          onClick={(e) => { e.stopPropagation(); onRemove(result.symbol); }}
           className="flex h-8 w-8 items-center justify-center rounded-xl text-text-muted opacity-0 transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:scale-[1.1] hover:bg-danger-muted hover:text-danger group-hover:opacity-100"
           aria-label={`Remove ${result.symbol}`}
         >
@@ -168,14 +291,14 @@ export function StockCard({
         </button>
       </div>
 
-      <div className="flex items-start justify-between pr-16 min-w-0">
+      <div className="flex items-start justify-between pr-16 min-w-0 z-10 relative">
         <div className="flex items-center gap-3 min-w-0">
           <div
             className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[0.9rem] font-display text-sm font-bold transition-colors ring-1 shadow-inner ${result.triggered
-                ? "bg-accent/10 text-accent ring-accent/15"
-                : closeWatch
-                  ? "bg-warn/8 text-warn ring-warn/15"
-                  : "bg-surface-overlay text-text-secondary ring-surface-border/50"
+              ? "bg-accent/10 text-accent ring-accent/15"
+              : closeWatch
+                ? "bg-warn/8 text-warn ring-warn/15"
+                : "bg-surface-overlay text-text-secondary ring-surface-border/50"
               }`}
           >
             {result.symbol.slice(0, 2)}
@@ -280,6 +403,24 @@ export function StockCard({
             </div>
           )}
         </div>
+
+        {/* Expandable Region */}
+        <div ref={contentRef} className="overflow-hidden h-0 w-full mt-4 -mb-2 relative z-10">
+          <div className="pt-4 flex flex-col gap-2.5 border-t border-surface-border/50 opacity-0 translate-y-2">
+            <p className="text-[11px] font-medium text-text-muted flex items-center gap-2">
+              <span className={`w-[5px] h-[5px] rounded-full ${volBreaks ? 'bg-accent/80' : 'bg-surface-border-bright'}`} />
+              Volume {volBreaks ? 'surging above 3x average' : 'within normal range'}
+            </p>
+            <p className="text-[11px] font-medium text-text-muted flex items-center gap-2">
+              <span className={`w-[5px] h-[5px] rounded-full ${highBreaks ? 'bg-accent/80' : 'bg-surface-border-bright'}`} />
+              Price high {highBreaks ? 'shows new breakout structure' : 'stabilizing below max'}
+            </p>
+            <p className="text-[11px] font-medium text-text-muted flex items-center gap-2">
+              <span className="w-[5px] h-[5px] rounded-full bg-text-muted/40" />
+              Data quality: {result.dataSource === 'live' ? 'Real-time feed' : result.dataSource === 'stale' ? 'Last EOD close' : 'Historical scan'}
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Background glow effects */}
@@ -338,8 +479,8 @@ function MetricBar({
         />
         <div
           className={`absolute inset-y-0 left-0 rounded-full animate-bar-fill ${breaks
-              ? "bg-gradient-to-r from-accent/70 to-accent"
-              : "bg-text-muted/30"
+            ? "bg-gradient-to-r from-accent/70 to-accent"
+            : "bg-text-muted/30"
             }`}
           style={{ "--bar-width": `${todayPct}%` } as React.CSSProperties}
         />
