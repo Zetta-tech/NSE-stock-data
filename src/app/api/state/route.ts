@@ -29,7 +29,7 @@ export async function GET() {
   const unreadAlerts = alerts.filter((a) => !a.read).length;
 
   // Break down alerts by type
-  const nifty50Alerts = alerts.filter((a) => a.alertType === "breakout");
+  const nifty50Alerts = alerts.filter((a) => a.alertType === "breakout" || a.alertType === "low-breakout");
   const scanAlerts = alerts.filter((a) => !a.alertType || a.alertType === "scan");
 
   // Cache layer breakdown from apiStats
