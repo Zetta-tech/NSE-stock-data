@@ -25,7 +25,7 @@ export function AlertPanel({ alerts }: { alerts: Alert[] }) {
   return (
     <div className="animate-slide-down">
       <div
-        className="overflow-hidden rounded-2xl ring-1 ring-accent/15 card-elevated"
+        className="overflow-hidden rounded-[2rem] ring-1 ring-accent/15 shadow-2xl shadow-[rgba(0,230,138,0.06)] card-elevated"
         style={{
           background:
             "linear-gradient(135deg, rgba(0,230,138,0.015) 0%, var(--surface-raised) 40%, var(--surface-raised) 60%, rgba(0,180,214,0.01) 100%)",
@@ -34,12 +34,12 @@ export function AlertPanel({ alerts }: { alerts: Alert[] }) {
         }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-accent/[0.06]">
-          <div className="flex items-center gap-2.5">
-            <div className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-accent/10 ring-1 ring-accent/20">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-accent/[0.06]">
+          <div className="flex items-center gap-3">
+            <div className="relative flex h-8 w-8 items-center justify-center rounded-xl bg-accent/10 ring-1 ring-accent/20">
               <svg
-                width="12"
-                height="12"
+                width="14"
+                height="14"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -50,11 +50,11 @@ export function AlertPanel({ alerts }: { alerts: Alert[] }) {
               </svg>
             </div>
             <div className="flex items-center gap-2">
-              <h2 className="font-display text-xs font-bold uppercase tracking-wider text-accent">
+              <h2 className="font-display text-sm font-bold uppercase tracking-widest text-accent">
                 Breakout Alerts
               </h2>
               {unreadCount > 0 && (
-                <span className="rounded-full bg-accent/10 ring-1 ring-accent/20 px-2 py-0.5 font-mono text-[9px] font-bold tabular-nums text-accent">
+                <span className="rounded-md bg-accent/10 ring-1 ring-accent/20 px-2 py-0.5 font-mono text-[10px] font-bold tabular-nums text-accent">
                   {unreadCount}
                 </span>
               )}
@@ -104,12 +104,11 @@ function AlertCard({ alert, index }: { alert: Alert; index: number }) {
 
   return (
     <div
-      className={`group relative flex flex-col rounded-xl px-3.5 py-3 ring-1 ring-accent/12 bg-accent/[0.02] hover:ring-accent/25 hover:bg-accent/[0.04] transition-all duration-200 animate-fade-in ${
-        isUnread ? "ring-accent/20" : ""
-      }`}
+      className={`group relative flex flex-col rounded-[1.5rem] px-4 py-3.5 ring-1 ring-accent/12 bg-accent/[0.02] hover:ring-accent/25 hover:bg-accent/[0.04] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-1 hover:shadow-lg hover:shadow-[rgba(0,230,138,0.1)] animate-fade-in ${isUnread ? "ring-accent/20" : ""
+        }`}
       style={{
-        minWidth: 164,
-        width: 164,
+        minWidth: 180,
+        width: 180,
         animationDelay: `${index * 60}ms`,
       }}
     >
@@ -125,25 +124,24 @@ function AlertCard({ alert, index }: { alert: Alert; index: number }) {
 
       {/* Symbol & Badge */}
       <div className="flex items-center gap-1.5">
-        <span className="font-display text-[11px] font-bold tracking-tight text-accent">
+        <span className="font-display text-xs font-bold tracking-tight text-accent">
           {alert.symbol}
         </span>
-        <span className="rounded bg-accent/8 ring-1 ring-accent/15 px-1 py-px text-[7px] font-bold uppercase tracking-wider text-accent/70">
+        <span className="rounded bg-accent/8 ring-1 ring-accent/15 px-1 py-px text-[8px] font-bold uppercase tracking-widest text-accent/70">
           Breakout
         </span>
       </div>
 
       {/* Price & Change */}
-      <div className="mt-1.5 flex items-baseline gap-2">
-        <span className="font-mono text-xs font-bold tabular-nums tracking-tight text-text-primary">
+      <div className="mt-2 flex items-baseline gap-2">
+        <span className="font-mono text-sm font-bold tabular-nums tracking-tight text-text-primary">
           {alert.todayClose > 0
             ? `\u20B9${alert.todayClose.toLocaleString("en-IN")}`
             : "\u2014"}
         </span>
         <span
-          className={`font-mono text-[10px] font-semibold tabular-nums ${
-            alert.todayChange >= 0 ? "text-accent" : "text-danger"
-          }`}
+          className={`font-mono text-[10px] font-semibold tabular-nums ${alert.todayChange >= 0 ? "text-accent" : "text-danger"
+            }`}
         >
           {alert.todayChange >= 0 ? "+" : ""}
           {alert.todayChange.toFixed(2)}%
@@ -153,26 +151,26 @@ function AlertCard({ alert, index }: { alert: Alert; index: number }) {
       {/* Break Stats */}
       <div className="mt-2 space-y-1">
         <div className="flex items-center gap-1.5">
-          <span className="text-[8px] font-semibold text-text-muted w-2 text-right">H</span>
-          <div className="h-[3px] w-10 rounded-full bg-surface-overlay overflow-hidden">
+          <span className="text-[9px] font-semibold text-text-muted w-2 text-right">H</span>
+          <div className="h-[3px] w-12 rounded-full bg-surface-overlay overflow-hidden">
             <div
               className="h-full rounded-full bg-accent animate-bar-fill"
               style={{ "--bar-width": `${Math.min(Math.max(Math.abs(alert.highBreakPercent) / 25 * 100, 10), 100)}%`, width: `${Math.min(Math.max(Math.abs(alert.highBreakPercent) / 25 * 100, 10), 100)}%` } as React.CSSProperties}
             />
           </div>
-          <span className="font-mono text-[8px] font-bold tabular-nums text-accent">
+          <span className="font-mono text-[9px] font-bold tabular-nums text-accent">
             +{alert.highBreakPercent.toFixed(1)}%
           </span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-[8px] font-semibold text-text-muted w-2 text-right">V</span>
-          <div className="h-[3px] w-10 rounded-full bg-surface-overlay overflow-hidden">
+          <span className="text-[9px] font-semibold text-text-muted w-2 text-right">V</span>
+          <div className="h-[3px] w-12 rounded-full bg-surface-overlay overflow-hidden">
             <div
               className="h-full rounded-full bg-blue-400 animate-bar-fill"
               style={{ "--bar-width": `${Math.min(Math.max(Math.abs(alert.volumeBreakPercent) / 25 * 100, 10), 100)}%`, width: `${Math.min(Math.max(Math.abs(alert.volumeBreakPercent) / 25 * 100, 10), 100)}%` } as React.CSSProperties}
             />
           </div>
-          <span className="font-mono text-[8px] font-bold tabular-nums text-blue-400">
+          <span className="font-mono text-[9px] font-bold tabular-nums text-blue-400">
             +{alert.volumeBreakPercent.toFixed(1)}%
           </span>
         </div>

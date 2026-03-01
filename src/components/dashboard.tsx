@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import gsap from "gsap";
 import { Header } from "./header";
 import { ScanButton } from "./scan-button";
 import { StockCard } from "./stock-card";
@@ -41,6 +42,20 @@ export function Dashboard({
 
   const closeWatchCount = watchlist.filter((s) => s.closeWatch).length;
   const userToggledOffRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ctx = gsap.context(() => {
+      // Stagger entrance for main sections
+      gsap.fromTo(
+        ".dashboard-section",
+        { y: 30, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.8, stagger: 0.15, ease: "power3.out" }
+      );
+    }, containerRef);
+    return () => ctx.revert();
+  }, [watchlist.length]);
 
   useEffect(() => {
     const check = () => {
@@ -252,7 +267,7 @@ export function Dashboard({
   const triggeredCount = results.filter((r) => r.triggered).length;
 
   return (
-    <div className="min-h-screen">
+    <div ref={containerRef} className="min-h-screen">
       <Header
         alerts={alerts}
         onMarkAllRead={markAllRead}
@@ -260,13 +275,12 @@ export function Dashboard({
         marketOpen={marketOpen}
       />
 
-      <div className="mx-auto max-w-[1440px] px-5 pt-6">
+      <div className="mx-auto max-w-[1440px] px-5 pt-6 dashboard-section">
         <Nifty50Rail onDiscoveries={handleDiscoveries} />
       </div>
 
-      {/* Discovery Feed — surfaces Nifty 50 breakouts not in watchlist */}
       {discoveries.length > 0 && (
-        <div className="mx-auto max-w-[1440px] px-5 pt-4">
+        <div className="mx-auto max-w-[1440px] px-5 pt-4 dashboard-section">
           <DiscoveryFeed
             discoveries={discoveries}
             onAddToWatchlist={addDiscoveryToWatchlist}
@@ -274,7 +288,7 @@ export function Dashboard({
         </div>
       )}
 
-      <main className="mx-auto max-w-[1440px] px-5 py-8 space-y-6">
+      <main className="mx-auto max-w-[1440px] px-5 py-8 space-y-6 dashboard-section">
         {/* Alerts — Configured + In Progress */}
         <AlertsSection alerts={alerts} />
 
@@ -336,11 +350,10 @@ export function Dashboard({
                     { changes: [{ field: "autoCheck", from: !next, to: next }] }
                   );
                 }}
-                className={`action-icon-btn ${
-                  autoCheckActive
+                className={`action-icon-btn ${autoCheckActive
                     ? "ring-warn/25 bg-warn/8 text-warn"
                     : "ring-surface-border bg-surface-raised text-text-secondary hover:ring-warn/25 hover:text-warn"
-                }`}
+                  }`}
                 title={autoCheckActive ? "Stop auto-checking starred stocks" : "Auto-check starred stocks every 30s"}
               >
                 {autoCheckActive ? (
@@ -382,7 +395,7 @@ export function Dashboard({
         </div>
 
         {scanning && (
-          <div className="overflow-hidden rounded-xl">
+          <div className="overflow-hidden rounded-2xl p-0.5 bg-gradient-to-r from-accent/20 via-blue-500/20 to-accent/20">
             <div className="h-1 w-full animate-shimmer rounded-full bg-surface-overlay" />
           </div>
         )}
@@ -420,17 +433,17 @@ export function Dashboard({
         </div>
 
         {results.length > 0 && triggeredCount === 0 && (
-          <div className="overflow-hidden rounded-2xl border border-surface-border bg-surface-raised card-elevated px-6 py-10 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-overlay ring-1 ring-surface-border">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-text-muted">
+          <div className="overflow-hidden rounded-[2rem] border border-surface-border bg-surface-raised card-elevated px-6 py-10 text-center shadow-xl shadow-black/20">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[1.2rem] bg-surface-overlay ring-1 ring-surface-border">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-text-muted">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                 <polyline points="22 4 12 14.01 9 11.01" />
               </svg>
             </div>
-            <p className="font-display text-sm font-semibold text-text-secondary">
+            <p className="font-display text-base font-semibold text-text-secondary tracking-tight">
               No breakouts detected
             </p>
-            <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-text-muted">
+            <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-text-muted">
               None of your watchlist stocks broke their 5-day high and volume
               simultaneously. Check back later or add more stocks.
             </p>
@@ -453,7 +466,7 @@ function reportAction(action: string, label: string, opts?: { detail?: Record<st
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ cat: "user", action, label, actor: "dad", ...opts }),
-  }).catch(() => {});
+  }).catch(() => { });
 }
 
 const NOTIFY_COOLDOWN_MS = 5 * 60 * 1000;

@@ -107,15 +107,14 @@ export function StockCard({
   return (
     <div
       ref={cardRef}
-      className={`stock-card group relative flex h-full flex-col overflow-hidden rounded-2xl p-5 transition-shadow duration-300 ring-1 ${
-        isStale
+      className={`stock-card group relative flex h-full flex-col overflow-hidden rounded-[1.5rem] p-6 transition-all duration-400 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-1 ring-1 ${isStale
           ? "ring-warn/25 bg-surface-raised card-glow-warn"
           : result.triggered
             ? "ring-accent/25 card-glow bg-surface-raised"
             : closeWatch
-              ? "ring-warn/15 bg-surface-raised hover:shadow-xl hover:shadow-warn/5"
-              : "ring-surface-border/40 bg-surface-raised hover:ring-surface-border-bright/60 hover:shadow-xl hover:shadow-black/30"
-      } card-elevated`}
+              ? "ring-warn/15 bg-surface-raised hover:shadow-2xl hover:shadow-warn/10"
+              : "ring-surface-border/40 bg-surface-raised hover:ring-surface-border-bright/60 hover:shadow-2xl hover:shadow-black/50"
+        } card-elevated`}
     >
       {/* Top edge highlight */}
       {result.triggered && !isStale && (
@@ -132,20 +131,19 @@ export function StockCard({
       {closeWatch && (
         <div
           ref={borderRef}
-          className="absolute inset-y-0 left-0 w-[2px] rounded-l-2xl bg-gradient-to-b from-warn/60 via-warn/30 to-warn/5"
+          className="absolute inset-y-0 left-0 w-[3px] bg-gradient-to-b from-warn/70 via-warn/30 to-warn/5"
         />
       )}
 
       {/* Action buttons */}
-      <div className="absolute right-3 top-3 flex items-center gap-0.5">
+      <div className="absolute right-4 top-4 flex items-center gap-1">
         <button
           ref={starRef}
           onClick={() => onToggleCloseWatch(result.symbol)}
-          className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-200 ${
-            closeWatch
+          className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:scale-[1.1] ${closeWatch
               ? "text-warn opacity-100 hover:bg-warn/10"
               : "text-text-muted opacity-0 hover:bg-surface-overlay hover:text-warn group-hover:opacity-100"
-          }`}
+            }`}
           aria-label={`${closeWatch ? "Remove from" : "Add to"} close watch`}
           title={closeWatch ? "Remove from Close Watch" : "Add to Close Watch"}
         >
@@ -161,7 +159,7 @@ export function StockCard({
         </button>
         <button
           onClick={() => onRemove(result.symbol)}
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-text-muted opacity-0 transition-all duration-200 hover:bg-danger-muted hover:text-danger group-hover:opacity-100"
+          className="flex h-8 w-8 items-center justify-center rounded-xl text-text-muted opacity-0 transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:scale-[1.1] hover:bg-danger-muted hover:text-danger group-hover:opacity-100"
           aria-label={`Remove ${result.symbol}`}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -173,13 +171,12 @@ export function StockCard({
       <div className="flex items-start justify-between pr-16 min-w-0">
         <div className="flex items-center gap-3 min-w-0">
           <div
-            className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl font-display text-xs font-bold transition-colors ring-1 ${
-              result.triggered
+            className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[0.9rem] font-display text-sm font-bold transition-colors ring-1 shadow-inner ${result.triggered
                 ? "bg-accent/10 text-accent ring-accent/15"
                 : closeWatch
                   ? "bg-warn/8 text-warn ring-warn/15"
                   : "bg-surface-overlay text-text-secondary ring-surface-border/50"
-            }`}
+              }`}
           >
             {result.symbol.slice(0, 2)}
           </div>
@@ -223,9 +220,8 @@ export function StockCard({
               &#x20B9;{result.todayClose.toLocaleString("en-IN")}
             </p>
             <p
-              className={`font-mono text-xs font-semibold tabular-nums ${
-                result.todayChange >= 0 ? "text-accent" : "text-danger"
-              }`}
+              className={`font-mono text-xs font-semibold tabular-nums ${result.todayChange >= 0 ? "text-accent" : "text-danger"
+                }`}
             >
               {result.todayChange >= 0 ? "+" : ""}
               {result.todayChange.toFixed(2)}%
@@ -257,7 +253,7 @@ export function StockCard({
             />
           </div>
         ) : (
-          <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-surface-border/40 bg-surface-overlay/10 px-3 py-6">
+          <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-surface-border/40 bg-surface-overlay/10 px-3 py-6">
             <div className="text-center">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto mb-2 text-text-muted">
                 <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
@@ -270,7 +266,7 @@ export function StockCard({
 
         <div className="mt-auto">
           {hasData && isStale && (
-            <div className="mt-4 rounded-xl border border-warn/15 bg-warn/[0.04] px-3 py-2">
+            <div className="mt-4 rounded-2xl border border-warn/15 bg-warn/[0.04] px-3 py-2">
               <p className="text-[11px] font-medium text-warn">
                 Live data unavailable — showing last historical candle. Breakout detection paused for this stock.
               </p>
@@ -341,11 +337,10 @@ function MetricBar({
           style={{ width: `${prevPct}%` }}
         />
         <div
-          className={`absolute inset-y-0 left-0 rounded-full animate-bar-fill ${
-            breaks
+          className={`absolute inset-y-0 left-0 rounded-full animate-bar-fill ${breaks
               ? "bg-gradient-to-r from-accent/70 to-accent"
               : "bg-text-muted/30"
-          }`}
+            }`}
           style={{ "--bar-width": `${todayPct}%` } as React.CSSProperties}
         />
         {breaks && (
@@ -362,9 +357,8 @@ function MetricBar({
 function StatusPill({ active, label }: { active: boolean; label: string }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors ring-1 ${
-        active ? "bg-accent/8 text-accent ring-accent/15" : "bg-surface-overlay text-text-muted ring-surface-border/50"
-      }`}
+      className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors ring-1 ${active ? "bg-accent/8 text-accent ring-accent/15" : "bg-surface-overlay text-text-muted ring-surface-border/50"
+        }`}
     >
       {active ? (
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import gsap from "gsap";
 import { NotificationBell } from "./notification-bell";
 import { isExtendedHours } from "@/lib/market-hours";
 import type { Alert, NiftyIndex } from "@/lib/types";
@@ -22,6 +23,19 @@ export function Header({
   const prevValueRef = useRef<number | null>(null);
   const [flash, setFlash] = useState<"up" | "down" | null>(null);
   const hasFetchedOnceRef = useRef(false);
+  const headerRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!headerRef.current) return;
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        headerRef.current,
+        { y: -40, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.8, ease: "power3.out" }
+      );
+    }, headerRef);
+    return () => ctx.revert();
+  }, []);
 
   const fetchIndex = useCallback(async () => {
     try {
@@ -53,14 +67,14 @@ export function Header({
   const isLive = isExtendedHours();
 
   return (
-    <header className="sticky top-0 z-30 glass">
+    <header ref={headerRef} className="sticky top-0 z-30 glass">
       <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-accent/25 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-surface-border/50 to-transparent" />
 
       <div className="mx-auto flex max-w-[1440px] items-center justify-between px-5 py-3.5">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-3.5">
-            <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-accent/[0.08] ring-1 ring-accent/15">
+            <div className="relative flex h-10 w-10 items-center justify-center rounded-[1.2rem] bg-accent/[0.08] ring-1 ring-accent/15">
               <svg
                 width="18"
                 height="18"
@@ -73,7 +87,7 @@ export function Header({
                 <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
                 <polyline points="16 7 22 7 22 13" />
               </svg>
-              <div className="absolute -inset-1 rounded-xl bg-accent/5 blur-lg animate-glow-pulse" />
+              <div className="absolute -inset-1 rounded-[1.2rem] bg-accent/5 blur-lg animate-glow-pulse" />
             </div>
             <div>
               <h1 className="font-display text-base font-bold tracking-tight leading-tight">
@@ -89,13 +103,12 @@ export function Header({
 
           {nifty && (
             <div
-              className={`hidden md:flex items-center gap-3 rounded-xl px-4 py-2.5 transition-all duration-300 ring-1 ${
-                flash === "up"
-                  ? "ring-accent/30 bg-accent/[0.06]"
+              className={`hidden md:flex items-center gap-3 rounded-[1.2rem] px-5 py-2.5 transition-all duration-300 ring-1 ${flash === "up"
+                  ? "ring-accent/30 bg-accent/[0.06] shadow-[0_0_20px_rgba(0,230,138,0.15)]"
                   : flash === "down"
-                    ? "ring-danger/30 bg-danger/[0.06]"
-                    : "ring-surface-border/40 bg-surface-overlay/20"
-              }`}
+                    ? "ring-danger/30 bg-danger/[0.06] shadow-[0_0_20px_rgba(239,68,68,0.15)]"
+                    : "ring-surface-border/40 bg-surface-overlay/20 shadow-lg shadow-black/20"
+                }`}
               title={`Open: ${nifty.open.toLocaleString("en-IN")} · High: ${nifty.high.toLocaleString("en-IN")} · Low: ${nifty.low.toLocaleString("en-IN")} · Prev Close: ${nifty.previousClose.toLocaleString("en-IN")}`}
             >
               <span className="font-display text-[9px] font-semibold uppercase tracking-[0.12em] text-text-muted">
@@ -125,17 +138,15 @@ export function Header({
         </div>
 
         <div className="flex items-center gap-2.5">
-          <div className="flex items-center gap-2 rounded-xl ring-1 ring-surface-border/40 bg-surface-overlay/20 px-3 py-2">
+          <div className="flex items-center gap-2 rounded-2xl ring-1 ring-surface-border/40 bg-surface-overlay/20 px-4 py-2 shadow-lg shadow-black/20">
             <span className="relative flex h-2 w-2">
               <span
-                className={`absolute inline-flex h-full w-full rounded-full ${
-                  marketOpen ? "bg-accent animate-ping opacity-75" : ""
-                }`}
+                className={`absolute inline-flex h-full w-full rounded-full ${marketOpen ? "bg-accent animate-ping opacity-75" : ""
+                  }`}
               />
               <span
-                className={`relative inline-flex h-2 w-2 rounded-full transition-colors duration-500 ${
-                  marketOpen ? "bg-accent shadow-[0_0_6px_rgba(0,230,138,0.5)]" : "bg-text-muted"
-                }`}
+                className={`relative inline-flex h-2 w-2 rounded-full transition-colors duration-500 ${marketOpen ? "bg-accent shadow-[0_0_6px_rgba(0,230,138,0.5)]" : "bg-text-muted"
+                  }`}
               />
             </span>
             <span className="text-xs font-semibold text-text-secondary">
