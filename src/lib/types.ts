@@ -35,7 +35,7 @@ export interface Alert {
   id: string;
   symbol: string;
   name: string;
-  alertType?: "breakout" | "low-breakout" | "scan";
+  alertType?: "breakout" | "low-breakout" | "week-high" | "scan";
   todayHigh: number;
   todayVolume: number;
   prevMaxHigh: number;

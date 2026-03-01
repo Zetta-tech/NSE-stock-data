@@ -10,6 +10,7 @@ import { AlertBuilder } from "./alert-builder";
 const BUILTIN_ALERT_TYPES = [
   { id: "true-breakout", name: "True Breakout", status: "active" as const },
   { id: "low-breakout", name: "Low Breakout", status: "active" as const },
+  { id: "week-high", name: "52 Week High", status: "active" as const },
 ];
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */

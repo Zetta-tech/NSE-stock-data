@@ -112,11 +112,14 @@ export function NotificationBell({
                         <span className="ml-2 text-xs text-text-muted">{alert.name}</span>
                       </div>
                     </div>
-                    <span className={`flex-shrink-0 rounded-md px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-wider ring-1 ${alert.alertType === "low-breakout"
+                    <span className={`flex-shrink-0 rounded-md px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-wider ring-1 ${
+                      alert.alertType === "low-breakout"
                         ? "bg-amber-500/10 ring-amber-500/15 text-amber-400"
+                        : alert.alertType === "week-high"
+                        ? "bg-purple-500/10 ring-purple-500/15 text-purple-400"
                         : "bg-accent/10 ring-accent/15 text-accent"
                       }`}>
-                      {alert.alertType === "low-breakout" ? "LOW BREAK" : "BREAKOUT"}
+                      {alert.alertType === "low-breakout" ? "LOW BREAK" : alert.alertType === "week-high" ? "52W HIGH" : "BREAKOUT"}
                     </span>
                   </div>
                   <div className={`mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs ${!alert.read ? "ml-[18px]" : ""}`}>
