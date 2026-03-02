@@ -4,14 +4,138 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import type { Alert, AlertRequest } from "@/lib/types";
 import { AlertBuilder } from "./alert-builder";
 
-const ALERT_TYPE_LABELS: Record<string, string> = {
-  breakout: "True Breakout",
-  "low-breakout": "Low Breakout",
-  "week-high": "52 Week High",
-  "ma200-touch": "200 DMA Touch",
-  "ma100-touch": "100 DMA Touch",
-  "ma50-touch": "50 DMA Touch",
-  "ma5-touch": "5 DMA Touch",
+/* ── Per-type visual config ─────────────────────────────────────────── */
+
+interface AlertTypeStyle {
+  label: string;
+  badge: string;
+  ring: string;
+  bg: string;
+  dot: string;
+  text: string;
+  badgeBg: string;
+  badgeRing: string;
+  badgeText: string;
+  hoverRing: string;
+  hoverBg: string;
+  hoverShadow: string;
+  chipRing: string;
+  chipBg: string;
+}
+
+const ALERT_STYLES: Record<string, AlertTypeStyle> = {
+  breakout: {
+    label: "True Breakout",
+    badge: "BREAKOUT",
+    ring: "ring-accent/12",
+    bg: "bg-accent/[0.02]",
+    dot: "bg-accent",
+    text: "text-accent",
+    badgeBg: "bg-accent/8",
+    badgeRing: "ring-accent/15",
+    badgeText: "text-accent/70",
+    hoverRing: "hover:ring-accent/25",
+    hoverBg: "hover:bg-accent/[0.04]",
+    hoverShadow: "hover:shadow-[rgba(0,230,138,0.1)]",
+    chipRing: "ring-accent/15",
+    chipBg: "bg-accent/[0.04]",
+  },
+  "low-breakout": {
+    label: "Low Breakout",
+    badge: "LOW BREAK",
+    ring: "ring-amber-500/12",
+    bg: "bg-amber-500/[0.02]",
+    dot: "bg-amber-400",
+    text: "text-amber-400",
+    badgeBg: "bg-amber-500/8",
+    badgeRing: "ring-amber-500/15",
+    badgeText: "text-amber-400/70",
+    hoverRing: "hover:ring-amber-500/25",
+    hoverBg: "hover:bg-amber-500/[0.04]",
+    hoverShadow: "hover:shadow-[rgba(245,158,11,0.1)]",
+    chipRing: "ring-amber-500/15",
+    chipBg: "bg-amber-500/[0.04]",
+  },
+  "week-high": {
+    label: "52 Week High",
+    badge: "52W HIGH",
+    ring: "ring-purple-500/12",
+    bg: "bg-purple-500/[0.02]",
+    dot: "bg-purple-400",
+    text: "text-purple-400",
+    badgeBg: "bg-purple-500/8",
+    badgeRing: "ring-purple-500/15",
+    badgeText: "text-purple-400/70",
+    hoverRing: "hover:ring-purple-500/25",
+    hoverBg: "hover:bg-purple-500/[0.04]",
+    hoverShadow: "hover:shadow-[rgba(168,85,247,0.1)]",
+    chipRing: "ring-purple-500/15",
+    chipBg: "bg-purple-500/[0.04]",
+  },
+  "ma200-touch": {
+    label: "200 DMA Touch",
+    badge: "200 DMA",
+    ring: "ring-sky-500/12",
+    bg: "bg-sky-500/[0.02]",
+    dot: "bg-sky-400",
+    text: "text-sky-400",
+    badgeBg: "bg-sky-500/8",
+    badgeRing: "ring-sky-500/15",
+    badgeText: "text-sky-400/70",
+    hoverRing: "hover:ring-sky-500/25",
+    hoverBg: "hover:bg-sky-500/[0.04]",
+    hoverShadow: "hover:shadow-[rgba(56,189,248,0.1)]",
+    chipRing: "ring-sky-500/15",
+    chipBg: "bg-sky-500/[0.04]",
+  },
+  "ma100-touch": {
+    label: "100 DMA Touch",
+    badge: "100 DMA",
+    ring: "ring-teal-500/12",
+    bg: "bg-teal-500/[0.02]",
+    dot: "bg-teal-400",
+    text: "text-teal-400",
+    badgeBg: "bg-teal-500/8",
+    badgeRing: "ring-teal-500/15",
+    badgeText: "text-teal-400/70",
+    hoverRing: "hover:ring-teal-500/25",
+    hoverBg: "hover:bg-teal-500/[0.04]",
+    hoverShadow: "hover:shadow-[rgba(20,184,166,0.1)]",
+    chipRing: "ring-teal-500/15",
+    chipBg: "bg-teal-500/[0.04]",
+  },
+  "ma50-touch": {
+    label: "50 DMA Touch",
+    badge: "50 DMA",
+    ring: "ring-indigo-500/12",
+    bg: "bg-indigo-500/[0.02]",
+    dot: "bg-indigo-400",
+    text: "text-indigo-400",
+    badgeBg: "bg-indigo-500/8",
+    badgeRing: "ring-indigo-500/15",
+    badgeText: "text-indigo-400/70",
+    hoverRing: "hover:ring-indigo-500/25",
+    hoverBg: "hover:bg-indigo-500/[0.04]",
+    hoverShadow: "hover:shadow-[rgba(99,102,241,0.1)]",
+    chipRing: "ring-indigo-500/15",
+    chipBg: "bg-indigo-500/[0.04]",
+  },
+  "ma5-touch": {
+    label: "5 DMA Touch",
+    badge: "5 DMA",
+    ring: "ring-rose-500/12",
+    bg: "bg-rose-500/[0.02]",
+    dot: "bg-rose-400",
+    text: "text-rose-400",
+    badgeBg: "bg-rose-500/8",
+    badgeRing: "ring-rose-500/15",
+    badgeText: "text-rose-400/70",
+    hoverRing: "hover:ring-rose-500/25",
+    hoverBg: "hover:bg-rose-500/[0.04]",
+    hoverShadow: "hover:shadow-[rgba(251,113,133,0.1)]",
+    chipRing: "ring-rose-500/15",
+    chipBg: "bg-rose-500/[0.04]",
+  },
 };
 
 const DEFAULT_STYLE = ALERT_STYLES.breakout;
@@ -343,6 +467,50 @@ function AlertMetrics({ alert, s }: { alert: Alert; s: AlertTypeStyle }) {
             <span className="text-[8px] text-text-muted">Gap</span>
             <span className={`font-mono text-[9px] font-bold tabular-nums ${s.text}`}>
               {alert.ma100TouchPercent >= 0 ? "+" : ""}{alert.ma100TouchPercent.toFixed(2)}%
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // 50 DMA Touch
+  if (t === "ma50-touch") {
+    return (
+      <div className="space-y-0.5">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[8px] font-bold uppercase tracking-wider text-text-muted">DMA</span>
+          <span className={`font-mono text-[10px] font-bold tabular-nums ${s.text}`}>
+            {"\u20B9"}{(alert.ma50 ?? 0).toLocaleString("en-IN")}
+          </span>
+        </div>
+        {alert.ma50TouchPercent != null && (
+          <div className="flex items-center gap-1">
+            <span className="text-[8px] text-text-muted">Gap</span>
+            <span className={`font-mono text-[9px] font-bold tabular-nums ${s.text}`}>
+              {alert.ma50TouchPercent >= 0 ? "+" : ""}{alert.ma50TouchPercent.toFixed(2)}%
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // 5 DMA Touch
+  if (t === "ma5-touch") {
+    return (
+      <div className="space-y-0.5">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[8px] font-bold uppercase tracking-wider text-text-muted">DMA</span>
+          <span className={`font-mono text-[10px] font-bold tabular-nums ${s.text}`}>
+            {"\u20B9"}{(alert.ma5 ?? 0).toLocaleString("en-IN")}
+          </span>
+        </div>
+        {alert.ma5TouchPercent != null && (
+          <div className="flex items-center gap-1">
+            <span className="text-[8px] text-text-muted">Gap</span>
+            <span className={`font-mono text-[9px] font-bold tabular-nums ${s.text}`}>
+              {alert.ma5TouchPercent >= 0 ? "+" : ""}{alert.ma5TouchPercent.toFixed(2)}%
             </span>
           </div>
         )}

@@ -121,12 +121,18 @@ export function NotificationBell({
                         ? "bg-sky-500/10 ring-sky-500/15 text-sky-400"
                         : alert.alertType === "ma100-touch"
                         ? "bg-teal-500/10 ring-teal-500/15 text-teal-400"
+                        : alert.alertType === "ma50-touch"
+                        ? "bg-indigo-500/10 ring-indigo-500/15 text-indigo-400"
+                        : alert.alertType === "ma5-touch"
+                        ? "bg-rose-500/10 ring-rose-500/15 text-rose-400"
                         : "bg-accent/10 ring-accent/15 text-accent"
                       }`}>
                       {alert.alertType === "low-breakout" ? "LOW BREAK"
                         : alert.alertType === "week-high" ? "52W HIGH"
                         : alert.alertType === "ma200-touch" ? "200 DMA"
                         : alert.alertType === "ma100-touch" ? "100 DMA"
+                        : alert.alertType === "ma50-touch" ? "50 DMA"
+                        : alert.alertType === "ma5-touch" ? "5 DMA"
                         : "BREAKOUT"}
                     </span>
                   </div>
@@ -147,6 +153,24 @@ export function NotificationBell({
                         </div>
                         <div className="text-text-secondary">
                           Gap: <span className="font-mono text-teal-400 tabular-nums">{alert.ma100TouchPercent != null ? `${alert.ma100TouchPercent >= 0 ? "+" : ""}${alert.ma100TouchPercent.toFixed(2)}%` : "\u2014"}</span>
+                        </div>
+                      </>
+                    ) : alert.alertType === "ma50-touch" ? (
+                      <>
+                        <div className="text-text-secondary">
+                          50 DMA: <span className="font-mono text-indigo-400 tabular-nums">&#x20B9;{alert.ma50?.toLocaleString("en-IN") ?? "\u2014"}</span>
+                        </div>
+                        <div className="text-text-secondary">
+                          Gap: <span className="font-mono text-indigo-400 tabular-nums">{alert.ma50TouchPercent != null ? `${alert.ma50TouchPercent >= 0 ? "+" : ""}${alert.ma50TouchPercent.toFixed(2)}%` : "\u2014"}</span>
+                        </div>
+                      </>
+                    ) : alert.alertType === "ma5-touch" ? (
+                      <>
+                        <div className="text-text-secondary">
+                          5 DMA: <span className="font-mono text-rose-400 tabular-nums">&#x20B9;{alert.ma5?.toLocaleString("en-IN") ?? "\u2014"}</span>
+                        </div>
+                        <div className="text-text-secondary">
+                          Gap: <span className="font-mono text-rose-400 tabular-nums">{alert.ma5TouchPercent != null ? `${alert.ma5TouchPercent >= 0 ? "+" : ""}${alert.ma5TouchPercent.toFixed(2)}%` : "\u2014"}</span>
                         </div>
                       </>
                     ) : alert.alertType === "week-high" ? (
