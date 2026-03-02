@@ -363,12 +363,15 @@ export default function CinematicLandingLogin() {
               <p className="text-sm text-white/50 leading-relaxed">Describe your alert in plain English. &quot;Alert me when any stock crosses its 52-week high on heavy volume.&quot; The AI does the rest.</p>
             </div>
 
-            <div className="mt-8 grid grid-cols-5 gap-2 w-full">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
-                <div key={i} className={`h-8 rounded flex items-center justify-center text-[10px] font-data ${i === 4 || i === 7 ? 'bg-[#C9A84C] text-[#0D0D12]' : 'bg-[#21212B] text-white/30'}`}>
-                  {i === 4 || i === 7 ? '★' : '-'}
-                </div>
-              ))}
+            <div className="mt-8 flex flex-col gap-3 w-full">
+              <div className="bg-[#0D0D12] border border-white/10 rounded-xl p-3 flex items-center gap-3">
+                <span className="text-[#C9A84C] animate-pulse">✨</span>
+                <div className="w-1 h-3 bg-[#C9A84C] animate-pulse" />
+              </div>
+              <div className="flex gap-2 flex-wrap mt-1">
+                <div className="h-6 px-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-500 font-data text-[9px] uppercase tracking-widest flex items-center shadow-lg shadow-emerald-500/5">Vol &gt; Avg</div>
+                <div className="h-6 px-3 rounded-md border border-[#C9A84C]/30 bg-[#C9A84C]/10 text-[#C9A84C] font-data text-[9px] uppercase tracking-widest flex items-center shadow-lg shadow-[#C9A84C]/5">52W High</div>
+              </div>
             </div>
           </div>
 
@@ -376,20 +379,40 @@ export default function CinematicLandingLogin() {
       </section>
 
       {/* D. PHILOSOPHY */}
-      <section id="philosophy" className="py-40 relative px-6 md:px-20 overflow-hidden" ref={philosophyRef}>
-        <div
-          className="absolute inset-0 z-0 bg-cover bg-center opacity-[0.03] mix-blend-screen"
-          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1603513492128-ba7f1bc654c6?q=80&w=2671&auto=format&fit=crop')" }}
-        />
-        <div className="max-w-4xl mx-auto relative z-10">
-          <p className="text-xl md:text-2xl text-white/50 font-light tracking-tight mb-6">
+      <section id="philosophy" className="py-40 relative px-6 md:px-20 overflow-hidden flex items-center justify-center" ref={philosophyRef}>
+        {/* Animated grid background */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:30px_30px] z-0" />
+
+        {/* Background dark radial gradient */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(13,13,18,0)_0%,#0D0D12_80%)] z-10" />
+
+        {/* Central glowing line */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1px] h-full bg-gradient-to-b from-transparent via-[#C9A84C]/20 to-transparent z-10 opacity-50" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-[#C9A84C] opacity-[0.03] blur-[100px] rounded-full z-10" />
+
+        <div className="max-w-4xl mx-auto relative z-20 text-center flex flex-col items-center">
+          <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center mb-8 bg-[#16161D] shadow-[0_0_30px_rgba(201,168,76,0.1)] relative">
+            <div className="absolute inset-0 rounded-full border border-[#C9A84C]/30 animate-ping opacity-20" />
+            <Activity className="w-5 h-5 text-[#C9A84C]" />
+          </div>
+
+          <p className="text-xl md:text-2xl text-white/50 font-light tracking-tight mb-8 max-w-2xl leading-relaxed">
             {"Most retail investors miss breakouts because: by the time they notice the move, it's already over.".split(" ").map((w, i) => <span key={i} className="phil-word inline-block mr-2">{w}</span>)}
           </p>
-          <h2 className="text-4xl md:text-6xl text-[#FAF8F5] leading-tight">
-            {"We watch the market:".split(" ").map((w, i) => <span key={`w-${i}`} className="phil-word inline-block mr-3 font-semibold">{w}</span>)}
-            <br className="hidden md:block" />
-            {"so you ".split(" ").map((w, i) => <span key={`d-${i}`} className="phil-word inline-block mr-3 font-drama italic text-[#C9A84C]">{w}</span>)}
-            {"never miss.".split(" ").map((w, i) => <span key={`a-${i}`} className="phil-word inline-block mr-3 font-drama italic text-[#C9A84C]">{w}</span>)}
+
+          <div className="w-12 h-[1px] bg-[#C9A84C]/30 mb-10" />
+
+          <h2 className="text-4xl md:text-7xl text-[#FAF8F5] leading-none flex flex-col items-center">
+            <span className="mb-2">
+              {"We watch the market:".split(" ").map((w, i) => <span key={`w-${i}`} className="phil-word inline-block mr-3 font-semibold tracking-tight">{w}</span>)}
+            </span>
+            <span className="inline-block mt-2 relative">
+              {"so you ".split(" ").map((w, i) => <span key={`d-${i}`} className="phil-word inline-block mr-3 font-drama italic text-[#C9A84C]">{w}</span>)}
+              <span className="relative inline-block">
+                {"never miss.".split(" ").map((w, i) => <span key={`a-${i}`} className="phil-word inline-block mr-3 font-drama italic text-[#C9A84C] relative z-10">{w}</span>)}
+                <span className="absolute -bottom-2 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#C9A84C]/50 to-transparent blur-[1px]" />
+              </span>
+            </span>
           </h2>
         </div>
       </section>
@@ -409,9 +432,15 @@ export default function CinematicLandingLogin() {
               </p>
             </div>
             <div className="h-[400px] rounded-[2rem] border border-white/5 bg-[#16161D] flex items-center justify-center overflow-hidden relative">
-              <div className="w-[300px] h-[300px] border border-[#C9A84C]/20 rounded-full animate-[spin_20s_linear_infinite] border-dashed" />
-              <div className="absolute w-[200px] h-[200px] border border-[#C9A84C]/40 rounded-full animate-[spin_15s_linear_infinite_reverse]" />
-              <div className="absolute w-2 h-2 bg-[#C9A84C] rounded-full gold-glow" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(201,168,76,0.05)_0,transparent_70%)]" />
+              <div className="w-[300px] h-[300px] border border-[#C9A84C]/10 rounded-full relative overflow-hidden flex items-center justify-center">
+                <div className="absolute top-1/2 left-1/2 w-[150px] h-[2px] bg-gradient-to-r from-transparent via-[#C9A84C]/40 to-[#C9A84C] origin-left animate-[spin_3s_linear_infinite] z-10" />
+                <div className="absolute inset-0 border border-[#C9A84C]/20 rounded-full m-[30px]" />
+                <div className="absolute inset-0 border border-[#C9A84C]/30 rounded-full m-[70px] border-dashed" />
+                <div className="absolute top-[35%] left-[65%] w-2 h-2 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_10px_rgba(52,211,153,0.8)] z-20" />
+                <div className="absolute top-[70%] left-[40%] w-1.5 h-1.5 bg-[#C9A84C] rounded-full animate-ping z-20" />
+                <div className="absolute top-[25%] left-[30%] w-1 h-1 bg-[#C9A84C] rounded-full z-20" />
+              </div>
             </div>
           </div>
         </div>
@@ -426,10 +455,26 @@ export default function CinematicLandingLogin() {
                 The moment any stock on NSE meets your conditions, a push notification fires. No delay, no manual checking — just the alert you need, exactly when the move is happening.
               </p>
             </div>
-            <div className="h-[400px] rounded-[2rem] border border-white/5 bg-[#16161D] flex items-center justify-center p-8">
-              <div className="w-full h-full border-b border-l border-white/10 relative overflow-hidden flex items-center justify-center">
-                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:20px_20px]" />
-                <div className="absolute left-0 right-0 h-[2px] bg-[#C9A84C] shadow-[0_0_15px_rgba(201,168,76,0.8)] animate-[ping_3s_cubic-bezier(0,0,0.2,1)_infinite]" />
+            <div className="h-[400px] rounded-[2rem] border border-white/5 bg-[#16161D] flex items-center justify-center relative overflow-hidden p-8">
+              <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:20px_20px]" />
+
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] border border-[#C9A84C]/20 rounded-full animate-[ping_4s_cubic-bezier(0,0,0.2,1)_infinite] z-0" />
+
+              <div className="relative z-10 w-full max-w-[280px] bg-[#0D0D12] border border-[#C9A84C]/30 rounded-2xl p-5 shadow-[0_0_40px_rgba(201,168,76,0.2)] transform hover:-translate-y-2 transition-transform duration-500">
+                <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <h4 className="text-xs font-semibold text-[#FAF8F5] uppercase tracking-widest font-data">System Alert</h4>
+                  </div>
+                  <span className="text-[9px] font-data text-white/40">JUST NOW</span>
+                </div>
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm font-semibold tracking-wide">RELIANCE</span>
+                    <span className="text-emerald-500 font-data font-bold text-sm">+3.8%</span>
+                  </div>
+                  <p className="text-[11px] text-white/50 leading-relaxed font-light mt-2">Breakout detected: Crossed 52-week high with heavy volume.</p>
+                </div>
               </div>
             </div>
           </div>
