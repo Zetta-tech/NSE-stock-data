@@ -1,0 +1,59 @@
+name: Sync Alert Request Status
+
+on:
+  issues:
+    types: [closed]
+
+jobs:
+  sync-status:
+    if: contains(github.event.issue.labels.*.name, 'agent:create-alert')
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
+
+    steps:
+      - name: Resolve status and alert request ID
+        id: resolve
+        if: env.DEPLOY_URL != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = context.payload.issue.number;
+
+            // Check if a PR linked to this issue was merged
+            const pulls = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              per_page: 50,
+            });
+            const merged = pulls.data.some(
+              (pr) => pr.merged_at && pr.body?.includes(`#${issueNumber}`)
+            );
+            const status = merged ? 'implemented' : 'rejected';
+
+            // Fetch alert requests to find the one linked to this issue
+            const res = await fetch(`${process.env.DEPLOY_URL}/api/alert-requests`);
+            if (!res.ok) {
+              core.warning(`Failed to fetch alert requests: ${res.status}`);
+              return;
+            }
+            const requests = await res.json();
+            const target = requests.find((r) => r.githubIssueNumber === issueNumber);
+            if (!target) {
+              core.warning(`No alert request found for issue #${issueNumber}`);
+              return;
+            }
+
+            core.setOutput('status', status);
+            core.setOutput('id', target.id);
+            core.info(`Issue #${issueNumber} → request ${target.id} → ${status}`);
+
+      - name: Update alert request status
+        if: steps.resolve.outputs.id != ''
+        run: |
+          curl -sf -X PATCH "${DEPLOY_URL}/api/alert-requests/${{ steps.resolve.outputs.id }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"status\": \"${{ steps.resolve.outputs.status }}\"}" \
+          || echo "::warning::Failed to update alert request status (API unreachable)"
