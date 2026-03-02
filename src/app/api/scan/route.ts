@@ -4,6 +4,7 @@ import { getWatchlist, getCloseWatchStocks, addAlert, getAlerts, saveScanResults
 import { getMarketStatus, getHistoricalCacheStats } from "@/lib/nse-client";
 import { addActivity, setScanMeta } from "@/lib/activity";
 import { logger } from "@/lib/logger";
+import { checkMa200Touch } from "@/lib/ma200-alert";
 import type { Alert, ScanResponse, ScanMeta } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -86,6 +87,46 @@ export async function POST(request: Request) {
           {
             actor: "system",
             detail: { symbol: result.symbol, alertType: "week-high", yearHigh: result.yearHigh, todayHigh: result.todayHigh },
+          }
+        );
+      }
+    }
+
+    for (const result of results) {
+      if (result.dataSource === "stale") continue;
+      if (result.todayClose <= 0) continue;
+
+      const ma200Result = await checkMa200Touch(result.symbol, result.todayClose, result.dataSource);
+      if (!ma200Result || !ma200Result.triggered) continue;
+
+      const alert: Alert = {
+        id: `${result.symbol}-ma200-touch-${Date.now()}`,
+        symbol: result.symbol,
+        name: result.name,
+        alertType: "ma200-touch",
+        todayHigh: result.todayHigh,
+        todayVolume: result.todayVolume,
+        prevMaxHigh: result.prevMaxHigh,
+        prevMaxVolume: result.prevMaxVolume,
+        highBreakPercent: result.highBreakPercent,
+        volumeBreakPercent: result.volumeBreakPercent,
+        todayClose: result.todayClose,
+        todayChange: result.todayChange,
+        ma200: ma200Result.ma200,
+        ma200TouchPercent: ma200Result.touchPercent,
+        triggeredAt: result.scannedAt,
+        read: false,
+      };
+      const added = await addAlert(alert);
+      if (added) {
+        newAlerts.push(alert);
+        await addActivity(
+          "system",
+          "alert-fired",
+          `Alert: ${result.symbol} touched 200 DMA at ₹${ma200Result.ma200} (${ma200Result.touchPercent >= 0 ? "+" : ""}${ma200Result.touchPercent}%)`,
+          {
+            actor: "system",
+            detail: { symbol: result.symbol, alertType: "ma200-touch", ma200: ma200Result.ma200, touchPercent: ma200Result.touchPercent, todayClose: result.todayClose },
           }
         );
       }

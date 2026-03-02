@@ -36,7 +36,7 @@ export interface Alert {
   id: string;
   symbol: string;
   name: string;
-  alertType?: "breakout" | "low-breakout" | "scan" | "week-high";
+  alertType?: "breakout" | "low-breakout" | "scan" | "week-high" | "ma200-touch";
   todayHigh: number;
   todayVolume: number;
   prevMaxHigh: number;
@@ -48,6 +48,8 @@ export interface Alert {
   prev10DayLow?: number;
   lowBreakPercent?: number;
   yearHigh?: number;
+  ma200?: number;
+  ma200TouchPercent?: number;
   triggeredAt: string;
   read: boolean;
 }
