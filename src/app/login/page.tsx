@@ -28,14 +28,14 @@ export default function CinematicLandingLogin() {
 
   // Cards state for feature 1 (Shuffler)
   const [shuffleCards, setShuffleCards] = useState([
-    { id: 1, title: "NIFTY Bank", val: "+2.4%", vol: "High Vol" },
-    { id: 2, title: "Watchlist Alpha", val: "+5.1%", vol: "Breakout" },
-    { id: 3, title: "Automotive Sec", val: "+1.2%", vol: "Accumulation" },
+    { id: 1, title: "RELIANCE", val: "+3.8%", vol: "Alert Triggered" },
+    { id: 2, title: "INFY", val: "+2.1%", vol: "Watchlist" },
+    { id: 3, title: "HDFC Bank", val: "+1.7%", vol: "NSE Scan" },
   ]);
 
   // Terminal state for feature 2
   const [terminalText, setTerminalText] = useState("");
-  const fullTerminalText = "> INITIALIZING NSE FEED...\n> STATUS: [LIVE]\n> VALIDATING PACKETS: SUCCESS\n> SUPPRESSING STALE DATA...";
+  const fullTerminalText = "> CONDITION MET: RELIANCE +3.8% HIGH VOL\n> DISPATCHING PUSH ALERT...\n> STATUS: [DELIVERED]\n> RESPONSE TIME: 0.3s";
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -142,10 +142,10 @@ export default function CinematicLandingLogin() {
         router.push("/");
         router.refresh();
       } else {
-        setError("Invalid Operator ID or Access Code.");
+        setError("Invalid username or password.");
       }
     } catch {
-      setError("System malfunction. Please retry sequence.");
+      setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -245,8 +245,8 @@ export default function CinematicLandingLogin() {
         </div>
         <div className="hidden md:flex items-center gap-8 text-[13px] font-medium text-[#FAF8F5]/60 hover:text-[#FAF8F5] transition-colors">
           <a href="#features">Features</a>
-          <a href="#philosophy">Philosophy</a>
-          <a href="#protocol">Protocol</a>
+          <a href="#philosophy">Why Us</a>
+          <a href="#protocol">How It Works</a>
         </div>
         <button
           onClick={scrollToLogin}
@@ -254,7 +254,7 @@ export default function CinematicLandingLogin() {
           onMouseLeave={handleMouseLeave}
           className="px-6 py-2.5 bg-[#C9A84C] text-[#0D0D12] rounded-full text-xs font-data uppercase tracking-widest font-bold hover:bg-[#FAF8F5] transition-colors"
         >
-          Access Portal
+          Sign In
         </button>
       </nav>
 
@@ -270,16 +270,16 @@ export default function CinematicLandingLogin() {
         <div className="relative z-10 max-w-4xl" ref={heroRef}>
           <div className="hero-reveal mb-6 flex items-center gap-3">
             <span className="w-2.5 h-2.5 bg-[#C9A84C] rounded-full animate-pulse" />
-            <span className="font-data text-xs uppercase tracking-[0.2em] text-[#C9A84C]">Real-Time Terminal</span>
+            <span className="font-data text-xs uppercase tracking-[0.2em] text-[#C9A84C]">Never Miss a Breakout</span>
           </div>
           <h1 className="hero-reveal text-5xl md:text-7xl font-semibold tracking-tighter leading-[1.1] mb-2 text-[#FAF8F5]">
-            Market Dominance meets
+            By the time you notice,
           </h1>
           <h1 className="hero-reveal font-drama italic text-6xl md:text-8xl text-[#C9A84C] pr-4">
-            Precision Data.
+            it&apos;s already over.
           </h1>
           <p className="hero-reveal mt-8 text-lg text-[#FAF8F5]/60 max-w-xl font-light leading-relaxed">
-            A minimalist dashboard that scans NIFTY 50 stocks, alerting you to high-volume breakouts with absolute clarity.
+            We watch every stock on your watchlist — and every stock on the Indian Stock Exchange — 24/7 during market hours. The moment your alert triggers, you get a push notification instantly.
           </p>
           <div className="hero-reveal mt-12">
             <button
@@ -288,7 +288,7 @@ export default function CinematicLandingLogin() {
               onMouseLeave={handleMouseLeave}
               className="animated-btn px-10 py-5 border border-[#C9A84C] rounded-full gold-glow text-[#C9A84C] hover:cursor-pointer flex items-center gap-3"
             >
-              <span>Authenticate Session</span>
+              <span>Start Monitoring</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -305,8 +305,8 @@ export default function CinematicLandingLogin() {
               <div className="w-10 h-10 rounded-full bg-[#C9A84C]/10 flex items-center justify-center mb-6">
                 <BarChart3 className="w-5 h-5 text-[#C9A84C]" />
               </div>
-              <h3 className="text-xl font-semibold mb-3 tracking-tight">Fast Breakout Discovery</h3>
-              <p className="text-sm text-white/50 leading-relaxed">Spots high + volume breakouts across your watchlist and NIFTY 50 instantly.</p>
+              <h3 className="text-xl font-semibold mb-3 tracking-tight">Watches Everything, So You Don&apos;t Have To</h3>
+              <p className="text-sm text-white/50 leading-relaxed">Monitors your entire watchlist and every stock on NSE, 24/7 during market hours.</p>
             </div>
 
             <div className="relative h-[120px] mt-6 w-full flex items-end justify-center">
@@ -341,8 +341,8 @@ export default function CinematicLandingLogin() {
               <div className="w-10 h-10 rounded-full bg-[#C9A84C]/10 flex items-center justify-center mb-6">
                 <Database className="w-5 h-5 text-[#C9A84C]" />
               </div>
-              <h3 className="text-xl font-semibold mb-3 tracking-tight">Trust-First Signals</h3>
-              <p className="text-sm text-white/50 leading-relaxed">Clearly labels live/historical data and suppresses false alerts.</p>
+              <h3 className="text-xl font-semibold mb-3 tracking-tight">Instant Push Notifications</h3>
+              <p className="text-sm text-white/50 leading-relaxed">The moment a stock meets your conditions, a push notification fires instantly.</p>
             </div>
 
             <div className="bg-[#0D0D12] rounded-xl p-5 mt-6 border border-white/5 h-[140px] font-data text-[11px] leading-loose text-[#C9A84C] overflow-hidden whitespace-pre-wrap flex flex-col justify-end">
@@ -359,8 +359,8 @@ export default function CinematicLandingLogin() {
               <div className="w-10 h-10 rounded-full bg-[#C9A84C]/10 flex items-center justify-center mb-6">
                 <CheckCircle2 className="w-5 h-5 text-[#C9A84C]" />
               </div>
-              <h3 className="text-xl font-semibold mb-3 tracking-tight">Simple Workflow</h3>
-              <p className="text-sm text-white/50 leading-relaxed">Starred stocks + Refresh All + Auto-check mode make daily use effortless.</p>
+              <h3 className="text-xl font-semibold mb-3 tracking-tight">AI-Powered Alert Builder</h3>
+              <p className="text-sm text-white/50 leading-relaxed">Describe your alert in plain English. &quot;Alert me when any stock crosses its 52-week high on heavy volume.&quot; The AI does the rest.</p>
             </div>
 
             <div className="mt-8 grid grid-cols-5 gap-2 w-full">
@@ -383,13 +383,13 @@ export default function CinematicLandingLogin() {
         />
         <div className="max-w-4xl mx-auto relative z-10">
           <p className="text-xl md:text-2xl text-white/50 font-light tracking-tight mb-6">
-            {"Most platforms focus on: overwhelming you with endless noise and false flags.".split(" ").map((w, i) => <span key={i} className="phil-word inline-block mr-2">{w}</span>)}
+            {"Most retail investors miss breakouts because: by the time they notice the move, it's already over.".split(" ").map((w, i) => <span key={i} className="phil-word inline-block mr-2">{w}</span>)}
           </p>
           <h2 className="text-4xl md:text-6xl text-[#FAF8F5] leading-tight">
-            {"We focus on: ".split(" ").map((w, i) => <span key={`w-${i}`} className="phil-word inline-block mr-3 font-semibold">{w}</span>)}
+            {"We watch the market:".split(" ").map((w, i) => <span key={`w-${i}`} className="phil-word inline-block mr-3 font-semibold">{w}</span>)}
             <br className="hidden md:block" />
-            {"definitive ".split(" ").map((w, i) => <span key={`d-${i}`} className="phil-word inline-block mr-3 font-drama italic text-[#C9A84C]">{w}</span>)}
-            {"action.".split(" ").map((w, i) => <span key={`a-${i}`} className="phil-word inline-block mr-3 font-drama italic text-[#C9A84C]">{w}</span>)}
+            {"so you ".split(" ").map((w, i) => <span key={`d-${i}`} className="phil-word inline-block mr-3 font-drama italic text-[#C9A84C]">{w}</span>)}
+            {"never miss.".split(" ").map((w, i) => <span key={`a-${i}`} className="phil-word inline-block mr-3 font-drama italic text-[#C9A84C]">{w}</span>)}
           </h2>
         </div>
       </section>
@@ -403,9 +403,9 @@ export default function CinematicLandingLogin() {
           <div className="max-w-5xl w-full grid md:grid-cols-2 gap-16 items-center">
             <div className="space-y-6">
               <span className="font-data text-[#C9A84C] text-sm tracking-widest uppercase">01 / Scan</span>
-              <h2 className="text-5xl font-semibold tracking-tight">NIFTY 50 Radar</h2>
+              <h2 className="text-5xl font-semibold tracking-tight">Full Market Coverage</h2>
               <p className="text-lg text-white/50 leading-relaxed font-light">
-                Continuous volume tracking across the primary index, identifying accumulation phases before they execute into vertical breakouts.
+                Stuck in a job? Can&apos;t watch 50 stocks at once? We monitor your entire watchlist and every stock on the Indian Stock Exchange — simultaneously, 24/7 during market hours.
               </p>
             </div>
             <div className="h-[400px] rounded-[2rem] border border-white/5 bg-[#16161D] flex items-center justify-center overflow-hidden relative">
@@ -420,10 +420,10 @@ export default function CinematicLandingLogin() {
         <div className="protocol-card h-screen w-full flex items-center justify-center px-6 sticky top-0 bg-[#0D0D12]">
           <div className="max-w-5xl w-full grid md:grid-cols-2 gap-16 items-center">
             <div className="space-y-6">
-              <span className="font-data text-[#C9A84C] text-sm tracking-widest uppercase">02 / Verify</span>
-              <h2 className="text-5xl font-semibold tracking-tight">Trust Signals</h2>
+              <span className="font-data text-[#C9A84C] text-sm tracking-widest uppercase">02 / Alert</span>
+              <h2 className="text-5xl font-semibold tracking-tight">Instant Notifications</h2>
               <p className="text-lg text-white/50 leading-relaxed font-light">
-                Intelligent packet validation automatically suppresses stale alerts. You always know exactly what feeds are live and which are historical.
+                The moment any stock on NSE meets your conditions, a push notification fires. No delay, no manual checking — just the alert you need, exactly when the move is happening.
               </p>
             </div>
             <div className="h-[400px] rounded-[2rem] border border-white/5 bg-[#16161D] flex items-center justify-center p-8">
@@ -444,8 +444,8 @@ export default function CinematicLandingLogin() {
         <div className="relative z-10 w-full max-w-md">
           <div className="text-center mb-10">
             <Lock className="w-6 h-6 text-[#C9A84C] mx-auto mb-6" />
-            <h2 className="text-3xl tracking-tight mb-2 font-drama italic text-[#FAF8F5]">Secure Gateway</h2>
-            <p className="text-sm font-data text-[#FAF8F5]/40 tracking-widest uppercase">Operator Authentication</p>
+            <h2 className="text-3xl tracking-tight mb-2 font-drama italic text-[#FAF8F5]">Welcome Back</h2>
+            <p className="text-sm font-data text-[#FAF8F5]/40 tracking-widest uppercase">Sign in to your account</p>
           </div>
 
           <form
@@ -455,7 +455,7 @@ export default function CinematicLandingLogin() {
             {/* Operator ID */}
             <div className="space-y-3">
               <label htmlFor="username" className="block font-data text-[10px] font-medium uppercase tracking-[0.2em] text-[#FAF8F5]/40 ml-1">
-                Operator ID
+                Username
               </label>
               <input
                 id="username"
@@ -465,14 +465,14 @@ export default function CinematicLandingLogin() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full px-5 py-4 text-sm font-data outline-none transition-all duration-300 bg-[#0D0D12] border border-white/5 text-[#FAF8F5] rounded-2xl focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C]/30"
-                placeholder="SYS-ADMIN-01"
+                placeholder="your-username"
               />
             </div>
 
             {/* Access Code */}
             <div className="space-y-3">
               <label htmlFor="password" className="block font-data text-[10px] font-medium uppercase tracking-[0.2em] text-[#FAF8F5]/40 ml-1">
-                Access Code
+                Password
               </label>
               <input
                 id="password"
@@ -505,9 +505,9 @@ export default function CinematicLandingLogin() {
                   {loading ? (
                     <>
                       <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                      Authenticating...
+                      Signing in...
                     </>
-                  ) : ("Initialize Session")}
+                  ) : ("Sign In")}
                 </span>
               </button>
             </div>
@@ -522,10 +522,10 @@ export default function CinematicLandingLogin() {
             <Activity className="w-5 h-5 text-[#C9A84C]" />
             <span className="font-semibold tracking-wide text-sm">NSE Stock Data</span>
           </div>
-          <p className="text-xs text-white/30 font-light">© 2026 Secured Gateway. All parameters encrypted.</p>
+          <p className="text-xs text-white/30 font-light">© 2026 NSE Stock Data. For informational purposes only.</p>
           <div className="flex items-center gap-2 bg-[#16161D] px-4 py-2 rounded-full border border-white/5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="font-data text-[10px] text-emerald-500/70 uppercase tracking-widest">System Operational</span>
+            <span className="font-data text-[10px] text-emerald-500/70 uppercase tracking-widest">Markets Live</span>
           </div>
         </div>
       </footer>
