@@ -259,7 +259,7 @@ export function StockCard({
       )}
 
       {/* Action buttons */}
-      <div className="absolute right-4 top-4 flex items-center gap-1 z-10">
+      <div className="absolute right-4 top-4 flex items-center gap-1 z-20">
         <button
           ref={starRef}
           onClick={(e) => { e.stopPropagation(); onToggleCloseWatch(result.symbol); }}
