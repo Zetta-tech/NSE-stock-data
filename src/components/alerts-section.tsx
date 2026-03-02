@@ -10,6 +10,7 @@ const ALERT_TYPE_LABELS: Record<string, string> = {
   "week-high": "52 Week High",
   "ma200-touch": "200 DMA Touch",
   "ma100-touch": "100 DMA Touch",
+  "ma5-touch": "5 DMA Touch",
 };
 
 function stripPrefix(text: string): string {

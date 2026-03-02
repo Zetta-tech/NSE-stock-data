@@ -6,6 +6,7 @@ import { addActivity, setScanMeta } from "@/lib/activity";
 import { logger } from "@/lib/logger";
 import { checkMa200Touch } from "@/lib/ma200-alert";
 import { checkMa100Touch } from "@/lib/ma100-alert";
+import { checkMa5Touch } from "@/lib/ma5-alert";
 import type { Alert, ScanResponse, ScanMeta } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -168,6 +169,46 @@ export async function POST(request: Request) {
           {
             actor: "system",
             detail: { symbol: result.symbol, alertType: "ma100-touch", ma100: ma100Result.ma100, touchPercent: ma100Result.touchPercent, todayClose: result.todayClose },
+          }
+        );
+      }
+    }
+
+    for (const result of results) {
+      if (result.dataSource === "stale") continue;
+      if (result.todayClose <= 0) continue;
+
+      const ma5Result = await checkMa5Touch(result.symbol, result.todayClose, result.dataSource);
+      if (!ma5Result || !ma5Result.triggered) continue;
+
+      const alert: Alert = {
+        id: `${result.symbol}-ma5-touch-${Date.now()}`,
+        symbol: result.symbol,
+        name: result.name,
+        alertType: "ma5-touch",
+        todayHigh: result.todayHigh,
+        todayVolume: result.todayVolume,
+        prevMaxHigh: result.prevMaxHigh,
+        prevMaxVolume: result.prevMaxVolume,
+        highBreakPercent: result.highBreakPercent,
+        volumeBreakPercent: result.volumeBreakPercent,
+        todayClose: result.todayClose,
+        todayChange: result.todayChange,
+        ma5: ma5Result.ma5,
+        ma5TouchPercent: ma5Result.touchPercent,
+        triggeredAt: result.scannedAt,
+        read: false,
+      };
+      const added = await addAlert(alert);
+      if (added) {
+        newAlerts.push(alert);
+        await addActivity(
+          "system",
+          "alert-fired",
+          `Alert: ${result.symbol} touched 5 DMA at ₹${ma5Result.ma5} (${ma5Result.touchPercent >= 0 ? "+" : ""}${ma5Result.touchPercent}%)`,
+          {
+            actor: "system",
+            detail: { symbol: result.symbol, alertType: "ma5-touch", ma5: ma5Result.ma5, touchPercent: ma5Result.touchPercent, todayClose: result.todayClose },
           }
         );
       }
