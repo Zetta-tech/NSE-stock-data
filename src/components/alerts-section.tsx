@@ -4,106 +4,14 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import type { Alert, AlertRequest } from "@/lib/types";
 import { AlertBuilder } from "./alert-builder";
 
-/* ── Per-type visual config ─────────────────────────────────────────── */
-
-interface AlertTypeStyle {
-  label: string;
-  badge: string;
-  ring: string;
-  bg: string;
-  dot: string;
-  text: string;
-  badgeBg: string;
-  badgeRing: string;
-  badgeText: string;
-  hoverRing: string;
-  hoverBg: string;
-  hoverShadow: string;
-  chipRing: string;
-  chipBg: string;
-}
-
-const ALERT_STYLES: Record<string, AlertTypeStyle> = {
-  breakout: {
-    label: "True Breakout",
-    badge: "BREAKOUT",
-    ring: "ring-accent/12",
-    bg: "bg-accent/[0.02]",
-    dot: "bg-accent",
-    text: "text-accent",
-    badgeBg: "bg-accent/8",
-    badgeRing: "ring-accent/15",
-    badgeText: "text-accent/70",
-    hoverRing: "hover:ring-accent/25",
-    hoverBg: "hover:bg-accent/[0.04]",
-    hoverShadow: "hover:shadow-[rgba(0,230,138,0.1)]",
-    chipRing: "ring-accent/15",
-    chipBg: "bg-accent/[0.04]",
-  },
-  "low-breakout": {
-    label: "Low Breakout",
-    badge: "LOW BREAK",
-    ring: "ring-amber-500/12",
-    bg: "bg-amber-500/[0.02]",
-    dot: "bg-amber-400",
-    text: "text-amber-400",
-    badgeBg: "bg-amber-500/8",
-    badgeRing: "ring-amber-500/15",
-    badgeText: "text-amber-400/70",
-    hoverRing: "hover:ring-amber-500/25",
-    hoverBg: "hover:bg-amber-500/[0.04]",
-    hoverShadow: "hover:shadow-[rgba(245,158,11,0.1)]",
-    chipRing: "ring-amber-500/15",
-    chipBg: "bg-amber-500/[0.04]",
-  },
-  "week-high": {
-    label: "52 Week High",
-    badge: "52W HIGH",
-    ring: "ring-purple-500/12",
-    bg: "bg-purple-500/[0.02]",
-    dot: "bg-purple-400",
-    text: "text-purple-400",
-    badgeBg: "bg-purple-500/8",
-    badgeRing: "ring-purple-500/15",
-    badgeText: "text-purple-400/70",
-    hoverRing: "hover:ring-purple-500/25",
-    hoverBg: "hover:bg-purple-500/[0.04]",
-    hoverShadow: "hover:shadow-[rgba(168,85,247,0.1)]",
-    chipRing: "ring-purple-500/15",
-    chipBg: "bg-purple-500/[0.04]",
-  },
-  "ma200-touch": {
-    label: "200 DMA Touch",
-    badge: "200 DMA",
-    ring: "ring-sky-500/12",
-    bg: "bg-sky-500/[0.02]",
-    dot: "bg-sky-400",
-    text: "text-sky-400",
-    badgeBg: "bg-sky-500/8",
-    badgeRing: "ring-sky-500/15",
-    badgeText: "text-sky-400/70",
-    hoverRing: "hover:ring-sky-500/25",
-    hoverBg: "hover:bg-sky-500/[0.04]",
-    hoverShadow: "hover:shadow-[rgba(14,165,233,0.1)]",
-    chipRing: "ring-sky-500/15",
-    chipBg: "bg-sky-500/[0.04]",
-  },
-  "ma100-touch": {
-    label: "100 DMA Touch",
-    badge: "100 DMA",
-    ring: "ring-teal-500/12",
-    bg: "bg-teal-500/[0.02]",
-    dot: "bg-teal-400",
-    text: "text-teal-400",
-    badgeBg: "bg-teal-500/8",
-    badgeRing: "ring-teal-500/15",
-    badgeText: "text-teal-400/70",
-    hoverRing: "hover:ring-teal-500/25",
-    hoverBg: "hover:bg-teal-500/[0.04]",
-    hoverShadow: "hover:shadow-[rgba(20,184,166,0.1)]",
-    chipRing: "ring-teal-500/15",
-    chipBg: "bg-teal-500/[0.04]",
-  },
+const ALERT_TYPE_LABELS: Record<string, string> = {
+  breakout: "True Breakout",
+  "low-breakout": "Low Breakout",
+  "week-high": "52 Week High",
+  "ma200-touch": "200 DMA Touch",
+  "ma100-touch": "100 DMA Touch",
+  "ma50-touch": "50 DMA Touch",
+  "ma5-touch": "5 DMA Touch",
 };
 
 const DEFAULT_STYLE = ALERT_STYLES.breakout;
