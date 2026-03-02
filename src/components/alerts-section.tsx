@@ -11,6 +11,8 @@ const ALERT_TYPE_LABELS: Record<string, string> = {
   breakout: "True Breakout",
   "low-breakout": "Low Breakout",
   "week-high": "52 Week High",
+  "ma200-touch": "200 DMA Touch",
+  "ma100-touch": "100 DMA Touch",
   // "scan" is intentionally omitted — same logic as breakout, fired during watchlist scans
 };
 
