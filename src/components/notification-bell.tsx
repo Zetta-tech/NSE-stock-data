@@ -117,20 +117,59 @@ export function NotificationBell({
                         ? "bg-amber-500/10 ring-amber-500/15 text-amber-400"
                         : alert.alertType === "week-high"
                         ? "bg-purple-500/10 ring-purple-500/15 text-purple-400"
+                        : alert.alertType === "ma200-touch"
+                        ? "bg-sky-500/10 ring-sky-500/15 text-sky-400"
+                        : alert.alertType === "ma100-touch"
+                        ? "bg-teal-500/10 ring-teal-500/15 text-teal-400"
                         : "bg-accent/10 ring-accent/15 text-accent"
                       }`}>
-                      {alert.alertType === "low-breakout" ? "LOW BREAK" : alert.alertType === "week-high" ? "52W HIGH" : "BREAKOUT"}
+                      {alert.alertType === "low-breakout" ? "LOW BREAK"
+                        : alert.alertType === "week-high" ? "52W HIGH"
+                        : alert.alertType === "ma200-touch" ? "200 DMA"
+                        : alert.alertType === "ma100-touch" ? "100 DMA"
+                        : "BREAKOUT"}
                     </span>
                   </div>
                   <div className={`mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs ${!alert.read ? "ml-[18px]" : ""}`}>
-                    <div className="text-text-secondary">
-                      High: <span className="font-mono text-accent tabular-nums">&#x20B9;{alert.todayHigh.toLocaleString("en-IN")}</span>
-                      <span className="text-text-muted"> vs &#x20B9;{alert.prevMaxHigh.toLocaleString("en-IN")}</span>
-                    </div>
-                    <div className="text-text-secondary">
-                      Vol: <span className="font-mono text-accent tabular-nums">{formatVolume(alert.todayVolume)}</span>
-                      <span className="text-text-muted"> vs 3×avg {formatVolume(alert.prevMaxVolume * 3)}</span>
-                    </div>
+                    {alert.alertType === "ma200-touch" ? (
+                      <>
+                        <div className="text-text-secondary">
+                          200 DMA: <span className="font-mono text-sky-400 tabular-nums">&#x20B9;{alert.ma200?.toLocaleString("en-IN") ?? "\u2014"}</span>
+                        </div>
+                        <div className="text-text-secondary">
+                          Gap: <span className="font-mono text-sky-400 tabular-nums">{alert.ma200TouchPercent != null ? `${alert.ma200TouchPercent >= 0 ? "+" : ""}${alert.ma200TouchPercent.toFixed(2)}%` : "\u2014"}</span>
+                        </div>
+                      </>
+                    ) : alert.alertType === "ma100-touch" ? (
+                      <>
+                        <div className="text-text-secondary">
+                          100 DMA: <span className="font-mono text-teal-400 tabular-nums">&#x20B9;{alert.ma100?.toLocaleString("en-IN") ?? "\u2014"}</span>
+                        </div>
+                        <div className="text-text-secondary">
+                          Gap: <span className="font-mono text-teal-400 tabular-nums">{alert.ma100TouchPercent != null ? `${alert.ma100TouchPercent >= 0 ? "+" : ""}${alert.ma100TouchPercent.toFixed(2)}%` : "\u2014"}</span>
+                        </div>
+                      </>
+                    ) : alert.alertType === "week-high" ? (
+                      <>
+                        <div className="text-text-secondary">
+                          52W High: <span className="font-mono text-purple-400 tabular-nums">&#x20B9;{alert.yearHigh?.toLocaleString("en-IN") ?? "\u2014"}</span>
+                        </div>
+                        <div className="text-text-secondary">
+                          Today: <span className="font-mono text-purple-400 tabular-nums">&#x20B9;{alert.todayHigh.toLocaleString("en-IN")}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-text-secondary">
+                          High: <span className="font-mono text-accent tabular-nums">&#x20B9;{alert.todayHigh.toLocaleString("en-IN")}</span>
+                          <span className="text-text-muted"> vs &#x20B9;{alert.prevMaxHigh.toLocaleString("en-IN")}</span>
+                        </div>
+                        <div className="text-text-secondary">
+                          Vol: <span className="font-mono text-accent tabular-nums">{formatVolume(alert.todayVolume)}</span>
+                          <span className="text-text-muted"> vs 3×avg {formatVolume(alert.prevMaxVolume * 3)}</span>
+                        </div>
+                      </>
+                    )}
                   </div>
                   <div className={`mt-1.5 font-mono text-[10px] text-text-muted ${!alert.read ? "ml-[18px]" : ""}`}>
                     {new Date(alert.triggeredAt).toLocaleString("en-IN", {
