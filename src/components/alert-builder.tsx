@@ -55,7 +55,7 @@ export function AlertBuilder({ onSubmitted }: { onSubmitted?: () => void } = {})
       }
 
       setText("");
-      showFeedback("success", "Alert submitted — a GitHub Issue has been created for review.");
+      showFeedback("success", "Alert received! We're setting it up — you'll see it go live shortly.");
       onSubmitted?.();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong";
