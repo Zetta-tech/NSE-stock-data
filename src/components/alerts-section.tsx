@@ -1,17 +1,18 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import gsap from "gsap";
 import type { Alert, AlertRequest } from "@/lib/types";
 import { AlertBuilder } from "./alert-builder";
 
-/* ── Built-in alert types (pre-date the request system) ────────────── */
+/* ── Known alert-type labels (alertType value → display name) ──────── */
 
-const BUILTIN_ALERT_TYPES = [
-  { id: "true-breakout", name: "True Breakout", status: "active" as const },
-  { id: "low-breakout", name: "Low Breakout", status: "active" as const },
-  { id: "week-high", name: "52 Week High", status: "active" as const },
-];
+const ALERT_TYPE_LABELS: Record<string, string> = {
+  breakout: "True Breakout",
+  "low-breakout": "Low Breakout",
+  "week-high": "52 Week High",
+  // "scan" is intentionally omitted — same logic as breakout, fired during watchlist scans
+};
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
 
@@ -29,7 +30,6 @@ function deriveAlertName(text: string): string {
 
 /* ── Main Component ─────────────────────────────────────────────────── */
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function AlertsSection({ alerts }: { alerts: Alert[] }) {
   const [alertRequests, setAlertRequests] = useState<AlertRequest[]>([]);
   const [configuredOpen, setConfiguredOpen] = useState(false);
@@ -43,14 +43,39 @@ export function AlertsSection({ alerts }: { alerts: Alert[] }) {
     (r) => r.status !== "implemented" && r.status !== "rejected"
   );
 
+  /* Derive active alert types from fired alerts + known labels */
+  const activeAlertTypes = useMemo(() => {
+    const included = new Set<string>();
+    const types: { id: string; name: string; status: "active" }[] = [];
+
+    // Always include known label entries (even if no alerts fired yet)
+    for (const [id, name] of Object.entries(ALERT_TYPE_LABELS)) {
+      included.add(id);
+      types.push({ id, name, status: "active" as const });
+    }
+
+    // Discover any NEW alert types from actual fired alerts
+    for (const alert of alerts) {
+      const t = alert.alertType;
+      if (!t || t === "scan" || included.has(t)) continue;
+      included.add(t);
+      const name = t.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+      types.push({ id: t, name, status: "active" as const });
+    }
+
+    return types;
+  }, [alerts]);
+
   const configuredAlertTypes = [
-    ...BUILTIN_ALERT_TYPES,
+    ...activeAlertTypes,
+    // "implemented" requests are already represented via ALERT_TYPE_LABELS / alert discovery,
+    // so only show pending/in-progress requests here to avoid duplicates.
     ...alertRequests
-      .filter((r) => r.status !== "rejected")
+      .filter((r) => r.status !== "rejected" && r.status !== "implemented")
       .map((r) => ({
         id: r.id,
         name: deriveAlertName(r.text),
-        status: r.status === "implemented" ? ("active" as const) : ("building" as const),
+        status: "building" as const,
       })),
   ];
 
@@ -191,10 +216,10 @@ export function AlertsSection({ alerts }: { alerts: Alert[] }) {
               {/* Configured types popover */}
               <div
                 ref={configuredBubbleRef}
-                className="absolute right-0 top-full mt-2 z-40 w-[210px] overflow-hidden rounded-xl bg-surface-overlay ring-1 ring-surface-border-bright/60 shadow-2xl shadow-black/60"
+                className="absolute right-0 top-full mt-2 z-40 w-[210px] rounded-xl bg-surface-overlay ring-1 ring-surface-border-bright/60 shadow-2xl shadow-black/60"
                 style={{ opacity: 0, visibility: "hidden" }}
               >
-                <div className="px-3 py-2.5 space-y-1">
+                <div className="px-3 py-2.5 space-y-1 max-h-[280px] overflow-y-auto">
                   <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted mb-1.5">Alert Types</p>
                   {configuredAlertTypes.map((type) => (
                     <div key={type.id} className="flex items-center gap-2 py-1">

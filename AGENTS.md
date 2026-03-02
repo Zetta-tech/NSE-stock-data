@@ -38,8 +38,9 @@ For every new alert type, follow these steps in order:
 4. **Wire into scan** — Ensure the scan pipeline calls your detection logic. Look at how `scanStock()` calls `analyzeBreakout()` as a pattern
 5. **Store alerts** — Use the existing `addAlert()` from `src/lib/store.ts` with appropriate dedup (symbol + alertType + date)
 6. **Log activity** — Call `addActivity()` from `src/lib/activity.ts` when an alert fires
-7. **Test** — Write vitest tests if practical (mock Redis via `vi.mock("./redis")`). Tests are encouraged but not required
-8. **Verify** — Run `npm run typecheck` to confirm no type errors
+7. **Register display name** — Add the new `alertType` value and its human-readable label to `ALERT_TYPE_LABELS` in `src/components/alerts-section.tsx` (e.g. `"200dma": "200 DMA Crossover"`)
+8. **Test** — Write vitest tests if practical (mock Redis via `vi.mock("./redis")`). Tests are encouraged but not required
+9. **Verify** — Run `npm run typecheck` to confirm no type errors
 
 ## PR Format
 
@@ -60,4 +61,5 @@ Body:
 - [ ] `npm run typecheck` passes
 - [ ] New alert type is wired into scan pipeline
 - [ ] Dedup prevents duplicate alerts for same symbol+type+date
+- [ ] Display name added to `ALERT_TYPE_LABELS` in `src/components/alerts-section.tsx`
 ```

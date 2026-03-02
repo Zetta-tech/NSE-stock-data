@@ -35,7 +35,12 @@ For every new alert type, create/modify files in this order:
 - Category: `"system"` for automated alerts
 - Include relevant data in `detail` parameter
 
-### 6. Tests (Optional)
+### 6. Register Display Name (`src/components/alerts-section.tsx`)
+- Add the new `alertType` value to the `ALERT_TYPE_LABELS` map
+- Use a concise, human-readable name: `"your-type": "Your Type Name"`
+- This ensures the alert type appears in the dashboard's Alert Types popover
+
+### 7. Tests (Optional)
 - Create test file: `src/lib/__tests__/your-alert.test.ts`
 - Mock Redis: `vi.mock("../redis", () => ({ getRedis: () => null }))`
 - Test the detection function with known inputs/outputs

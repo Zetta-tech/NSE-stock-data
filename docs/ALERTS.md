@@ -110,7 +110,11 @@ Same symbol + same alert type + same calendar date = duplicate → skipped.
    }
    ```
 
-6. **Test** (optional but encouraged):
+6. **Register display name** in `src/components/alerts-section.tsx`:
+   - Add to the `ALERT_TYPE_LABELS` map: `"your-new-type": "Your Alert Name"`
+   - This makes the alert type appear in the dashboard's Alert Types popover
+
+7. **Test** (optional but encouraged):
    ```ts
    // src/lib/__tests__/your-alert.test.ts
    import { vi } from "vitest";

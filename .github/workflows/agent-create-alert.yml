@@ -53,4 +53,9 @@ jobs:
             or tests at your discretion for verification.
 
             IMPORTANT: Do not modify protected files listed in AGENTS.md.
+
+            IMPORTANT: After implementing the alert, register its display name
+            in the ALERT_TYPE_LABELS map in src/components/alerts-section.tsx.
+            Use the alertType value as key and a concise human-readable name as
+            value (e.g. "200dma": "200 DMA Crossover").
           claude_args: "--allowed-tools Bash Edit Read Write Glob Grep"
