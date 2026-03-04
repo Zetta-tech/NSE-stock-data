@@ -37,24 +37,38 @@ export async function POST(request: Request) {
 
     const newAlerts: Alert[] = [];
     for (const result of results) {
-      if (result.triggered) {
-        const alert: Alert = {
-          id: `${result.symbol}-${Date.now()}`,
-          symbol: result.symbol,
-          name: result.name,
-          todayHigh: result.todayHigh,
-          todayVolume: result.todayVolume,
-          prevMaxHigh: result.prevMaxHigh,
-          prevMaxVolume: result.prevMaxVolume,
-          highBreakPercent: result.highBreakPercent,
-          volumeBreakPercent: result.volumeBreakPercent,
-          todayClose: result.todayClose,
-          todayChange: result.todayChange,
-          triggeredAt: result.scannedAt,
-          read: false,
-        };
-        await addAlert(alert);
+      if (!result.triggered) continue;
+      if (result.dataSource === "stale") continue;
+
+      const alert: Alert = {
+        id: `${result.symbol}-breakout-${Date.now()}`,
+        symbol: result.symbol,
+        name: result.name,
+        alertType: "breakout",
+        todayHigh: result.todayHigh,
+        todayVolume: result.todayVolume,
+        prevMaxHigh: result.prevMaxHigh,
+        prevMaxVolume: result.prevMaxVolume,
+        highBreakPercent: result.highBreakPercent,
+        volumeBreakPercent: result.volumeBreakPercent,
+        todayClose: result.todayClose,
+        todayChange: result.todayChange,
+        triggeredAt: result.scannedAt,
+        read: false,
+      };
+      const added = await addAlert(alert);
+      if (added) {
         newAlerts.push(alert);
+        await addActivity(
+          "system",
+          "alert-fired",
+          `Alert: ${result.symbol} breakout — high +${result.highBreakPercent}%, vol +${result.volumeBreakPercent}%`,
+          {
+            actor: "system",
+            detail: { symbol: result.symbol, alertType: "breakout", highBreakPercent: result.highBreakPercent, volumeBreakPercent: result.volumeBreakPercent },
+            snapshot: { todayHigh: result.todayHigh, prevMaxHigh: result.prevMaxHigh, todayVolume: result.todayVolume, prevMaxVolume: result.prevMaxVolume },
+          }
+        );
       }
     }
 
@@ -286,19 +300,6 @@ export async function POST(request: Request) {
         snapshot: { marketOpen, stockCount: results.length, liveCount, historicalCount, staleCount, triggeredCount: newAlerts.length },
       }
     );
-
-    for (const a of newAlerts) {
-      await addActivity(
-        "system",
-        "alert-fired",
-        `Alert: ${a.symbol} breakout — high +${a.highBreakPercent}%, vol +${a.volumeBreakPercent}%`,
-        {
-          actor: "system",
-          detail: { symbol: a.symbol, highBreakPercent: a.highBreakPercent, volumeBreakPercent: a.volumeBreakPercent },
-          snapshot: { todayHigh: a.todayHigh, prevMaxHigh: a.prevMaxHigh, todayVolume: a.todayVolume, prevMaxVolume: a.prevMaxVolume },
-        }
-      );
-    }
 
     if (staleCount > 0) {
       const staleSymbols = results.filter((r) => r.dataSource === "stale").map((r) => r.symbol);

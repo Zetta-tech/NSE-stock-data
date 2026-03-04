@@ -23,6 +23,16 @@ interface AlertTypeStyle {
   chipBg: string;
 }
 
+const ALERT_TYPE_LABELS: Record<string, string> = {
+  breakout: "True Breakout",
+  "low-breakout": "Low Breakout",
+  "week-high": "52-Week High",
+  "ma200-touch": "200 DMA Touch",
+  "ma100-touch": "100 DMA Touch",
+  "ma50-touch": "50 DMA Touch",
+  "ma5-touch": "5 DMA Touch",
+};
+
 const ALERT_STYLES: Record<string, AlertTypeStyle> = {
   breakout: {
     label: "True Breakout",
@@ -187,7 +197,7 @@ export function AlertsSection({ alerts }: { alerts: Alert[] }) {
       const t = alert.alertType;
       if (!t || t === "scan" || included.has(t)) continue;
       included.add(t);
-      const name = t.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+      const name = ALERT_TYPE_LABELS[t] ?? t.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
       types.push({ id: t, name });
     }
 
