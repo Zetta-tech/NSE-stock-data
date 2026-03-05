@@ -159,12 +159,13 @@ export interface Nifty50Snapshot {
   stale: boolean;
 }
 
-/** 5-day baseline for a single stock (computed once per trading day) */
 export interface StockBaseline {
   symbol: string;
   maxHigh5d: number;
   maxVolume5d: number;
-  computedDate: string; // YYYY-MM-DD in IST
+  minLow10d: number;
+  maxVolume10d: number;
+  computedDate: string;
 }
 
 /** Breakout discovery signal for Nifty 50 table */

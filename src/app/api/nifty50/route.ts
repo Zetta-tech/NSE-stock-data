@@ -190,8 +190,17 @@ export async function GET() {
         }
       }
 
-      // Fire alert for high-only breaks (price new high, volume below threshold)
-      if (highBreak && !volumeBreak) {
+      const lowBreak = stock.dayLow < baseline.minLow10d;
+      const volumeBreak10d = stock.totalTradedVolume > baseline.maxVolume10d;
+
+      if (lowBreak && volumeBreak10d) {
+        const lowBreakPct = baseline.minLow10d > 0
+          ? Math.round(((baseline.minLow10d - stock.dayLow) / baseline.minLow10d) * 10000) / 100
+          : 0;
+        const volBreakPct10d = baseline.maxVolume10d > 0
+          ? Math.round(((stock.totalTradedVolume - baseline.maxVolume10d) / baseline.maxVolume10d) * 10000) / 100
+          : 0;
+
         const alertId = `${stock.symbol}-nifty50-low-breakout-${today}`;
         const alert: Alert = {
           id: alertId,
@@ -202,12 +211,12 @@ export async function GET() {
           todayVolume: stock.totalTradedVolume,
           prevMaxHigh: baseline.maxHigh5d,
           prevMaxVolume: baseline.maxVolume5d,
-          highBreakPercent,
-          volumeBreakPercent,
+          highBreakPercent: 0,
+          volumeBreakPercent: volBreakPct10d,
           todayClose: stock.lastPrice,
           todayChange: stock.pChange,
-          prev10DayLow: 0,
-          lowBreakPercent: 0,
+          prev10DayLow: baseline.minLow10d,
+          lowBreakPercent: lowBreakPct,
           triggeredAt: new Date().toISOString(),
           read: false,
         };
@@ -218,18 +227,19 @@ export async function GET() {
           await addActivity(
             "system",
             "alert-fired",
-            `Nifty 50 alert: ${stock.symbol} high-only break — High +${highBreakPercent}%`,
+            `Nifty 50 alert: ${stock.symbol} low breakdown — Low -${lowBreakPct}%, Vol +${volBreakPct10d}%`,
             {
               actor: "system",
               detail: {
                 source: "nifty50",
                 symbol: stock.symbol,
-                highBreakPercent,
-                volumeBreakPercent,
-                todayHigh: stock.dayHigh,
+                alertType: "low-breakout",
+                dayLow: stock.dayLow,
+                prev10DayLow: baseline.minLow10d,
+                lowBreakPercent: lowBreakPct,
+                volumeBreakPercent: volBreakPct10d,
                 todayVolume: stock.totalTradedVolume,
-                prevMaxHigh: baseline.maxHigh5d,
-                prevMaxVolume: baseline.maxVolume5d,
+                maxVolume10d: baseline.maxVolume10d,
               },
             },
           );

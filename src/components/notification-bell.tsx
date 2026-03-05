@@ -114,7 +114,7 @@ export function NotificationBell({
                     </div>
                     <span className={`flex-shrink-0 rounded-md px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-wider ring-1 ${
                       alert.alertType === "low-breakout"
-                        ? "bg-amber-500/10 ring-amber-500/15 text-amber-400"
+                        ? "bg-red-500/10 ring-red-500/15 text-red-400"
                         : alert.alertType === "week-high"
                         ? "bg-purple-500/10 ring-purple-500/15 text-purple-400"
                         : alert.alertType === "ma200-touch"
@@ -180,6 +180,17 @@ export function NotificationBell({
                         </div>
                         <div className="text-text-secondary">
                           Today: <span className="font-mono text-purple-400 tabular-nums">&#x20B9;{alert.todayHigh.toLocaleString("en-IN")}</span>
+                        </div>
+                      </>
+                    ) : alert.alertType === "low-breakout" ? (
+                      <>
+                        <div className="text-text-secondary">
+                          Low: <span className="font-mono text-red-400 tabular-nums">&#x20B9;{alert.todayClose.toLocaleString("en-IN")}</span>
+                          <span className="text-text-muted"> vs 10D &#x20B9;{(alert.prev10DayLow ?? 0).toLocaleString("en-IN")}</span>
+                        </div>
+                        <div className="text-text-secondary">
+                          Break: <span className="font-mono text-red-400 tabular-nums">-{(alert.lowBreakPercent ?? 0).toFixed(2)}%</span>
+                          <span className="text-text-muted"> Vol +{alert.volumeBreakPercent.toFixed(1)}%</span>
                         </div>
                       </>
                     ) : (
