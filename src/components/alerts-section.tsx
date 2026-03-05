@@ -1,8 +1,5 @@
-"use client";
-
 import { useState, useEffect, useCallback, useMemo } from "react";
 import type { Alert, AlertRequest } from "@/lib/types";
-import { AlertBuilder } from "./alert-builder";
 
 /* ── Per-type visual config ─────────────────────────────────────────── */
 
@@ -167,7 +164,7 @@ function deriveAlertName(text: string): string {
 
 /* ── Main Component ─────────────────────────────────────────────────── */
 
-export function AlertsSection({ alerts }: { alerts: Alert[] }) {
+export function AlertsSection({ alerts, refreshTrigger }: { alerts: Alert[], refreshTrigger?: number }) {
   const [alertRequests, setAlertRequests] = useState<AlertRequest[]>([]);
 
   const inProgressRequests = alertRequests.filter(
@@ -213,20 +210,11 @@ export function AlertsSection({ alerts }: { alerts: Alert[] }) {
 
   useEffect(() => {
     fetchRequests();
-  }, [fetchRequests]);
-
-  const handleRequestSubmitted = useCallback(() => {
-    setTimeout(fetchRequests, 500);
-  }, [fetchRequests]);
+  }, [fetchRequests, refreshTrigger]);
 
   return (
-    <div className="animate-fade-in">
-      <div
-        className="rounded-2xl ring-1 ring-surface-border/50 card-elevated"
-        style={{
-          background: "linear-gradient(180deg, rgba(14, 16, 23, 1) 0%, rgba(11, 13, 18, 1) 100%)",
-        }}
-      >
+    <div className="animate-fade-in w-full">
+      <div className="rounded-[2rem] border border-white/5 bg-[#101826] shadow-xl flex flex-col w-full relative overflow-hidden">
         {/* Accent top edge */}
         <div
           className="h-[1px] rounded-t-2xl"
@@ -290,8 +278,8 @@ export function AlertsSection({ alerts }: { alerts: Alert[] }) {
                 </span>
               </div>
             </div>
-            <div className="overflow-x-auto scrollbar-thin px-3 pb-3">
-              <div className="flex gap-2.5" style={{ width: "max-content" }}>
+            <div className="px-4 pb-4 w-full">
+              <div className="flex flex-col gap-3 w-full">
                 {todayAlerts.map((alert, i) => (
                   <FiredAlertCard key={alert.id} alert={alert} index={i} />
                 ))}
@@ -300,13 +288,6 @@ export function AlertsSection({ alerts }: { alerts: Alert[] }) {
           </>
         )}
 
-        {/* Separator */}
-        <div className="mx-5 border-t border-surface-border/30" />
-
-        {/* Alert Builder */}
-        <div className="px-5 pt-3 pb-4">
-          <AlertBuilder onSubmitted={handleRequestSubmitted} />
-        </div>
       </div>
     </div>
   );
@@ -320,8 +301,8 @@ function FiredAlertCard({ alert, index }: { alert: Alert; index: number }) {
 
   return (
     <div
-      className={`group relative flex flex-col rounded-[1.5rem] pl-5 pr-4 py-3.5 ring-1 ${s.ring} ${s.bg} ${s.hoverRing} ${s.hoverBg} transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-1 hover:shadow-lg ${s.hoverShadow} animate-fade-in`}
-      style={{ minWidth: 180, width: 180, animationDelay: `${index * 60}ms` }}
+      className={`group relative flex w-full flex-col rounded-[1.5rem] pl-5 pr-4 py-3.5 ring-1 ${s.ring} ${s.bg} ${s.hoverRing} ${s.hoverBg} transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-1 hover:shadow-lg ${s.hoverShadow} animate-fade-in`}
+      style={{ animationDelay: `${index * 60}ms` }}
     >
       {/* Left color stripe */}
       <div className={`absolute left-0 top-4 bottom-4 w-[2px] rounded-full ${s.dot} opacity-40`} />
@@ -354,9 +335,8 @@ function FiredAlertCard({ alert, index }: { alert: Alert; index: number }) {
             : "\u2014"}
         </span>
         <span
-          className={`font-mono text-[10px] font-semibold tabular-nums ${
-            alert.todayChange >= 0 ? "text-accent" : "text-danger"
-          }`}
+          className={`font-mono text-[10px] font-semibold tabular-nums ${alert.todayChange >= 0 ? "text-accent" : "text-danger"
+            }`}
         >
           {alert.todayChange >= 0 ? "+" : ""}
           {alert.todayChange.toFixed(2)}%

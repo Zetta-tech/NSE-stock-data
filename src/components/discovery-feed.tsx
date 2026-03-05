@@ -29,16 +29,8 @@ export function DiscoveryFeed({
   };
 
   return (
-    <div className="animate-slide-down">
-      <div
-        className="overflow-hidden rounded-[2rem] ring-1 ring-accent/15 shadow-2xl shadow-[rgba(0,230,138,0.06)] card-elevated"
-        style={{
-          background:
-            "linear-gradient(135deg, rgba(0,230,138,0.02) 0%, var(--surface-raised) 40%, var(--surface-raised) 60%, rgba(0,180,214,0.015) 100%)",
-          boxShadow:
-            "0 0 0 1px rgba(0,230,138,0.08), 0 4px 24px -4px rgba(0,230,138,0.06), inset 0 1px 0 rgba(255,255,255,0.02)",
-        }}
-      >
+    <div className="animate-slide-down w-full">
+      <div className="rounded-[2rem] border border-white/5 bg-[#101826] shadow-xl flex flex-col w-full relative overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-accent/[0.06]">
           <div className="flex items-center gap-3">
@@ -95,8 +87,8 @@ export function DiscoveryFeed({
 
         {/* Discovery Cards */}
         {!collapsed && (
-          <div className="overflow-x-auto scrollbar-thin px-3 py-3">
-            <div className="flex gap-2.5" style={{ width: "max-content" }}>
+          <div className="px-4 pb-4 w-full">
+            <div className="flex flex-col gap-3 w-full">
               {discoveries.map((stock, i) => (
                 <DiscoveryCard
                   key={stock.symbol}
@@ -166,13 +158,11 @@ function DiscoveryCard({
 
   return (
     <div
-      className={`group relative flex flex-col rounded-[1.5rem] px-4 py-3.5 transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-1 hover:shadow-lg hover:shadow-[rgba(0,230,138,0.1)] animate-fade-in ${isRadar
-          ? "ring-1 ring-amber-500/15 border border-dashed border-amber-500/20 bg-amber-500/[0.02] hover:ring-amber-500/30 hover:bg-amber-500/[0.04]"
-          : "ring-1 ring-accent/12 bg-accent/[0.02] hover:ring-accent/25 hover:bg-accent/[0.04]"
+      className={`group relative flex w-full flex-col rounded-[1.5rem] px-4 py-3.5 transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-1 hover:shadow-lg hover:shadow-[rgba(0,230,138,0.1)] animate-fade-in ${isRadar
+        ? "ring-1 ring-amber-500/15 border border-dashed border-amber-500/20 bg-amber-500/[0.02] hover:ring-amber-500/30 hover:bg-amber-500/[0.04]"
+        : "ring-1 ring-accent/12 bg-accent/[0.02] hover:ring-accent/25 hover:bg-accent/[0.04]"
         }`}
       style={{
-        minWidth: 172,
-        width: 172,
         animationDelay: `${index * 60}ms`,
       }}
     >
@@ -270,10 +260,10 @@ function DiscoveryCard({
         }}
         disabled={added}
         className={`mt-2.5 flex items-center justify-center gap-1 rounded-[1rem] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:scale-[1.03] ring-1 ${added
-            ? "ring-accent/10 bg-accent/[0.04] text-accent/40 cursor-default"
-            : isRadar
-              ? "ring-amber-500/15 bg-amber-500/[0.06] text-amber-400 hover:ring-amber-500/30 hover:bg-amber-500/[0.1] hover:shadow-lg hover:shadow-[rgba(245,158,11,0.2)]"
-              : "ring-accent/15 bg-accent/[0.06] text-accent hover:ring-accent/30 hover:bg-accent/[0.1] hover:shadow-lg hover:shadow-[rgba(0,230,138,0.2)]"
+          ? "ring-accent/10 bg-accent/[0.04] text-accent/40 cursor-default"
+          : isRadar
+            ? "ring-amber-500/15 bg-amber-500/[0.06] text-amber-400 hover:ring-amber-500/30 hover:bg-amber-500/[0.1] hover:shadow-lg hover:shadow-[rgba(245,158,11,0.2)]"
+            : "ring-accent/15 bg-accent/[0.06] text-accent hover:ring-accent/30 hover:bg-accent/[0.1] hover:shadow-lg hover:shadow-[rgba(0,230,138,0.2)]"
           }`}
       >
         {added ? (
