@@ -84,6 +84,8 @@ export function makeBaseline(
     symbol,
     maxHigh5d: 100,
     maxVolume5d: 1_000_000,
+    minLow10d: 80,
+    maxVolume10d: 1_500_000,
     computedDate: "2025-01-06",
     ...overrides,
   };

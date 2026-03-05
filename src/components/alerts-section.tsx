@@ -3,7 +3,7 @@ import type { Alert, AlertRequest } from "@/lib/types";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import {
-  Rocket, ArrowUpRight, Target, Crosshair, TrendingUp, Sparkles, Activity, LucideIcon
+  Rocket, ArrowUpRight, Target, Crosshair, TrendingUp, TrendingDown, Sparkles, Activity, LucideIcon
 } from "lucide-react";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -51,19 +51,19 @@ const ALERT_STYLES: Record<string, AlertTypeStyle> = {
   "low-breakout": {
     label: "Low Breakout",
     badge: "LOW BREAK",
-    ring: "ring-amber-500/12",
-    bg: "bg-amber-500/[0.02]",
-    dot: "bg-amber-400",
-    text: "text-amber-400",
-    badgeBg: "bg-amber-500/8",
-    badgeRing: "ring-amber-500/15",
-    badgeText: "text-amber-400/70",
-    hoverRing: "hover:ring-amber-500/25",
-    hoverBg: "hover:bg-amber-500/[0.04]",
-    hoverShadow: "hover:shadow-[rgba(245,158,11,0.1)]",
-    chipRing: "ring-amber-500/15",
-    chipBg: "bg-amber-500/[0.04]",
-    icon: TrendingUp,
+    ring: "ring-red-500/12",
+    bg: "bg-red-500/[0.02]",
+    dot: "bg-red-400",
+    text: "text-red-400",
+    badgeBg: "bg-red-500/8",
+    badgeRing: "ring-red-500/15",
+    badgeText: "text-red-400/70",
+    hoverRing: "hover:ring-red-500/25",
+    hoverBg: "hover:bg-red-500/[0.04]",
+    hoverShadow: "hover:shadow-[rgba(239,68,68,0.1)]",
+    chipRing: "ring-red-500/15",
+    chipBg: "bg-red-500/[0.04]",
+    icon: TrendingDown,
     category: "breakouts",
   },
   "week-high": {
@@ -457,7 +457,7 @@ function FiredAlertCard({ alert, index }: { alert: Alert; index: number }) {
   }
 
   // The colored dot representation string (e.g. 'bg-accent' -> 'rgb(0,230,138)') is needed to correctly inject inline gradient colors if possible, but let's just use CSS classes dynamically with some predefined colors.
-  const colorStr = s.category === "breakouts" ? (s.badge === "LOW BREAK" ? "rgba(245,158,11,0.5)" : "rgba(0,230,138,0.5)") :
+  const colorStr = s.category === "breakouts" ? (s.badge === "LOW BREAK" ? "rgba(239,68,68,0.5)" : "rgba(0,230,138,0.5)") :
     s.category === "highs" ? "rgba(168,85,247,0.5)" : "rgba(56,189,248,0.5)";
 
   return (
@@ -553,9 +553,7 @@ function FiredAlertCard({ alert, index }: { alert: Alert; index: number }) {
 function AlertMetrics({ alert, s }: { alert: Alert; s: AlertTypeStyle }) {
   const t = alert.alertType;
 
-  // Breakout / Low-breakout / scan / undefined → H and V bars
-  if (!t || t === "scan" || t === "breakout" || t === "low-breakout") {
-    const barColor = t === "low-breakout" ? "bg-amber-400" : "bg-accent";
+  if (!t || t === "scan" || t === "breakout") {
     const barPct = (v: number) => Math.min(Math.max(Math.abs(v) / 25 * 100, 10), 100);
     return (
       <>
@@ -563,7 +561,7 @@ function AlertMetrics({ alert, s }: { alert: Alert; s: AlertTypeStyle }) {
           <span className="text-[9px] font-semibold text-text-muted w-2 text-right">H</span>
           <div className="h-[3px] w-12 rounded-full bg-surface-overlay overflow-hidden">
             <div
-              className={`h-full rounded-full ${barColor} animate-bar-fill`}
+              className="h-full rounded-full bg-accent animate-bar-fill"
               style={{ "--bar-width": `${barPct(alert.highBreakPercent)}%`, width: `${barPct(alert.highBreakPercent)}%` } as React.CSSProperties}
             />
           </div>
@@ -583,6 +581,46 @@ function AlertMetrics({ alert, s }: { alert: Alert; s: AlertTypeStyle }) {
             +{alert.volumeBreakPercent.toFixed(1)}%
           </span>
         </div>
+      </>
+    );
+  }
+
+  if (t === "low-breakout") {
+    const barPct = (v: number) => Math.min(Math.max(Math.abs(v) / 25 * 100, 10), 100);
+    return (
+      <>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[9px] font-semibold text-text-muted w-2 text-right">L</span>
+          <div className="h-[3px] w-12 rounded-full bg-surface-overlay overflow-hidden">
+            <div
+              className="h-full rounded-full bg-red-400 animate-bar-fill"
+              style={{ "--bar-width": `${barPct(alert.lowBreakPercent ?? 0)}%`, width: `${barPct(alert.lowBreakPercent ?? 0)}%` } as React.CSSProperties}
+            />
+          </div>
+          <span className="font-mono text-[9px] font-bold tabular-nums text-red-400">
+            -{(alert.lowBreakPercent ?? 0).toFixed(1)}%
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[9px] font-semibold text-text-muted w-2 text-right">V</span>
+          <div className="h-[3px] w-12 rounded-full bg-surface-overlay overflow-hidden">
+            <div
+              className="h-full rounded-full bg-blue-400 animate-bar-fill"
+              style={{ "--bar-width": `${barPct(alert.volumeBreakPercent)}%`, width: `${barPct(alert.volumeBreakPercent)}%` } as React.CSSProperties}
+            />
+          </div>
+          <span className="font-mono text-[9px] font-bold tabular-nums text-blue-400">
+            +{alert.volumeBreakPercent.toFixed(1)}%
+          </span>
+        </div>
+        {alert.prev10DayLow != null && alert.prev10DayLow > 0 && (
+          <div className="flex items-center gap-1">
+            <span className="text-[8px] text-text-muted">10D Low</span>
+            <span className="font-mono text-[9px] font-bold tabular-nums text-red-400">
+              {"\u20B9"}{alert.prev10DayLow.toLocaleString("en-IN")}
+            </span>
+          </div>
+        )}
       </>
     );
   }

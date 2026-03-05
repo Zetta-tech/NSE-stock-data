@@ -47,12 +47,17 @@ export async function getBaseline(symbol: string): Promise<StockBaseline | null>
     // Use the last LOOKBACK_DAYS entries (excluding today's partial data
     // if present — historical data from NSE typically includes completed days only)
     const recentDays = historical.slice(-LOOKBACK_DAYS);
+    const recent10Days = historical.length >= 10
+      ? historical.slice(-10)
+      : historical;
 
     const baseline: StockBaseline = {
       symbol,
       maxHigh5d: Math.max(...recentDays.map((d) => d.high)),
       maxVolume5d:
         recentDays.reduce((sum, d) => sum + d.volume, 0) / recentDays.length,
+      minLow10d: Math.min(...recent10Days.map((d) => d.low)),
+      maxVolume10d: Math.max(...recent10Days.map((d) => d.volume)),
       computedDate: today,
     };
 
