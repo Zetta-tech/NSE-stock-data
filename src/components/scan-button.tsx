@@ -5,12 +5,15 @@ export function ScanButton({
   loading,
   intraday,
   onToggleIntraday,
+  lockCountdown = 0,
 }: {
   onScan: () => void;
   loading: boolean;
   intraday: boolean;
   onToggleIntraday: () => void;
+  lockCountdown?: number;
 }) {
+  const locked = lockCountdown > 0;
   return (
     <div className="flex items-center gap-2">
       <button
@@ -39,11 +42,16 @@ export function ScanButton({
       </button>
       <button
         onClick={onScan}
-        disabled={loading}
+        disabled={loading || locked}
         className="group relative flex items-center gap-2 overflow-hidden rounded-[1.2rem] bg-gradient-to-r from-accent to-accent-hover px-6 py-2.5 text-sm font-bold tracking-wide text-surface shadow-lg shadow-accent/20 transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:scale-[1.03] hover:shadow-accent/30 hover:brightness-110 active:scale-[0.97] disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed disabled:hover:scale-100"
       >
         <span className="absolute inset-0 bg-white/0 transition-colors group-hover:bg-white/10" />
-        {loading ? (
+        {locked ? (
+          <>
+            <span className="relative h-4 w-4 animate-spin rounded-full border-2 border-surface/30 border-t-surface" />
+            <span className="relative">Scan in progress... {lockCountdown}s</span>
+          </>
+        ) : loading ? (
           <>
             <span className="relative h-4 w-4 animate-spin rounded-full border-2 border-surface/30 border-t-surface" />
             <span className="relative">Scanning...</span>

@@ -120,15 +120,38 @@ export function Nifty50Table() {
   }, []);
 
   useEffect(() => {
-    fetchData();
-    if (marketLive) {
-      timerRef.current = setInterval(fetchData, REFRESH_INTERVAL);
-    }
-    return () => {
+    const startPolling = () => {
+      if (timerRef.current) return;
+      fetchData();
+      if (marketLive) {
+        timerRef.current = setInterval(fetchData, REFRESH_INTERVAL);
+      }
+    };
+
+    const stopPolling = () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
+    };
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        startPolling();
+      }
+    };
+
+    if (!document.hidden) {
+      startPolling();
+    }
+
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [marketLive, fetchData]);
 

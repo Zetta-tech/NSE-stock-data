@@ -36,10 +36,13 @@ export function Dashboard({
   const [lastAutoCheck, setLastAutoCheck] = useState<string | null>(null);
   const [discoveries, setDiscoveries] = useState<DiscoveryStock[]>([]);
   const [alertRefreshTrigger, setAlertRefreshTrigger] = useState(0);
+  const [lockCountdown, setLockCountdown] = useState(0);
 
   const prevTriggeredRef = useRef<Set<string>>(new Set());
+  const lockTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoCheckTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoCheckRunningRef = useRef(false);
+  const pollIntervalRef = useRef(30_000);
   const notifyCooldownRef = useRef<Map<string, number>>(new Map());
   const discoveryCooldownRef = useRef<Map<string, number>>(new Map());
 
@@ -119,6 +122,29 @@ export function Dashboard({
     [refreshAlerts],
   );
 
+  useEffect(() => {
+    return () => {
+      if (lockTimerRef.current) clearInterval(lockTimerRef.current);
+    };
+  }, []);
+
+  const startLockCountdown = useCallback((seconds: number) => {
+    if (lockTimerRef.current) clearInterval(lockTimerRef.current);
+    setLockCountdown(seconds);
+    lockTimerRef.current = setInterval(() => {
+      setLockCountdown((prev) => {
+        if (prev <= 1) {
+          if (lockTimerRef.current) {
+            clearInterval(lockTimerRef.current);
+            lockTimerRef.current = null;
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+
   const runScan = useCallback(async () => {
     setScanning(true);
     try {
@@ -129,6 +155,14 @@ export function Dashboard({
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
+
+      if (data.lockHeld) {
+        startLockCountdown(data.lockExpiresIn ?? 30);
+        setResults(data.results);
+        setAlerts(data.alerts);
+        return;
+      }
+
       setResults(data.results);
       setAlerts(data.alerts);
       setMarketOpen(data.marketOpen);
@@ -144,7 +178,7 @@ export function Dashboard({
     } finally {
       setScanning(false);
     }
-  }, [intraday]);
+  }, [intraday, startLockCountdown]);
 
   const runCloseWatchCheck = useCallback(async () => {
     if (autoCheckRunningRef.current) return;
@@ -156,7 +190,16 @@ export function Dashboard({
         body: JSON.stringify({ intraday: true, closeWatchOnly: true }),
       });
       const data = await res.json();
-      if (data.error) return;
+      if (data.error) {
+        if (data.nextPollMs && data.nextPollMs !== pollIntervalRef.current) {
+          pollIntervalRef.current = data.nextPollMs;
+          if (autoCheckTimerRef.current) {
+            clearInterval(autoCheckTimerRef.current);
+            autoCheckTimerRef.current = setInterval(runCloseWatchCheck, data.nextPollMs);
+          }
+        }
+        return;
+      }
 
       setResults((prev) => {
         const updated = [...prev];
@@ -193,6 +236,15 @@ export function Dashboard({
       if (newlyTriggered.length > 0) {
         notifyBreakout(newlyTriggered, notifyCooldownRef.current);
       }
+
+      const serverPoll = data.nextPollMs as number | undefined;
+      if (serverPoll && serverPoll !== pollIntervalRef.current) {
+        pollIntervalRef.current = serverPoll;
+        if (autoCheckTimerRef.current) {
+          clearInterval(autoCheckTimerRef.current);
+          autoCheckTimerRef.current = setInterval(runCloseWatchCheck, serverPoll);
+        }
+      }
     } catch {
     } finally {
       autoCheckRunningRef.current = false;
@@ -202,16 +254,37 @@ export function Dashboard({
   useEffect(() => {
     const shouldRun = autoCheckActive && closeWatchCount > 0;
 
-    if (shouldRun) {
+    const startPolling = () => {
+      if (autoCheckTimerRef.current) return;
       runCloseWatchCheck();
-      autoCheckTimerRef.current = setInterval(runCloseWatchCheck, 30_000);
-    }
+      autoCheckTimerRef.current = setInterval(runCloseWatchCheck, pollIntervalRef.current);
+    };
 
-    return () => {
+    const stopPolling = () => {
       if (autoCheckTimerRef.current) {
         clearInterval(autoCheckTimerRef.current);
         autoCheckTimerRef.current = null;
       }
+    };
+
+    const handleVisibility = () => {
+      if (!shouldRun) return;
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        startPolling();
+      }
+    };
+
+    if (shouldRun && !document.hidden) {
+      startPolling();
+    }
+
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [autoCheckActive, closeWatchCount, runCloseWatchCheck]);
 
@@ -401,6 +474,7 @@ export function Dashboard({
                     onScan={runScan}
                     loading={scanning}
                     intraday={intraday}
+                    lockCountdown={lockCountdown}
                     onToggleIntraday={() => {
                       const next = !intraday;
                       setIntraday(next);
