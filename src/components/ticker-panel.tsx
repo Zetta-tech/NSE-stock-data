@@ -81,15 +81,39 @@ export function TickerPanel({
   }, [hasCloseWatchStocks, marketLive]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (active && hasCloseWatchStocks) {
+    const shouldRun = active && hasCloseWatchStocks;
+
+    const startPolling = () => {
+      if (timerRef.current) return;
       fetchTicker();
       timerRef.current = setInterval(fetchTicker, TICKER_INTERVAL);
-    }
-    return () => {
+    };
+
+    const stopPolling = () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
+    };
+
+    const handleVisibility = () => {
+      if (!shouldRun) return;
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        startPolling();
+      }
+    };
+
+    if (shouldRun && !document.hidden) {
+      startPolling();
+    }
+
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [active, hasCloseWatchStocks, fetchTicker]);
 

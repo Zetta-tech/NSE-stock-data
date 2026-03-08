@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { scanMultipleStocks } from "@/lib/scanner";
-import { getWatchlist, getCloseWatchStocks, addAlert, getAlerts, saveScanResults, getScanResults } from "@/lib/store";
+import { getWatchlist, getCloseWatchStocks, addAlert, getAlerts, saveScanResults, getScanResults, acquireScanLock, releaseScanLock, getScanLockTTL } from "@/lib/store";
 import { getMarketStatus, getHistoricalCacheStats } from "@/lib/nse-client";
 import { addActivity, setScanMeta } from "@/lib/activity";
 import { logger } from "@/lib/logger";
@@ -19,6 +19,23 @@ export async function POST(request: Request) {
     const useIntraday = body.intraday === true;
     const closeWatchOnly = body.closeWatchOnly === true;
     const scanType: "manual" | "auto" = closeWatchOnly ? "auto" : "manual";
+
+    const lockAcquired = await acquireScanLock(scanType);
+    if (!lockAcquired) {
+      const ttl = await getScanLockTTL(scanType);
+      const cachedResults = await getScanResults();
+      const cachedAlerts = await getAlerts();
+      const response: ScanResponse = {
+        results: cachedResults,
+        alerts: cachedAlerts,
+        scannedAt: new Date().toISOString(),
+        marketOpen: false,
+        cached: true,
+        lockHeld: true,
+        lockExpiresIn: ttl,
+      };
+      return NextResponse.json(response);
+    }
 
     const watchlist = closeWatchOnly
       ? await getCloseWatchStocks()
@@ -325,13 +342,24 @@ export async function POST(request: Request) {
       await saveScanResults(results);
     }
 
+    const staleRatio = results.length > 0 ? staleCount / results.length : 0;
+    let nextPollMs = 30_000;
+    if (scanDuration > 10_000 || staleRatio >= 0.5) {
+      nextPollMs = 120_000;
+    } else if (staleCount > 0) {
+      nextPollMs = 60_000;
+    }
+
     const response: ScanResponse = {
       results,
       alerts: await getAlerts(),
       scannedAt: new Date().toISOString(),
       marketOpen,
       cacheStats: getHistoricalCacheStats(),
+      nextPollMs,
     };
+
+    await releaseScanLock(scanType);
 
     logger.info(
       `Scan complete in ${scanDuration}ms — ${results.length} stocks, ${newAlerts.length} new alert(s)`,
@@ -341,6 +369,8 @@ export async function POST(request: Request) {
     );
     return NextResponse.json(response);
   } catch (error) {
+    await releaseScanLock("manual").catch(() => {});
+    await releaseScanLock("auto").catch(() => {});
     const message =
       error instanceof Error ? error.message : "Scan failed";
     logger.error(
@@ -352,6 +382,6 @@ export async function POST(request: Request) {
 
     await addActivity("warning", "scan-error", `Scan failed: ${message}`, { actor: "system", detail: { error: message } }).catch(() => {});
 
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: message, nextPollMs: 180_000 }, { status: 500 });
   }
 }

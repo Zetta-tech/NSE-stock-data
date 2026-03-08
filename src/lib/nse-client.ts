@@ -3,8 +3,99 @@ import { NseIndia } from "stock-nse-india";
 import { isExtendedHours } from "./market-hours";
 import type { DayData, NiftyIndex, Nifty50StockRow, Nifty50Snapshot } from "./types";
 import { recordCall, getApiStats } from "./api-stats";
+import { getRedis } from "./redis";
 
 export { getApiStats };
+
+/* ── Holiday Calendar ───────────────────────────────────────────────── */
+
+let holidaySet: Set<string> | null = null;
+let holidayLoadedForDate: string | null = null;
+
+function todayIST(): string {
+  return new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+  )
+    .toISOString()
+    .slice(0, 10);
+}
+
+function parseHolidayDate(tradingDate: string): string | null {
+  const d = new Date(tradingDate);
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 10);
+}
+
+async function loadHolidayCalendar(): Promise<Set<string>> {
+  const today = todayIST();
+  if (holidaySet && holidayLoadedForDate === today) return holidaySet;
+
+  const year = today.slice(0, 4);
+  const redisKey = `nse:holidays:${year}`;
+  const r = getRedis();
+
+  if (r) {
+    try {
+      const cached = await r.get<string[]>(redisKey);
+      if (cached && Array.isArray(cached)) {
+        holidaySet = new Set(cached);
+        holidayLoadedForDate = today;
+        return holidaySet;
+      }
+    } catch {
+      // fall through to API fetch
+    }
+  }
+
+  try {
+    const holidays = await withRetry(
+      () => getNse().getTradingHolidays(),
+      "getTradingHolidays",
+    );
+    const dates: string[] = [];
+    for (const segment of Object.keys(holidays)) {
+      const list = holidays[segment];
+      if (!Array.isArray(list)) continue;
+      for (const h of list) {
+        const iso = parseHolidayDate(h.tradingDate);
+        if (iso) dates.push(iso);
+      }
+    }
+    const unique = Array.from(new Set(dates));
+    holidaySet = new Set(unique);
+    holidayLoadedForDate = today;
+
+    if (r) {
+      try {
+        await r.set(redisKey, unique, { ex: 86400 });
+      } catch {
+        // non-critical — will retry next cold start
+      }
+    }
+
+    logger.info(
+      `Holiday calendar loaded: ${unique.length} dates for ${year}`,
+      { count: unique.length },
+      "Holiday Calendar",
+    );
+
+    return holidaySet;
+  } catch {
+    logger.warn(
+      "Failed to fetch holiday calendar — skipping holiday check",
+      {},
+      "Holiday Calendar",
+    );
+    holidaySet = new Set();
+    holidayLoadedForDate = today;
+    return holidaySet;
+  }
+}
+
+export async function isHolidayToday(): Promise<boolean> {
+  const holidays = await loadHolidayCalendar();
+  return holidays.has(todayIST());
+}
 
 /* Singleton per Lambda invocation.  On Vercel each cold start creates a
  * fresh instance (new cookies, empty cache).  Warm invocations reuse
@@ -195,9 +286,7 @@ let lastMarketStatus: { open: boolean; checkedAt: number } | null = null;
 const MARKET_STATUS_TTL = 60_000; // 1 minute
 
 export async function getMarketStatus(): Promise<boolean> {
-  // Outside extended hours (before 09:00 or after 16:00 IST), market is
-  // definitely closed — skip the NSE API call entirely.
-  if (!isExtendedHours()) {
+  if (!isExtendedHours() || await isHolidayToday()) {
     recordCall("cache", "getMarketStatus");
     return false;
   }
@@ -244,13 +333,11 @@ export async function getNifty50Index(): Promise<NiftyIndex | null> {
     return indexCache.data;
   }
 
-  // Outside extended hours, return last-known closing value without hitting NSE
-  if (!isExtendedHours()) {
+  if (!isExtendedHours() || await isHolidayToday()) {
     if (indexCache) {
       recordCall("cache", "getNifty50Index");
       return indexCache.data;
     }
-    // No cached data at all — allow one fetch to seed the closing value
   }
 
   recordCall("api", "getNifty50Index");
@@ -396,13 +483,11 @@ export async function getNifty50Snapshot(): Promise<Nifty50Snapshot> {
     return snapshotCache.data;
   }
 
-  // Outside extended hours, return last-known data without hitting NSE
-  if (!isExtendedHours()) {
+  if (!isExtendedHours() || await isHolidayToday()) {
     if (snapshotCache) {
       recordCall("cache", "getNifty50Snapshot");
       return snapshotCache.data;
     }
-    // No cached data at all — allow one fetch to seed
   }
 
   recordCall("api", "getNifty50Snapshot");

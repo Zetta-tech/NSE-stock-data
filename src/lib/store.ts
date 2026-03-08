@@ -175,7 +175,28 @@ export async function getAlerts(): Promise<Alert[]> {
   );
 }
 
+function roundToWindow(isoTimestamp: string): string {
+  const d = new Date(isoTimestamp);
+  const h = d.getUTCHours().toString().padStart(2, "0");
+  const m = (d.getUTCMinutes() < 30 ? 0 : 30).toString().padStart(2, "0");
+  return `${h}:${m}`;
+}
+
 export async function addAlert(alert: Alert): Promise<boolean> {
+  const r = getRedis();
+  if (r) {
+    const date = alert.triggeredAt.slice(0, 10);
+    const window = roundToWindow(alert.triggeredAt);
+    const alertType = alert.alertType ?? "breakout";
+    const lockKey = `alert-lock:${alert.symbol}:${alertType}:${date}:${window}`;
+    try {
+      const acquired = await r.set(lockKey, "1", { ex: 1800, nx: true });
+      if (!acquired) return false;
+    } catch {
+      // Redis error — fall through to in-memory dedup
+    }
+  }
+
   const alerts = await loadAlerts();
   const existing = alerts.find(
     (a) =>
@@ -264,4 +285,60 @@ export async function updateNifty50PersistentStats(
     return;
   }
   memNifty50Stats = merged;
+}
+
+/* ── Distributed Scan Lock ─────────────────────────────────────────── */
+
+const SCAN_LOCK_TTL = 30;
+let memScanLock: { type: string; expiresAt: number } | null = null;
+
+export async function acquireScanLock(
+  type: "manual" | "auto",
+): Promise<boolean> {
+  const lockKey = `scan-lock:${type}`;
+  const r = getRedis();
+  if (r) {
+    try {
+      const acquired = await r.set(lockKey, "1", { ex: SCAN_LOCK_TTL, nx: true });
+      return !!acquired;
+    } catch {
+      return true;
+    }
+  }
+  if (memScanLock && Date.now() < memScanLock.expiresAt && memScanLock.type === type) {
+    return false;
+  }
+  memScanLock = { type, expiresAt: Date.now() + SCAN_LOCK_TTL * 1000 };
+  return true;
+}
+
+export async function releaseScanLock(type: "manual" | "auto"): Promise<void> {
+  const lockKey = `scan-lock:${type}`;
+  const r = getRedis();
+  if (r) {
+    try {
+      await r.del(lockKey);
+    } catch { /* best-effort */ }
+    return;
+  }
+  if (memScanLock?.type === type) memScanLock = null;
+}
+
+export async function getScanLockTTL(
+  type: "manual" | "auto",
+): Promise<number> {
+  const lockKey = `scan-lock:${type}`;
+  const r = getRedis();
+  if (r) {
+    try {
+      const ttl = await r.ttl(lockKey);
+      return ttl > 0 ? ttl : 0;
+    } catch {
+      return 0;
+    }
+  }
+  if (memScanLock && memScanLock.type === type && Date.now() < memScanLock.expiresAt) {
+    return Math.ceil((memScanLock.expiresAt - Date.now()) / 1000);
+  }
+  return 0;
 }

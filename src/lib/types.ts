@@ -80,6 +80,10 @@ export interface ScanResponse {
     symbols: string[];
     date: string;
   };
+  cached?: boolean;
+  lockHeld?: boolean;
+  lockExpiresIn?: number;
+  nextPollMs?: number;
 }
 
 /* ── Nifty 50 Index ────────────────────────────────────────────────── */
