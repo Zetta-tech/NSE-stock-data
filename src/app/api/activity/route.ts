@@ -14,7 +14,7 @@ const postSchema = z.object({
   action: z.string().min(1).max(50),
   label: z.string().min(1).max(200),
   cat: z.enum(["user", "system", "warning"]).default("user"),
-  actor: z.enum(["dad", "system", "auto-check"]).optional(),
+  actor: z.enum(["user", "system", "auto-check"]).optional(),
   changes: z.array(changeSchema).optional(),
   snapshot: z.record(z.unknown()).optional(),
   detail: z.record(z.unknown()).optional(),

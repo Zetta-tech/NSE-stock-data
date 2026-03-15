@@ -1,6 +1,6 @@
-# Agent Instructions — NSE Stock Scanner
+# Agent Instructions — Tickzy
 
-You are a Claude Code agent implementing new alert types for a stock breakout scanner dashboard. The app monitors NSE (National Stock Exchange of India) equities and alerts a single user ("Dad") when stocks show unusual activity.
+You are a Claude Code agent implementing new alert types for a stock breakout scanner dashboard. The app monitors NSE (National Stock Exchange of India) equities and alerts the user when stocks show unusual activity.
 
 ## Your Role
 

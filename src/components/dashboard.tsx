@@ -582,7 +582,7 @@ function reportAction(action: string, label: string, opts?: { detail?: Record<st
   fetch("/api/activity", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ cat: "user", action, label, actor: "dad", ...opts }),
+    body: JSON.stringify({ cat: "user", action, label, actor: "user", ...opts }),
   }).catch(() => { });
 }
 

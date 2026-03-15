@@ -8,3 +8,7 @@ data/
 .env.development.local
 *.tsbuildinfo
 next-env.d.ts
+
+# Internal docs (kept locally, not in public repo)
+code-standards.md
+docs/system-design-ideas.md

@@ -200,7 +200,7 @@ function ScopeBadge({ scope }: { scope?: string }) {
 }
 
 const ACTOR_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  dad:        { bg: 'bg-blue-500/10',    text: 'text-blue-400',    label: 'Dad' },
+  user:       { bg: 'bg-blue-500/10',    text: 'text-blue-400',    label: 'User' },
   system:     { bg: 'bg-emerald-500/10', text: 'text-emerald-400', label: 'System' },
   'auto-check': { bg: 'bg-amber-500/10',  text: 'text-amber-400',  label: 'Auto' },
 };
@@ -210,7 +210,7 @@ function ActorBadge({ actor }: { actor?: ActivityActor }) {
   const style = ACTOR_STYLES[actor] ?? ACTOR_STYLES.system;
   return (
     <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${style.bg} ${style.text}`}>
-      {actor === 'dad' && (
+      {actor === 'user' && (
         <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
         </svg>
