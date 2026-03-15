@@ -4,7 +4,7 @@ import { useState, FormEvent, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { Lock, Activity, CheckCircle2, AlertTriangle, Play, ChevronRight, BarChart3, Database } from "lucide-react";
+import { Lock, Activity, CheckCircle2, AlertTriangle, Play, ChevronRight, BarChart3, Database, Mail } from "lucide-react";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
@@ -16,6 +16,10 @@ export default function CinematicLandingLogin() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [registerEmail, setRegisterEmail] = useState("");
+  const [registerLoading, setRegisterLoading] = useState(false);
+  const [registerSuccess, setRegisterSuccess] = useState(false);
+  const [registerError, setRegisterError] = useState("");
 
   // Refs for sections
   const mainRef = useRef<HTMLElement>(null);
@@ -151,6 +155,31 @@ export default function CinematicLandingLogin() {
     }
   }
 
+  async function handleRegister(e: FormEvent) {
+    e.preventDefault();
+    setRegisterLoading(true);
+    setRegisterError("");
+
+    try {
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: registerEmail, source: "landing" }),
+      });
+
+      if (res.ok) {
+        setRegisterSuccess(true);
+      } else {
+        const data = await res.json();
+        setRegisterError(data.error || "Registration failed.");
+      }
+    } catch {
+      setRegisterError("Something went wrong. Please try again.");
+    } finally {
+      setRegisterLoading(false);
+    }
+  }
+
   // Magnetic Button
   const handleMouseMove = (e: React.MouseEvent<HTMLLinkElement | HTMLButtonElement>) => {
     const btn = e.currentTarget;
@@ -241,7 +270,7 @@ export default function CinematicLandingLogin() {
       >
         <div className="flex items-center gap-2">
           <Activity className="w-5 h-5 text-[#C9A84C]" />
-          <span className="font-semibold tracking-wide text-sm">NSE Stock Data</span>
+          <span className="font-semibold tracking-wide text-sm">Tickzy</span>
         </div>
         <div className="hidden md:flex items-center gap-8 text-[13px] font-medium text-[#FAF8F5]/60 hover:text-[#FAF8F5] transition-colors">
           <a href="#features">Features</a>
@@ -557,6 +586,66 @@ export default function CinematicLandingLogin() {
               </button>
             </div>
           </form>
+
+          {/* Registration / Early Access */}
+          <div className="mt-8 relative">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="flex-1 h-[1px] bg-white/10" />
+              <span className="font-data text-[10px] uppercase tracking-[0.2em] text-[#FAF8F5]/30">or</span>
+              <div className="flex-1 h-[1px] bg-white/10" />
+            </div>
+
+            {registerSuccess ? (
+              <div className="p-8 rounded-[2.5rem] bg-[#16161D]/80 backdrop-blur-xl border border-emerald-500/20 shadow-2xl text-center">
+                <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold tracking-tight mb-2">You&apos;re on the list</h3>
+                <p className="text-sm text-white/50 font-light">We&apos;ll notify you when public access opens.</p>
+              </div>
+            ) : (
+              <form
+                onSubmit={handleRegister}
+                className="p-8 md:p-10 space-y-5 rounded-[2.5rem] bg-[#16161D]/80 backdrop-blur-xl border border-white/5 shadow-2xl"
+              >
+                <div className="text-center mb-2">
+                  <Mail className="w-5 h-5 text-[#C9A84C] mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold tracking-tight mb-1">Get Early Access</h3>
+                  <p className="text-xs text-white/40 font-light">Drop your email — we&apos;ll notify you when public access opens.</p>
+                </div>
+
+                <div className="space-y-3">
+                  <input
+                    type="email"
+                    required
+                    value={registerEmail}
+                    onChange={(e) => setRegisterEmail(e.target.value)}
+                    className="w-full px-5 py-4 text-sm font-data outline-none transition-all duration-300 bg-[#0D0D12] border border-white/5 text-[#FAF8F5] rounded-2xl focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C]/30"
+                    placeholder="you@email.com"
+                  />
+                </div>
+
+                {registerError && (
+                  <div className="rounded-xl px-4 py-3 flex items-start gap-3 bg-red-500/10 border border-red-500/20">
+                    <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5" />
+                    <p className="text-xs text-red-400 font-data pr-2 leading-relaxed">{registerError}</p>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={registerLoading}
+                  className="w-full py-4 text-xs font-data uppercase tracking-widest font-bold flex items-center justify-center gap-2 rounded-2xl border border-[#C9A84C]/40 text-[#C9A84C] hover:border-[#C9A84C] hover:bg-[#C9A84C]/5 transition-colors"
+                  style={{ opacity: registerLoading ? 0.7 : 1 }}
+                >
+                  {registerLoading ? (
+                    <>
+                      <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                      Submitting...
+                    </>
+                  ) : ("Join Waitlist")}
+                </button>
+              </form>
+            )}
+          </div>
         </div>
       </section>
 
@@ -565,9 +654,9 @@ export default function CinematicLandingLogin() {
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-3">
             <Activity className="w-5 h-5 text-[#C9A84C]" />
-            <span className="font-semibold tracking-wide text-sm">NSE Stock Data</span>
+            <span className="font-semibold tracking-wide text-sm">Tickzy</span>
           </div>
-          <p className="text-xs text-white/30 font-light">© 2026 NSE Stock Data. For informational purposes only.</p>
+          <p className="text-xs text-white/30 font-light">© 2026 Tickzy. For informational purposes only. MIT Licensed.</p>
           <div className="flex items-center gap-2 bg-[#16161D] px-4 py-2 rounded-full border border-white/5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             <span className="font-data text-[10px] text-emerald-500/70 uppercase tracking-widest">Markets Live</span>

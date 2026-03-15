@@ -86,6 +86,7 @@ Two tiers: Regular (`AUTH_USERNAME/PASSWORD`) and Admin (`ADMIN_USERNAME/PASSWOR
 - `src/lib/lockdown.ts` — Lockdown + session epoch
 - `src/app/api/auth/route.ts` — Login endpoint
 - `tailwind.config.ts`, `next.config.mjs`, `package.json`
+- `tsconfig.json`, `postcss.config.mjs`
 
 ## Adding a New Alert Type
 
@@ -112,6 +113,7 @@ Copy `.env.example` → `.env` and fill in credentials. Redis is optional locall
 
 ## Gotchas
 
+- Client components run during SSR — guard browser APIs with `typeof window !== "undefined"` and use `useEffect` for browser-only code
 - `src/lib/market-hours.ts` is shared by both server (`src/lib/`) and client (`src/components/`) code — do NOT add async functions, Redis imports, or `import "server-only"` to it
 - `src/lib/nse-client.ts` lacks `import "server-only"` but is only imported from server code — safe to use `getRedis()` there
 - tsconfig does not enable `downlevelIteration` — use `Array.from(set)` instead of `[...set]` for Set/Map iteration
@@ -127,13 +129,3 @@ Copy `.env.example` → `.env` and fill in credentials. Redis is optional locall
 - `AGENTS.md` — Step-by-step checklist for implementing new alert types
 - `code-standards.md` — Client/server component rules, data fetching patterns
 - `Frontend-aesthetics.md` — UI design guidelines (typography, color, motion)
-
-## Installed Plugins
-
-User-scoped plugins (from `claude-plugins-official` marketplace):
-- `skill-creator` — `/skill-creator`: create, test, benchmark agent skills
-- `frontend-design` — auto-triggers on UI/component tasks
-- `commit-commands` — `/commit`: auto-generate commit messages; `/commit-push-pr`: commit + push + open PR
-- `code-review` — `/code-review`: parallel-agent PR review with confidence scoring
-- `claude-md-management` — `/revise-claude-md`: capture session learnings; `claude-md-improver`: audit CLAUDE.md quality
-- `feature-dev` — `/feature-dev`: structured 7-phase feature development workflow

@@ -298,7 +298,7 @@ export async function POST(request: Request) {
       `${scanType === "auto" ? "Auto-scan" : "Manual scan"}: ${results.length} stocks in ${scanDuration}ms` +
         (newAlerts.length > 0 ? ` — ${newAlerts.length} breakout${newAlerts.length > 1 ? "s" : ""}` : ""),
       {
-        actor: scanType === "auto" ? "auto-check" : "dad",
+        actor: scanType === "auto" ? "auto-check" : "user",
         detail: { durationMs: scanDuration, stockCount: results.length, triggeredCount: newAlerts.length, marketOpen, intraday: useIntraday },
         snapshot: { marketOpen, stockCount: results.length, liveCount, historicalCount, staleCount, triggeredCount: newAlerts.length },
       }

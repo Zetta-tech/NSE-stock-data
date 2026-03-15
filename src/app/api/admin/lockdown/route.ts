@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     "lockdown-activated",
     `Lockdown activated for ${durationMinutes}m`,
     {
-      actor: "dad",
+      actor: "user",
       detail: { durationMinutes, expiresAt: lockdown.expiresAt },
     },
   );
@@ -84,7 +84,7 @@ export async function DELETE() {
     "system",
     "lockdown-deactivated",
     "Lockdown deactivated",
-    { actor: "dad" },
+    { actor: "user" },
   );
 
   const response = NextResponse.json({ ok: true, active: false });
