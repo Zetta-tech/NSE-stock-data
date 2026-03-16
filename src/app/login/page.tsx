@@ -24,6 +24,7 @@ export default function CinematicLandingLogin() {
   // Refs for sections
   const mainRef = useRef<HTMLElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
+  const demoRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLElement>(null);
   const featuresRef = useRef<HTMLDivElement>(null);
   const philosophyRef = useRef<HTMLDivElement>(null);
@@ -56,6 +57,23 @@ export default function CinematicLandingLogin() {
         end: 99999,
         toggleClass: { className: "nav-scrolled", targets: navRef.current },
       });
+
+      // 2.5 Demo Section
+      gsap.fromTo(
+        ".demo-browser",
+        { scale: 0.9, opacity: 0, y: 40 },
+        {
+          scale: 1,
+          opacity: 1,
+          y: 0,
+          duration: 1.2,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: demoRef.current,
+            start: "top 80%",
+          },
+        }
+      );
 
       // 3. Philosophy Section
       gsap.fromTo(
@@ -324,8 +342,40 @@ export default function CinematicLandingLogin() {
         </div>
       </section>
 
+      {/* B.5 DEMO SECTION */}
+      <section ref={demoRef} className="py-12 md:py-24 px-4 md:px-20 relative z-10 flex justify-center w-full">
+        <div className="demo-browser w-full max-w-5xl bg-[#16161D] rounded-2xl border border-white/10 shadow-[0_0_80px_rgba(201,168,76,0.15)] overflow-hidden">
+          {/* Browser Header */}
+          <div className="h-10 bg-[#0D0D12] border-b border-white/5 flex items-center px-4 relative">
+            <div className="flex gap-2 shrink-0">
+              <div className="w-3 h-3 rounded-full bg-[#FF5F56] border border-white/10" />
+              <div className="w-3 h-3 rounded-full bg-[#FFBD2E] border border-white/10" />
+              <div className="w-3 h-3 rounded-full bg-[#27C93F] border border-white/10" />
+            </div>
+            <div className="absolute left-1/2 -translate-x-1/2 bg-[#16161D] text-white/30 text-[10px] sm:text-xs font-data px-4 sm:px-16 py-1.5 rounded-md border border-white/5 flex items-center gap-2 max-w-[50%] overflow-hidden whitespace-nowrap shadow-inner">
+              <Lock className="w-3 h-3 text-[#C9A84C]/50 shrink-0" />
+              <span className="truncate">tickzy.dev/dashboard</span>
+            </div>
+          </div>
+          {/* Browser Content */}
+          <div className="w-full aspect-video bg-[#0D0D12] relative overflow-hidden flex items-center justify-center">
+            {/* The Image/Video */}
+            <video
+              src="/intro-video.mp4"
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="w-full h-full object-cover origin-center"
+            />
+            {/* Glassy Overlay for realism */}
+            <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none" />
+          </div>
+        </div>
+      </section>
+
       {/* C. FEATURES */}
-      <section id="features" className="py-32 px-6 md:px-20 relative z-10" ref={featuresRef}>
+      <section id="features" className="py-20 md:py-32 px-6 md:px-20 relative z-10" ref={featuresRef}>
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
 
           {/* Card 1: Diagnostic Shuffler */}
