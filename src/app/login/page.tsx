@@ -27,6 +27,7 @@ export default function CinematicLandingLogin() {
   const demoRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLElement>(null);
   const featuresRef = useRef<HTMLDivElement>(null);
+  const tourRef = useRef<HTMLDivElement>(null);
   const philosophyRef = useRef<HTMLDivElement>(null);
   const protocolRef = useRef<HTMLDivElement>(null);
   const loginRef = useRef<HTMLDivElement>(null);
@@ -71,6 +72,31 @@ export default function CinematicLandingLogin() {
           scrollTrigger: {
             trigger: demoRef.current,
             start: "top 80%",
+          },
+        }
+      );
+
+      // 2.75 Platform Tour 3D Reveal
+      gsap.fromTo(
+        ".tour-container",
+        {
+          rotateX: 20,
+          rotateY: -15,
+          scale: 0.85,
+          opacity: 0,
+          y: 60,
+        },
+        {
+          rotateX: 0,
+          rotateY: 0,
+          scale: 1,
+          opacity: 1,
+          y: 0,
+          duration: 1.5,
+          ease: "expo.out",
+          scrollTrigger: {
+            trigger: tourRef.current,
+            start: "top 75%",
           },
         }
       );
@@ -455,6 +481,36 @@ export default function CinematicLandingLogin() {
           </div>
 
         </div>
+      </section>
+
+      {/* C.5 PLATFORM TOUR (3D ISOMETRIC) */}
+      <section ref={tourRef} className="py-24 md:py-32 px-4 md:px-20 relative z-10 flex flex-col items-center justify-center w-full overflow-hidden" style={{ perspective: "2000px" }}>
+        
+        <div className="text-center mb-16 relative z-10 max-w-3xl">
+          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight mb-4 text-[#FAF8F5]">Deep-Dive Dashboard</h2>
+          <p className="text-sm text-white/50 leading-relaxed font-light">See exactly how our sophisticated alert types keep you ahead of the curve.</p>
+        </div>
+
+        <div className="tour-container w-full max-w-5xl rounded-[1.5rem] bg-[#16161D] border border-white/10 shadow-[0_30px_100px_rgba(201,168,76,0.15)] p-2 relative" style={{ transformStyle: "preserve-3d" }}>
+          {/* Edge Highlighting */}
+          <div className="absolute inset-0 bg-gradient-to-tr from-[#C9A84C]/10 via-transparent to-white/5 rounded-[1.5rem] pointer-events-none" />
+          
+          <div className="w-full aspect-video rounded-xl overflow-hidden bg-[#0D0D12] relative border border-white/5 shadow-inner">
+            <video
+              src="/platform-tour.mp4"
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="w-full h-full object-cover"
+            />
+            {/* Glossy Overlay for screen realism */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none mix-blend-overlay" />
+          </div>
+        </div>
+
+        {/* Ambient background glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-[#C9A84C] opacity-[0.05] blur-[100px] rounded-full z-0 pointer-events-none" />
       </section>
 
       {/* D. PHILOSOPHY */}
