@@ -45,6 +45,16 @@ Redis key (nse:watchlist, nse:alerts, nse:scanResults, nse:activity, etc.)
 ```
 In production (Vercel), filesystem is read-only — Redis is required.
 
+### Scan Lock
+
+A 30-second distributed lock (`acquireScanLock`, `releaseScanLock`, `getScanLockTTL` from `src/lib/store.ts`) prevents concurrent scans across Lambda instances. Two lock types: `"manual"` (user-triggered) and `"auto"` (close-watch). On lock contention, cached results are returned with `lockHeld: true`.
+
+### NSE Client
+
+`src/lib/nse-client.ts` maintains a per-Lambda singleton (`getNse()` / `resetNse()`) that reuses session cookies across calls. `withRetry()` wraps calls to reset and retry once on failure (handles stale cookies). Pattern: `await withRetry(() => getNse().method(...), "label")`.
+
+Baselines (5-day high, 10-day low, volumes) are computed once per symbol per IST calendar date and cached in-memory. `getBaseline(symbol)` / `getBaselines(symbols[])` handle batching (batch size 5). Historical data cache is keyed by `symbol + days` — same symbol with a different `days` parameter is a separate cache entry.
+
 ### Alert System
 
 8 alert types: `breakout`, `low-breakout`, `scan`, `week-high`, `ma200-touch`, `ma100-touch`, `ma50-touch`, `ma5-touch`.
@@ -52,9 +62,11 @@ In production (Vercel), filesystem is read-only — Redis is required.
 - `breakout`: Price breaks 5-day high AND volume exceeds 3× 5-day avg volume (bullish).
 - `low-breakout`: Price drops below 10-day low AND volume exceeds 10-day max volume (bearish). Uses `minLow10d` and `maxVolume10d` from baselines.
 
-Dedup: `symbol + alertType + date (YYYY-MM-DD)` — same combo on same day = skip.
+Dedup (two-tier): Primary is a Redis NX lock keyed `alert-lock:{symbol}:{alertType}:{date}:{30min-window}` (TTL 30 min) — prevents duplicates across Lambda instances. Falls back to in-memory dedup if Redis unavailable.
 
 Stale suppression: When `dataSource === "stale"` (live fetch failed during market hours), breakout triggers are suppressed to prevent false positives.
+
+MA touch alerts (`ma5-touch`, `ma50-touch`, `ma100-touch`, `ma200-touch`) each live in their own `src/lib/ma{N}-alert.ts` file. All follow the same shape: touch threshold is 1%, stale suppression applied, returns `null` if data insufficient. Use these as the template when adding a new MA alert type.
 
 ### Market Hours (IST)
 
@@ -64,7 +76,7 @@ Stale suppression: When `dataSource === "stale"` (live fetch failed during marke
 
 ### Auth
 
-Two tiers: Regular (`AUTH_USERNAME/PASSWORD`) and Admin (`ADMIN_USERNAME/PASSWORD` — can bypass lockdown). Sessions use HMAC-SHA256 cookies with epoch rotation.
+Two tiers: Regular (`AUTH_USERNAME/PASSWORD`) and Admin (`ADMIN_USERNAME/PASSWORD` — can bypass lockdown). Sessions use signed cookies with server-side epoch invalidation.
 
 ## Code Conventions
 
@@ -79,7 +91,9 @@ Two tiers: Regular (`AUTH_USERNAME/PASSWORD`) and Admin (`ADMIN_USERNAME/PASSWOR
 - API routes use `export const dynamic = "force-dynamic"` and return `NextResponse.json()`
 - Batch NSE API calls with `Promise.allSettled()` (batch size 5)
 
-## Do Not Modify
+## Core Infrastructure
+
+Changes to these files require full regression testing — they underpin auth, session management, and the build pipeline:
 
 - `src/middleware.ts` — Auth + lockdown validation
 - `src/lib/redis.ts` — Redis singleton
@@ -103,9 +117,20 @@ See `docs/ALERTS.md` and `AGENTS.md` for full details.
 ## Testing
 
 - Framework: Vitest (node environment, `@` alias resolved, `server-only` stubbed)
-- Mock Redis: `vi.mock("./redis", () => ({ getRedis: () => null }))`
 - Test files: `src/lib/__tests__/*.test.ts` or co-located `*.test.ts`
 - Tests encouraged but not required for PRs
+
+To mock Redis with an in-memory store (preferred over returning `null`):
+```ts
+const { redisMap } = vi.hoisted(() => ({ redisMap: new Map<string, unknown>() }));
+vi.mock("./redis", () => ({
+  getRedis: () => ({
+    get: async <T,>(key: string) => (redisMap.get(key) as T | undefined) ?? null,
+    set: async (key: string, value: unknown) => { redisMap.set(key, value); return "OK"; },
+  }),
+}));
+```
+Use `vi.mock("./redis", () => ({ getRedis: () => null }))` only when you want the filesystem fallback path tested.
 
 ## Environment Setup
 

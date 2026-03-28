@@ -13,5 +13,8 @@ next-env.d.ts
 code-standards.md
 docs/system-design-ideas.md
 
+# Claude Code local agent config (skills, settings — not for public repo)
+.claude/
+
 # Source video assets
 ProductVideoAssets/
