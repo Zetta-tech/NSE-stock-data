@@ -26,7 +26,7 @@ npm run test:watch   # Vitest watch mode
 ### File Layout
 
 - `src/app/` — Next.js App Router pages and API route handlers
-- `src/app/api/` — REST endpoints: `scan/`, `state/`, `stocks/`, `ticker/`, `nifty50/`, `activity/`, `auth/`, `register/`, `search/`, `index/`, `admin/`, `alert-requests/`
+- `src/app/api/` — REST endpoints: `scan/`, `state/`, `stocks/`, `ticker/`, `nifty50/`, `activity/`, `auth/`, `register/`, `search/`, `index/`, `admin/`, `alert-requests/`, `logs/`
 - `src/components/` — Client React components (`"use client"` directive)
 - `src/lib/` — Server-only utilities (every file starts with `import "server-only"`)
 - `docs/` — Architecture docs (read-only reference: `ARCHITECTURE.md`, `ALERTS.md`, `AI_CONSTRAINTS.md`, `api-capability-map.md`)

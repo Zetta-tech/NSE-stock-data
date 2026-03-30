@@ -38,7 +38,7 @@ Scans for stocks where the day's high exceeds the 5-day max **and** volume surge
 True Breakout · Low Breakout · 52-Week High · 200 DMA Touch · 100 DMA Touch · 50 DMA Touch · 5 DMA Touch · Scan — each color-coded in the alert feed with type-specific metrics.
 
 ### AI Alert Builder
-Describe an alert in plain English — *"Notify me when RELIANCE crosses its 52-week high on heavy volume"* — and the system creates it. Powered by natural language processing via GitHub Issues.
+Describe an alert in plain English — *"Notify me when RELIANCE crosses its 52-week high on heavy volume"* — and a Claude Code GitHub Action implements the detection logic and opens a PR.
 
 </td>
 <td width="50%">
