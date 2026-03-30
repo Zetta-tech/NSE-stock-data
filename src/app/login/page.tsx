@@ -4,7 +4,7 @@ import { useState, FormEvent, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { Lock, Activity, CheckCircle2, AlertTriangle, Play, ChevronRight, BarChart3, Database, Mail, Menu, X } from "lucide-react";
+import { Lock, Activity, CheckCircle2, AlertTriangle, Play, ChevronRight, Mail, Menu, X } from "lucide-react";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
