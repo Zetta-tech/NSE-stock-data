@@ -26,7 +26,7 @@ npm run test:watch   # Vitest watch mode
 ### File Layout
 
 - `src/app/` — Next.js App Router pages and API route handlers
-- `src/app/api/` — REST endpoints: `scan/`, `state/`, `stocks/`, `ticker/`, `nifty50/`, `activity/`, `auth/`, `search/`, `index/`, `admin/`, `alert-requests/`
+- `src/app/api/` — REST endpoints: `scan/`, `state/`, `stocks/`, `ticker/`, `nifty50/`, `activity/`, `auth/`, `register/`, `search/`, `index/`, `admin/`, `alert-requests/`
 - `src/components/` — Client React components (`"use client"` directive)
 - `src/lib/` — Server-only utilities (every file starts with `import "server-only"`)
 - `docs/` — Architecture docs (read-only reference: `ARCHITECTURE.md`, `ALERTS.md`, `AI_CONSTRAINTS.md`, `api-capability-map.md`)
@@ -35,6 +35,10 @@ npm run test:watch   # Vitest watch mode
 ### Data Flow
 
 The dashboard (`dashboard.tsx`) polls `/api/state` for all UI state. Manual scans hit `/api/scan`, which runs `scanMultipleStocks()` → `analyzeBreakout()` per stock → fires alerts via `addAlert()` → logs via `addActivity()`.
+
+### AI Alert Builder
+
+`src/components/alert-builder.tsx` lets users describe an alert in plain English (e.g. "Alert me when any stock crosses its 52-week high on heavy volume"). The component POSTs to `/api/alert-requests`, which stores the request in Redis (`nse:alert-requests`) / `data/alert-requests.json` fallback. A Claude Code GitHub Actions workflow picks up the request, implements the alert logic, and opens a pull request. The feature is fully implemented and deployed.
 
 ### Persistence
 
