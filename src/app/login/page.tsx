@@ -4,7 +4,7 @@ import { useState, FormEvent, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { Lock, Activity, CheckCircle2, AlertTriangle, Play, ChevronRight, BarChart3, Database, Mail } from "lucide-react";
+import { Lock, Activity, CheckCircle2, AlertTriangle, Play, ChevronRight, BarChart3, Database, Mail, Menu, X } from "lucide-react";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
@@ -20,6 +20,8 @@ export default function CinematicLandingLogin() {
   const [registerLoading, setRegisterLoading] = useState(false);
   const [registerSuccess, setRegisterSuccess] = useState(false);
   const [registerError, setRegisterError] = useState("");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
 
   // Refs for sections
   const mainRef = useRef<HTMLElement>(null);
@@ -37,6 +39,8 @@ export default function CinematicLandingLogin() {
     { id: 1, title: "RELIANCE", val: "+3.8%", vol: "Alert Triggered" },
     { id: 2, title: "INFY", val: "+2.1%", vol: "Watchlist" },
     { id: 3, title: "HDFC Bank", val: "+1.7%", vol: "NSE Scan" },
+    { id: 4, title: "TCS", val: "+0.9%", vol: "Sector Scan" },
+    { id: 5, title: "ITC", val: "+4.2%", vol: "Volume Spike" },
   ]);
 
   // Terminal state for feature 2
@@ -164,13 +168,31 @@ export default function CinematicLandingLogin() {
 
   // Typewriter Logic
   useEffect(() => {
-    let i = 0;
-    const typing = setInterval(() => {
-      setTerminalText(fullTerminalText.slice(0, i));
-      i++;
-      if (i > fullTerminalText.length) clearInterval(typing);
-    }, 50);
-    return () => clearInterval(typing);
+    let timeout: NodeJS.Timeout;
+    let isMounted = true;
+
+    const runLoop = () => {
+      let i = 0;
+      setTerminalText("");
+      const typeNext = () => {
+        if (!isMounted) return;
+        setTerminalText(fullTerminalText.slice(0, i));
+        i++;
+        if (i <= fullTerminalText.length) {
+          timeout = setTimeout(typeNext, 50);
+        } else {
+          timeout = setTimeout(runLoop, 3000);
+        }
+      };
+      typeNext();
+    };
+
+    runLoop();
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeout);
+    };
   }, []);
 
   // Form Submit
@@ -325,11 +347,38 @@ export default function CinematicLandingLogin() {
           onClick={scrollToLogin}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
-          className="px-6 py-2.5 bg-[#C9A84C] text-[#0D0D12] rounded-full text-xs font-data uppercase tracking-widest font-bold hover:bg-[#FAF8F5] transition-colors"
+          className="hidden md:flex px-6 py-2.5 bg-[#C9A84C] text-[#0D0D12] rounded-full text-xs font-data uppercase tracking-widest font-bold hover:bg-[#FAF8F5] transition-colors"
         >
           Sign In
         </button>
+
+        {/* Mobile menu button */}
+        <button
+          className="md:hidden flex items-center justify-center text-[#C9A84C]"
+          onClick={() => setIsMobileMenuOpen(true)}
+        >
+          <Menu className="w-6 h-6" />
+        </button>
       </nav>
+
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-[100] bg-[#0D0D12] flex flex-col pt-20 px-6 animate-in fade-in duration-300">
+          <button
+            className="absolute top-8 right-6 text-[#FAF8F5]/80 hover:text-[#FAF8F5] transition-colors"
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            <X className="w-8 h-8" />
+          </button>
+          <div className="flex flex-col gap-8 text-2xl font-drama mt-10">
+            <a href="#features" onClick={() => setIsMobileMenuOpen(false)}>Features</a>
+            <a href="#philosophy" onClick={() => setIsMobileMenuOpen(false)}>Why Us</a>
+            <a href="#protocol" onClick={() => setIsMobileMenuOpen(false)}>How It Works</a>
+            <span className="w-full h-px bg-white/10 my-4" />
+            <a href="#login" onClick={() => { setIsMobileMenuOpen(false); scrollToLogin(); }} className="text-[#C9A84C]">Sign In</a>
+          </div>
+        </div>
+      )}
 
       {/* B. HERO SECTION */}
       <section className="relative h-[100dvh] w-full flex items-end pb-32 px-6 md:px-20 overflow-hidden">
@@ -388,6 +437,7 @@ export default function CinematicLandingLogin() {
             {/* The Image/Video */}
             <video
               src="/intro-video.mp4"
+              poster="/screenshots/intro-poster.png"
               autoPlay
               muted
               loop
@@ -398,119 +448,6 @@ export default function CinematicLandingLogin() {
             <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none" />
           </div>
         </div>
-      </section>
-
-      {/* C. FEATURES */}
-      <section id="features" className="py-20 md:py-32 px-6 md:px-20 relative z-10" ref={featuresRef}>
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
-
-          {/* Card 1: Diagnostic Shuffler */}
-          <div className="bg-[#16161D] border border-white/5 rounded-[2rem] p-10 h-[400px] flex flex-col justify-between gold-hover group overflow-hidden relative shadow-2xl">
-            <div>
-              <div className="w-10 h-10 rounded-full bg-[#C9A84C]/10 flex items-center justify-center mb-6">
-                <BarChart3 className="w-5 h-5 text-[#C9A84C]" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3 tracking-tight">Watches Everything, So You Don&apos;t Have To</h3>
-              <p className="text-sm text-white/50 leading-relaxed">Monitors your entire watchlist and every stock on NSE, 24/7 during market hours.</p>
-            </div>
-
-            <div className="relative h-[120px] mt-6 w-full flex items-end justify-center">
-              {shuffleCards.map((card, i) => {
-                const isTop = i === 2;
-                return (
-                  <div
-                    key={card.id}
-                    className="shuffler-card absolute w-[90%] bg-[#21212B] rounded-2xl p-4 border border-white/10 flex justify-between items-center shadow-xl"
-                    style={{
-                      transform: `translateY(${!isTop ? (2 - i) * 15 : 0}px) scale(${1 - (!isTop ? (2 - i) * 0.05 : 0)})`,
-                      opacity: isTop ? 1 : 0.5,
-                      zIndex: i,
-                    }}
-                  >
-                    <div>
-                      <p className="font-data text-xs text-white/60 mb-1">{card.vol}</p>
-                      <p className="font-medium text-sm">{card.title}</p>
-                    </div>
-                    <div className="text-[#C9A84C] font-data font-semibold text-sm">
-                      {card.val}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Card 2: Telemetry Typewriter */}
-          <div className="bg-[#16161D] border border-white/5 rounded-[2rem] p-10 h-[400px] flex flex-col justify-between relative shadow-2xl">
-            <div>
-              <div className="w-10 h-10 rounded-full bg-[#C9A84C]/10 flex items-center justify-center mb-6">
-                <Database className="w-5 h-5 text-[#C9A84C]" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3 tracking-tight">Instant Push Notifications</h3>
-              <p className="text-sm text-white/50 leading-relaxed">The moment a stock meets your conditions, a push notification fires instantly.</p>
-            </div>
-
-            <div className="bg-[#0D0D12] rounded-xl p-5 mt-6 border border-white/5 h-[140px] font-data text-[11px] leading-loose text-[#C9A84C] overflow-hidden whitespace-pre-wrap flex flex-col justify-end">
-              <p>
-                {terminalText}
-                <span className="inline-block w-2 h-3 bg-[#C9A84C] ml-1 animate-pulse" />
-              </p>
-            </div>
-          </div>
-
-          {/* Card 3: Cursor Protocol Scheduler */}
-          <div className="bg-[#16161D] border border-white/5 rounded-[2rem] p-10 h-[400px] flex flex-col justify-between relative shadow-2xl overflow-hidden">
-            <div>
-              <div className="w-10 h-10 rounded-full bg-[#C9A84C]/10 flex items-center justify-center mb-6">
-                <CheckCircle2 className="w-5 h-5 text-[#C9A84C]" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3 tracking-tight">AI-Powered Alert Builder</h3>
-              <p className="text-sm text-white/50 leading-relaxed">Describe your alert in plain English. &quot;Alert me when any stock crosses its 52-week high on heavy volume.&quot; The AI does the rest.</p>
-            </div>
-
-            <div className="mt-8 flex flex-col gap-3 w-full">
-              <div className="bg-[#0D0D12] border border-white/10 rounded-xl p-3 flex items-center gap-3">
-                <span className="text-[#C9A84C] animate-pulse">✨</span>
-                <div className="w-1 h-3 bg-[#C9A84C] animate-pulse" />
-              </div>
-              <div className="flex gap-2 flex-wrap mt-1">
-                <div className="h-6 px-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-500 font-data text-[9px] uppercase tracking-widest flex items-center shadow-lg shadow-emerald-500/5">Vol &gt; Avg</div>
-                <div className="h-6 px-3 rounded-md border border-[#C9A84C]/30 bg-[#C9A84C]/10 text-[#C9A84C] font-data text-[9px] uppercase tracking-widest flex items-center shadow-lg shadow-[#C9A84C]/5">52W High</div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      {/* C.5 PLATFORM TOUR (3D ISOMETRIC) */}
-      <section ref={tourRef} className="py-24 md:py-32 px-4 md:px-20 relative z-10 flex flex-col items-center justify-center w-full overflow-hidden" style={{ perspective: "2000px" }}>
-        
-        <div className="text-center mb-16 relative z-10 max-w-3xl">
-          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight mb-4 text-[#FAF8F5]">Deep-Dive Dashboard</h2>
-          <p className="text-sm text-white/50 leading-relaxed font-light">See exactly how our sophisticated alert types keep you ahead of the curve.</p>
-        </div>
-
-        <div className="tour-container w-full max-w-5xl rounded-[1.5rem] bg-[#16161D] border border-white/10 shadow-[0_30px_100px_rgba(201,168,76,0.15)] p-2 relative" style={{ transformStyle: "preserve-3d" }}>
-          {/* Edge Highlighting */}
-          <div className="absolute inset-0 bg-gradient-to-tr from-[#C9A84C]/10 via-transparent to-white/5 rounded-[1.5rem] pointer-events-none" />
-          
-          <div className="w-full aspect-video rounded-xl overflow-hidden bg-[#0D0D12] relative border border-white/5 shadow-inner">
-            <video
-              src="/platform-tour.mp4"
-              autoPlay
-              muted
-              loop
-              playsInline
-              className="w-full h-full object-cover"
-            />
-            {/* Glossy Overlay for screen realism */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none mix-blend-overlay" />
-          </div>
-        </div>
-
-        {/* Ambient background glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-[#C9A84C] opacity-[0.05] blur-[100px] rounded-full z-0 pointer-events-none" />
       </section>
 
       {/* D. PHILOSOPHY */}
@@ -550,6 +487,112 @@ export default function CinematicLandingLogin() {
             </span>
           </h2>
         </div>
+      </section>
+
+      {/* C. FEATURES */}
+      <section id="features" className="py-20 md:py-32 px-6 md:px-20 relative z-10" ref={featuresRef}>
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-[2fr_1fr] md:grid-rows-2 gap-8">
+
+          {/* Card 1: Diagnostic Shuffler */}
+          <div className="bg-[#16161D] border border-white/5 rounded-[2rem] p-10 h-full min-h-[400px] flex flex-col gold-hover group overflow-hidden relative shadow-2xl md:row-span-2 md:col-start-1 md:col-span-1">
+            <div className="mb-8">
+              <h3 className="text-2xl font-semibold mb-3 tracking-tight">Watches Everything, So You Don&apos;t Have To</h3>
+              <p className="text-sm text-white/50 leading-relaxed max-w-sm">Monitors your entire watchlist and every stock on NSE, 24/7 during market hours.</p>
+            </div>
+
+            <div className="relative flex-1 w-full min-h-[300px]">
+              {shuffleCards.map((card, i) => {
+                const isTop = i === shuffleCards.length - 1;
+                const offset = shuffleCards.length - 1 - i;
+                return (
+                  <div
+                    key={card.id}
+                    className="shuffler-card absolute left-1/2 top-1/2 w-full max-w-[90%] bg-[#21212B]/90 backdrop-blur-md rounded-3xl p-6 md:p-8 border border-white/10 flex justify-between items-center shadow-[0_20px_40px_rgba(0,0,0,0.5)]"
+                    style={{
+                      transform: `translate(-50%, calc(-50% + ${offset * 30}px)) scale(${1 - (offset * 0.08)})`,
+                      opacity: isTop ? 1 : Math.max(0.1, 0.8 - offset * 0.15),
+                      zIndex: i,
+                    }}
+                  >
+                    <div className="space-y-1">
+                      <p className="font-data text-xs text-white/60 uppercase tracking-widest">{card.vol}</p>
+                      <p className="font-medium text-lg md:text-xl tracking-tight">{card.title}</p>
+                    </div>
+                    <div className="text-[#C9A84C] font-data font-semibold text-xl">
+                      {card.val}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Card 2: Telemetry Typewriter */}
+          <div className="bg-[#16161D] border border-white/5 rounded-[2rem] p-10 h-[400px] flex flex-col justify-between relative shadow-2xl md:col-start-2 md:row-start-1">
+            <div>
+              <h3 className="text-xl font-semibold mb-3 tracking-tight">Instant Push Notifications</h3>
+              <p className="text-sm text-white/50 leading-relaxed">The moment a stock meets your conditions, a push notification fires instantly.</p>
+            </div>
+
+            <div className="bg-[#0D0D12] rounded-xl p-5 mt-6 border border-white/5 h-[140px] font-data text-[11px] leading-loose text-[#C9A84C] overflow-hidden whitespace-pre-wrap flex flex-col justify-end">
+              <p>
+                {terminalText}
+                <span className="inline-block w-2 h-3 bg-[#C9A84C] ml-1 animate-pulse" />
+              </p>
+            </div>
+          </div>
+
+          {/* Card 3: Cursor Protocol Scheduler */}
+          <div className="bg-[#16161D] border border-white/5 rounded-[2rem] p-10 h-[400px] flex flex-col justify-between relative shadow-2xl overflow-hidden md:col-start-2 md:row-start-2">
+            <div>
+              <h3 className="text-xl font-semibold mb-3 tracking-tight">AI-Powered Alert Builder</h3>
+              <p className="text-sm text-white/50 leading-relaxed">Describe your alert in plain English. &quot;Alert me when any stock crosses its 52-week high on heavy volume.&quot; The AI does the rest.</p>
+            </div>
+
+            <div className="mt-8 flex flex-col gap-3 w-full">
+              <div className="bg-[#0D0D12] border border-white/10 rounded-xl p-3 flex items-center gap-3">
+                <span className="text-[#C9A84C] font-data animate-pulse">█</span>
+                <div className="w-1 h-3 bg-[#C9A84C] animate-pulse" />
+              </div>
+              <div className="flex gap-2 flex-wrap mt-1">
+                <div className="h-6 px-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-500 font-data text-[9px] uppercase tracking-widest flex items-center shadow-lg shadow-emerald-500/5">Vol &gt; Avg</div>
+                <div className="h-6 px-3 rounded-md border border-[#C9A84C]/30 bg-[#C9A84C]/10 text-[#C9A84C] font-data text-[9px] uppercase tracking-widest flex items-center shadow-lg shadow-[#C9A84C]/5">52W High</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* C.5 PLATFORM TOUR (3D ISOMETRIC) */}
+      <section ref={tourRef} className="py-24 md:py-32 px-4 md:px-20 relative z-10 flex flex-col items-center justify-center w-full overflow-hidden" style={{ perspective: "2000px" }}>
+        
+        <div className="text-center mb-16 relative z-10 max-w-3xl">
+          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight mb-4 text-[#FAF8F5]">Deep-Dive Dashboard</h2>
+          <p className="text-sm text-white/50 leading-relaxed font-light">See exactly how our sophisticated alert types keep you ahead of the curve.</p>
+        </div>
+
+        <div className="tour-container w-full max-w-5xl rounded-[1.5rem] bg-[#16161D] border border-white/10 shadow-[0_30px_100px_rgba(201,168,76,0.15)] p-2 relative" style={{ transformStyle: "preserve-3d" }}>
+          {/* Edge Highlighting */}
+          <div className="absolute inset-0 bg-gradient-to-tr from-[#C9A84C]/10 via-transparent to-white/5 rounded-[1.5rem] pointer-events-none" />
+          
+          <div className="w-full aspect-video rounded-xl overflow-hidden bg-[#0D0D12] relative border border-white/5 shadow-inner">
+            <video
+              src="/platform-tour.mp4"
+              poster="/screenshots/tour-poster.png"
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="w-full h-full object-cover"
+            />
+            {/* Glossy Overlay for screen realism */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none mix-blend-overlay" />
+          </div>
+        </div>
+
+        {/* Ambient background glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-[#C9A84C] opacity-[0.05] blur-[100px] rounded-full z-0 pointer-events-none" />
       </section>
 
       {/* E. PROTOCOL */}
@@ -615,6 +658,53 @@ export default function CinematicLandingLogin() {
           </div>
         </div>
 
+        {/* Card 3 */}
+        <div className="protocol-card h-screen w-full flex items-center justify-center px-6 sticky top-0 bg-[#0D0D12]">
+          <div className="max-w-5xl w-full grid md:grid-cols-2 gap-16 items-center">
+            <div className="space-y-6">
+              <span className="font-data text-[#C9A84C] text-sm tracking-widest uppercase">03 / Act</span>
+              <h2 className="text-5xl font-semibold tracking-tight">You&apos;re First</h2>
+              <p className="text-lg text-white/50 leading-relaxed font-light">
+                Trade exactly when the momentum builds. By using AI-driven triggers directly integrated with market feeds, Tickzy puts you in the position before the major crowd even notices the breakout.
+              </p>
+            </div>
+            <div className="h-[400px] rounded-[2rem] border border-white/5 bg-[#16161D] flex flex-col justify-center items-center relative overflow-hidden p-8">
+              <div className="absolute inset-0 bg-gradient-to-t from-[#C9A84C]/5 to-transparent z-0" />
+              <div className="relative z-10 w-full flex flex-col gap-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-10 bg-[#C9A84C]/20 border border-[#C9A84C] rounded overflow-hidden relative">
+                    <div className="absolute left-0 top-0 bottom-0 bg-[#C9A84C] w-full origin-left" />
+                  </div>
+                  <div>
+                    <span className="text-sm font-semibold tracking-wide block">TICKZY USER ENTRY</span>
+                    <span className="text-[10px] text-[#C9A84C] font-data tracking-widest">T+0.00s</span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-4 opacity-40">
+                  <div className="w-16 h-10 border border-white/20 rounded relative">
+                    <div className="absolute left-0 top-0 bottom-0 bg-white/20 w-1/4" />
+                  </div>
+                  <div>
+                    <span className="text-sm font-semibold tracking-wide block">MANUAL RETAIL</span>
+                    <span className="text-[10px] text-white font-data tracking-widest">T+3m00s</span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-4 opacity-20">
+                  <div className="w-16 h-10 border border-white/20 rounded relative">
+                    <div className="absolute left-0 top-0 bottom-0 bg-white/20 w-1/12" />
+                  </div>
+                  <div>
+                    <span className="text-sm font-semibold tracking-wide block">SOCIAL MEDIA</span>
+                    <span className="text-[10px] text-white font-data tracking-widest">T+15m00s</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </section>
 
       {/* F. LOGIN SECTION */}
@@ -622,134 +712,154 @@ export default function CinematicLandingLogin() {
         <div className="absolute inset-0 z-0 bg-gradient-to-b from-transparent to-[#16161D]/50" />
 
         <div className="relative z-10 w-full max-w-md">
-          <div className="text-center mb-10">
-            <Lock className="w-6 h-6 text-[#C9A84C] mx-auto mb-6" />
-            <h2 className="text-3xl tracking-tight mb-2 font-drama italic text-[#FAF8F5]">Welcome Back</h2>
-            <p className="text-sm font-data text-[#FAF8F5]/40 tracking-widest uppercase">Sign in to your account</p>
-          </div>
-
-          <form
-            onSubmit={handleSubmit}
-            className="p-8 md:p-10 space-y-6 rounded-[2.5rem] bg-[#16161D]/80 backdrop-blur-xl border border-white/5 shadow-2xl relative overflow-hidden"
-          >
-            {/* Operator ID */}
-            <div className="space-y-3">
-              <label htmlFor="username" className="block font-data text-[10px] font-medium uppercase tracking-[0.2em] text-[#FAF8F5]/40 ml-1">
-                Username
-              </label>
-              <input
-                id="username"
-                type="text"
-                autoComplete="username"
-                required
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-5 py-4 text-sm font-data outline-none transition-all duration-300 bg-[#0D0D12] border border-white/5 text-[#FAF8F5] rounded-2xl focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C]/30"
-                placeholder="your-username"
-              />
-            </div>
-
-            {/* Access Code */}
-            <div className="space-y-3">
-              <label htmlFor="password" className="block font-data text-[10px] font-medium uppercase tracking-[0.2em] text-[#FAF8F5]/40 ml-1">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-5 py-4 text-sm font-data outline-none transition-all duration-300 bg-[#0D0D12] border border-white/5 text-[#FAF8F5] rounded-2xl focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C]/30 tracking-[0.2em]"
-                placeholder="••••••••"
-              />
-            </div>
-
-            {error && (
-              <div className="rounded-xl px-4 py-3 flex items-start gap-3 bg-red-500/10 border border-red-500/20">
-                <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5" />
-                <p className="text-xs text-red-400 font-data pr-2 leading-relaxed">{error}</p>
+          {/* Registration / Early Access (Waitlist First) */}
+          <div className="relative">
+            {!showLogin ? (
+              <div className="text-center mb-10">
+                <Mail className="w-6 h-6 text-[#C9A84C] mx-auto mb-6" />
+                <h2 className="text-3xl tracking-tight mb-2 font-drama italic text-[#FAF8F5]">Get Early Access</h2>
+                <p className="text-sm font-data text-[#FAF8F5]/40 tracking-widest uppercase">Join the Waitlist</p>
+              </div>
+            ) : (
+              <div className="text-center mb-10">
+                <Lock className="w-6 h-6 text-[#C9A84C] mx-auto mb-6" />
+                <h2 className="text-3xl tracking-tight mb-2 font-drama italic text-[#FAF8F5]">Welcome Back</h2>
+                <p className="text-sm font-data text-[#FAF8F5]/40 tracking-widest uppercase">Sign in to your account</p>
               </div>
             )}
 
-            <div className="pt-4">
-              <button
-                type="submit"
-                disabled={loading}
-                className="relative overflow-hidden group w-full py-4 text-xs font-data uppercase tracking-widest font-bold flex items-center justify-center gap-2 rounded-2xl border border-[#C9A84C]/40 bg-[#0D0D12] text-[#FAF8F5] hover:border-[#C9A84C] transition-colors"
-                style={{ opacity: loading ? 0.7 : 1 }}
-              >
-                <span className="absolute inset-0 w-full h-full bg-[#C9A84C] -translate-x-[102%] group-hover:translate-x-0 transition-transform duration-500 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] z-0" />
-                <span className="relative z-10 flex items-center gap-2 group-hover:text-[#0D0D12] transition-colors">
-                  {loading ? (
-                    <>
-                      <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                      Signing in...
-                    </>
-                  ) : ("Sign In")}
-                </span>
-              </button>
-            </div>
-          </form>
-
-          {/* Registration / Early Access */}
-          <div className="mt-8 relative">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="flex-1 h-[1px] bg-white/10" />
-              <span className="font-data text-[10px] uppercase tracking-[0.2em] text-[#FAF8F5]/30">or</span>
-              <div className="flex-1 h-[1px] bg-white/10" />
-            </div>
-
-            {registerSuccess ? (
-              <div className="p-8 rounded-[2.5rem] bg-[#16161D]/80 backdrop-blur-xl border border-emerald-500/20 shadow-2xl text-center">
-                <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold tracking-tight mb-2">You&apos;re on the list</h3>
-                <p className="text-sm text-white/50 font-light">We&apos;ll notify you when public access opens.</p>
-              </div>
-            ) : (
-              <form
-                onSubmit={handleRegister}
-                className="p-8 md:p-10 space-y-5 rounded-[2.5rem] bg-[#16161D]/80 backdrop-blur-xl border border-white/5 shadow-2xl"
-              >
-                <div className="text-center mb-2">
-                  <Mail className="w-5 h-5 text-[#C9A84C] mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold tracking-tight mb-1">Get Early Access</h3>
-                  <p className="text-xs text-white/40 font-light">Drop your email — we&apos;ll notify you when public access opens.</p>
-                </div>
-
-                <div className="space-y-3">
-                  <input
-                    type="email"
-                    required
-                    value={registerEmail}
-                    onChange={(e) => setRegisterEmail(e.target.value)}
-                    className="w-full px-5 py-4 text-sm font-data outline-none transition-all duration-300 bg-[#0D0D12] border border-white/5 text-[#FAF8F5] rounded-2xl focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C]/30"
-                    placeholder="you@email.com"
-                  />
-                </div>
-
-                {registerError && (
-                  <div className="rounded-xl px-4 py-3 flex items-start gap-3 bg-red-500/10 border border-red-500/20">
-                    <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5" />
-                    <p className="text-xs text-red-400 font-data pr-2 leading-relaxed">{registerError}</p>
+            {!showLogin ? (
+              <>
+                {registerSuccess ? (
+                  <div className="p-8 rounded-[2.5rem] bg-[#16161D]/80 backdrop-blur-xl border border-emerald-500/20 shadow-2xl text-center">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold tracking-tight mb-2">You&apos;re on the list</h3>
+                    <p className="text-sm text-white/50 font-light">We&apos;ll notify you when public access opens.</p>
                   </div>
-                )}
+                ) : (
+                  <form
+                    onSubmit={handleRegister}
+                    className="p-8 md:p-10 space-y-5 rounded-[2.5rem] bg-[#16161D]/80 backdrop-blur-xl border border-white/5 shadow-2xl"
+                  >
+                    <div className="space-y-3">
+                      <input
+                        type="email"
+                        required
+                        value={registerEmail}
+                        onChange={(e) => setRegisterEmail(e.target.value)}
+                        className="w-full px-5 py-4 text-sm font-data outline-none transition-all duration-300 bg-[#0D0D12] border border-white/5 text-[#FAF8F5] rounded-2xl focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C]/30"
+                        placeholder="you@email.com"
+                      />
+                    </div>
 
-                <button
-                  type="submit"
-                  disabled={registerLoading}
-                  className="w-full py-4 text-xs font-data uppercase tracking-widest font-bold flex items-center justify-center gap-2 rounded-2xl border border-[#C9A84C]/40 text-[#C9A84C] hover:border-[#C9A84C] hover:bg-[#C9A84C]/5 transition-colors"
-                  style={{ opacity: registerLoading ? 0.7 : 1 }}
+                    {registerError && (
+                      <div className="rounded-xl px-4 py-3 flex items-start gap-3 bg-red-500/10 border border-red-500/20">
+                        <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5" />
+                        <p className="text-xs text-red-400 font-data pr-2 leading-relaxed">{registerError}</p>
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={registerLoading}
+                      className="w-full py-4 text-xs font-data uppercase tracking-widest font-bold flex items-center justify-center gap-2 rounded-2xl border border-[#C9A84C]/40 text-[#0D0D12] bg-[#C9A84C] hover:bg-[#FAF8F5] transition-colors"
+                      style={{ opacity: registerLoading ? 0.7 : 1 }}
+                    >
+                      {registerLoading ? (
+                        <>
+                          <div className="w-3 h-3 border-2 border-[#0D0D12] border-t-transparent rounded-full animate-spin" />
+                          Submitting...
+                        </>
+                      ) : ("Join Waitlist")}
+                    </button>
+                  </form>
+                )}
+                
+                <div className="mt-8 text-center">
+                  <button 
+                    onClick={() => setShowLogin(true)}
+                    className="text-white/40 hover:text-white transition-colors text-sm font-light font-data"
+                  >
+                    Already have access? Sign in
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <form
+                  onSubmit={handleSubmit}
+                  className="p-8 md:p-10 space-y-6 rounded-[2.5rem] bg-[#16161D]/80 backdrop-blur-xl border border-white/5 shadow-2xl relative overflow-hidden"
                 >
-                  {registerLoading ? (
-                    <>
-                      <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                      Submitting...
-                    </>
-                  ) : ("Join Waitlist")}
-                </button>
-              </form>
+                  {/* Operator ID */}
+                  <div className="space-y-3">
+                    <label htmlFor="username" className="block font-data text-[10px] font-medium uppercase tracking-[0.2em] text-[#FAF8F5]/40 ml-1">
+                      Username
+                    </label>
+                    <input
+                      id="username"
+                      type="text"
+                      autoComplete="username"
+                      required
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="w-full px-5 py-4 text-sm font-data outline-none transition-all duration-300 bg-[#0D0D12] border border-white/5 text-[#FAF8F5] rounded-2xl focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C]/30"
+                      placeholder="your-username"
+                    />
+                  </div>
+
+                  {/* Access Code */}
+                  <div className="space-y-3">
+                    <label htmlFor="password" className="block font-data text-[10px] font-medium uppercase tracking-[0.2em] text-[#FAF8F5]/40 ml-1">
+                      Password
+                    </label>
+                    <input
+                      id="password"
+                      type="password"
+                      autoComplete="current-password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full px-5 py-4 text-sm font-data outline-none transition-all duration-300 bg-[#0D0D12] border border-white/5 text-[#FAF8F5] rounded-2xl focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C]/30 tracking-[0.2em]"
+                      placeholder="••••••••"
+                    />
+                  </div>
+
+                  {error && (
+                    <div className="rounded-xl px-4 py-3 flex items-start gap-3 bg-red-500/10 border border-red-500/20">
+                      <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5" />
+                      <p className="text-xs text-red-400 font-data pr-2 leading-relaxed">{error}</p>
+                    </div>
+                  )}
+
+                  <div className="pt-4">
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="relative overflow-hidden group w-full py-4 text-xs font-data uppercase tracking-widest font-bold flex items-center justify-center gap-2 rounded-2xl border border-[#C9A84C]/40 bg-[#0D0D12] text-[#FAF8F5] hover:border-[#C9A84C] transition-colors"
+                      style={{ opacity: loading ? 0.7 : 1 }}
+                    >
+                      <span className="absolute inset-0 w-full h-full bg-[#C9A84C] -translate-x-[102%] group-hover:translate-x-0 transition-transform duration-500 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] z-0" />
+                      <span className="relative z-10 flex items-center gap-2 group-hover:text-[#0D0D12] transition-colors">
+                        {loading ? (
+                          <>
+                            <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                            Signing in...
+                          </>
+                        ) : ("Sign In")}
+                      </span>
+                    </button>
+                  </div>
+                </form>
+                
+                <div className="mt-8 text-center">
+                  <button 
+                    onClick={() => setShowLogin(false)}
+                    className="text-white/40 hover:text-white transition-colors text-sm font-light font-data"
+                  >
+                    Need an account? Join the Waitlist
+                  </button>
+                </div>
+              </>
             )}
           </div>
         </div>

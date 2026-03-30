@@ -36,6 +36,10 @@ npm run test:watch   # Vitest watch mode
 
 The dashboard (`dashboard.tsx`) polls `/api/state` for all UI state. Manual scans hit `/api/scan`, which runs `scanMultipleStocks()` → `analyzeBreakout()` per stock → fires alerts via `addAlert()` → logs via `addActivity()`.
 
+### AI Alert Builder
+
+`src/components/alert-builder.tsx` lets users describe an alert in plain English (e.g. "Alert me when any stock crosses its 52-week high on heavy volume"). The component POSTs to `/api/alert-requests`, which stores the request in Redis (`nse:alert-requests`) / `data/alert-requests.json` fallback. A Claude Code GitHub Actions workflow picks up the request, implements the alert logic, and opens a pull request. The feature is fully implemented and deployed.
+
 ### Persistence
 
 All stores follow Redis primary + filesystem JSON fallback:
