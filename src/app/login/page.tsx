@@ -166,8 +166,8 @@ export default function CinematicLandingLogin() {
     return () => clearInterval(interval);
   }, []);
 
-  // Typewriter Logic
   useEffect(() => {
+    const text = fullTerminalText;
     let timeout: NodeJS.Timeout;
     let isMounted = true;
 
@@ -176,9 +176,9 @@ export default function CinematicLandingLogin() {
       setTerminalText("");
       const typeNext = () => {
         if (!isMounted) return;
-        setTerminalText(fullTerminalText.slice(0, i));
+        setTerminalText(text.slice(0, i));
         i++;
-        if (i <= fullTerminalText.length) {
+        if (i <= text.length) {
           timeout = setTimeout(typeNext, 50);
         } else {
           timeout = setTimeout(runLoop, 3000);
@@ -193,10 +193,9 @@ export default function CinematicLandingLogin() {
       isMounted = false;
       clearTimeout(timeout);
     };
-  }, []);
+  }, [fullTerminalText]);
 
-  // Form Submit
-  async function handleSubmit(e: FormEvent) {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
@@ -219,9 +218,9 @@ export default function CinematicLandingLogin() {
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  async function handleRegister(e: FormEvent) {
+  const handleRegister = async (e: FormEvent) => {
     e.preventDefault();
     setRegisterLoading(true);
     setRegisterError("");
@@ -363,10 +362,17 @@ export default function CinematicLandingLogin() {
 
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-[100] bg-[#0D0D12] flex flex-col pt-20 px-6 animate-in fade-in duration-300">
+        <div
+          className="fixed inset-0 z-[100] bg-[#0D0D12] flex flex-col pt-20 px-6 animate-in fade-in duration-300"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation menu"
+          onKeyDown={(e) => { if (e.key === "Escape") setIsMobileMenuOpen(false); }}
+        >
           <button
             className="absolute top-8 right-6 text-[#FAF8F5]/80 hover:text-[#FAF8F5] transition-colors"
             onClick={() => setIsMobileMenuOpen(false)}
+            autoFocus
           >
             <X className="w-8 h-8" />
           </button>
@@ -375,7 +381,7 @@ export default function CinematicLandingLogin() {
             <a href="#philosophy" onClick={() => setIsMobileMenuOpen(false)}>Why Us</a>
             <a href="#protocol" onClick={() => setIsMobileMenuOpen(false)}>How It Works</a>
             <span className="w-full h-px bg-white/10 my-4" />
-            <a href="#login" onClick={() => { setIsMobileMenuOpen(false); scrollToLogin(); }} className="text-[#C9A84C]">Sign In</a>
+            <button onClick={() => { setIsMobileMenuOpen(false); scrollToLogin(); }} className="text-[#C9A84C] text-left">Sign In</button>
           </div>
         </div>
       )}
@@ -596,7 +602,7 @@ export default function CinematicLandingLogin() {
       </section>
 
       {/* E. PROTOCOL */}
-      <section id="protocol" className="relative w-full bg-[#0D0D12]">
+      <section id="protocol" className="relative w-full bg-[#0D0D12] min-h-[300vh]">
         <div className="protocol-end absolute bottom-0 w-full h-1" />
 
         {/* Card 1 */}
