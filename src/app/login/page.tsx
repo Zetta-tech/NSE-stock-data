@@ -381,7 +381,7 @@ export default function CinematicLandingLogin() {
             <a href="#philosophy" onClick={() => setIsMobileMenuOpen(false)}>Why Us</a>
             <a href="#protocol" onClick={() => setIsMobileMenuOpen(false)}>How It Works</a>
             <span className="w-full h-px bg-white/10 my-4" />
-            <button onClick={() => { setIsMobileMenuOpen(false); scrollToLogin(); }} className="text-[#C9A84C] text-left">Sign In</button>
+            <button onClick={() => { setIsMobileMenuOpen(false); setTimeout(scrollToLogin, 300); }} className="text-[#C9A84C] text-left">Sign In</button>
           </div>
         </div>
       )}
@@ -783,7 +783,7 @@ export default function CinematicLandingLogin() {
                 
                 <div className="mt-8 text-center">
                   <button 
-                    onClick={() => setShowLogin(true)}
+                    onClick={() => { setShowLogin(true); setError(""); }}
                     className="text-white/40 hover:text-white transition-colors text-sm font-light font-data"
                   >
                     Already have access? Sign in
@@ -859,7 +859,7 @@ export default function CinematicLandingLogin() {
                 
                 <div className="mt-8 text-center">
                   <button 
-                    onClick={() => setShowLogin(false)}
+                    onClick={() => { setShowLogin(false); setRegisterError(""); setRegisterSuccess(false); }}
                     className="text-white/40 hover:text-white transition-colors text-sm font-light font-data"
                   >
                     Need an account? Join the Waitlist
