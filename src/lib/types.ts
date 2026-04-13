@@ -255,3 +255,18 @@ export interface AlertRequest {
   githubPrUrl?: string;
   errorMessage?: string;
 }
+
+export interface SemanticAnalysisResult {
+  verdict: 'Bullish' | 'Bearish' | 'Neutral';
+  stop_loss_price: number | null;
+  reasoning: string;
+}
+
+export interface AIMetadata {
+  provider: 'anthropic' | 'openai';
+  model: string;
+  promptTokens: number | null;
+  completionTokens: number | null;
+  totalTokens: number | null;
+  latencyMs: number;
+}

@@ -7,6 +7,35 @@ import type { AlertRequestStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
+/* ── Prompt-injection deny-list ──────────────────────────────────────────────
+ * These patterns would attempt to hijack the downstream autonomous agent that
+ * parses Issue bodies. Block them at the API boundary before they reach GitHub.
+ */
+const INJECTION_PATTERNS = [
+  /ignore\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|context)/i,
+  /disregard\s+(all\s+)?(previous|prior|above|earlier)/i,
+  /you\s+are\s+now/i,
+  /system\s*prompt/i,
+  /\bexfiltrat/i,
+  /\bbackdoor/i,
+  /\breverse\s*shell/i,
+  /\bexec\s*\(/i,
+  /\bchild_process/i,
+  /\brm\s+-rf/i,
+  /\bcurl\s+/i,
+  /\bwget\s+/i,
+  /\beval\s*\(/i,
+  /process\.env/i,
+  /\$\{\{.*secrets/i,
+  /GITHUB_TOKEN/i,
+  /ANTHROPIC_API_KEY/i,
+  /OPENAI_API_KEY/i,
+];
+
+function containsInjection(text: string): boolean {
+  return INJECTION_PATTERNS.some((pattern) => pattern.test(text));
+}
+
 const PostSchema = z.object({
   text: z
     .string()
@@ -14,6 +43,9 @@ const PostSchema = z.object({
     .max(500, "Alert request must be at most 500 characters")
     .refine((t) => t.startsWith("Create Alert:"), {
       message: 'Text must start with "Create Alert:"',
+    })
+    .refine((t) => !containsInjection(t), {
+      message: "Alert request contains disallowed content",
     }),
 });
 

@@ -3,6 +3,8 @@
 import { useRef, useEffect } from "react";
 import gsap from "gsap";
 import type { ScanResult } from "@/lib/types";
+import { useRouter } from "next/navigation";
+import { Activity } from "lucide-react";
 
 export function StockCard({
   result,
@@ -19,6 +21,7 @@ export function StockCard({
   isExpanded: boolean;
   onToggleExpand: () => void;
 }) {
+  const router = useRouter();
   const cardRef = useRef<HTMLDivElement>(null);
   const starRef = useRef<HTMLButtonElement>(null);
   const borderRef = useRef<HTMLDivElement>(null);
@@ -419,9 +422,21 @@ export function StockCard({
               <span className="w-[5px] h-[5px] rounded-full bg-text-muted/40" />
               Data quality: {result.dataSource === 'live' ? 'Real-time feed' : result.dataSource === 'stale' ? 'Last EOD close' : 'Historical scan'}
             </p>
+            
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/analyze/${result.symbol}`);
+              }}
+              className="mt-2 w-full flex items-center justify-center gap-2 py-2 px-3 bg-accent/10 hover:bg-accent/20 text-accent rounded-md border border-accent/20 transition-colors text-xs font-semibold uppercase tracking-wider relative overflow-hidden group"
+            >
+              <Activity size={14} />
+              AI Analyze
+            </button>
           </div>
         </div>
       </div>
+
 
       {/* Background glow effects */}
       {result.triggered && (

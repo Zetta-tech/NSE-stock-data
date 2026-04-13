@@ -46,8 +46,15 @@ export async function middleware(request: NextRequest) {
   try {
     state = await getSecurityState();
   } catch {
-    // If Redis is unreachable, fail open with defaults
-    state = { sessionEpoch: 0, lockdown: null };
+    // SECURITY: Fail CLOSED — deny access when security state is unverifiable.
+    // Fail-open with epoch 0 would let revoked sessions pass validation.
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        { error: "Service temporarily unavailable" },
+        { status: 503 },
+      );
+    }
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   // ── Lockdown enforcement ────────────────────────────────────────
