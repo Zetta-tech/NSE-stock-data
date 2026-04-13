@@ -163,17 +163,20 @@ export function StockCard({
         gsap.set(content, { height: "auto" });
         gsap.set(inner, { opacity: 1, y: 0 });
       } else {
-        gsap.to(content, {
-          height: "auto",
-          duration: 0.45,
-          ease: "power2.inOut",
-        });
+        gsap.fromTo(content, 
+          { height: 0 },
+          {
+            height: "auto",
+            duration: 0.4,
+            ease: "expo.out",
+          }
+        );
         gsap.to(inner, {
           opacity: 1,
           y: 0,
           duration: 0.35,
-          delay: 0.15,
-          ease: "power2.out"
+          delay: 0.1,
+          ease: "back.out(1.2)"
         });
       }
     } else {
@@ -184,14 +187,14 @@ export function StockCard({
         gsap.to(inner, {
           opacity: 0,
           y: 8,
-          duration: 0.25,
+          duration: 0.2,
           ease: "power2.in"
         });
         gsap.to(content, {
           height: 0,
-          duration: 0.4,
+          duration: 0.35,
           delay: 0.05,
-          ease: "power2.inOut",
+          ease: "expo.out",
         });
       }
     }
@@ -211,13 +214,13 @@ export function StockCard({
       tabIndex={0}
       onClick={onToggleExpand}
       onKeyDown={handleKeyDown}
-      className={`stock-card group text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background relative flex h-full flex-col overflow-hidden rounded-[2rem] p-6 transition-all duration-400 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] active:scale-[0.97] active:duration-100 ${isExpanded ? "ring-2 ring-accent/30 hover:-translate-y-1 shadow-2xl z-10" : "hover:-translate-y-1 hover:ring-2 hover:ring-surface-border-bright/60 ring-1 z-0"} ${isStale
+      className={`stock-card group text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background relative flex h-full flex-col overflow-hidden rounded-[2rem] p-6 transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] active:scale-[0.99] active:duration-100 ${isExpanded ? "ring-2 ring-accent/40 -translate-y-2 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] shadow-accent/10 z-10" : "hover:-translate-y-1.5 hover:ring-2 hover:ring-surface-border-bright/80 ring-1 z-0 hover:shadow-[0_12px_24px_-10px_rgba(0,0,0,0.5)]"} ${isStale
         ? "ring-warn/25 bg-surface card-glow-warn"
         : result.triggered
           ? "ring-accent/25 card-glow bg-surface"
           : closeWatch
-            ? "ring-warn/15 bg-surface hover:shadow-2xl hover:shadow-warn/10"
-            : "ring-surface-border/30 bg-surface hover:shadow-2xl hover:shadow-black/60"
+            ? "ring-warn/15 bg-surface"
+            : "ring-surface-border/30 bg-surface"
         } card-elevated`}
     >
       {/* Background container to clip things */}
@@ -230,33 +233,30 @@ export function StockCard({
         />
       </div>
 
-      {/* Thumbnail Area */}
-      <div className="absolute top-0 right-0 w-32 h-32 -mr-10 -mt-10 pointer-events-none transition-transform duration-500 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] group-hover:-mt-9 group-hover:-mr-9 z-0">
-        <div ref={thumbRef} className="w-full h-full relative">
-          <div className={`absolute inset-0 bg-gradient-radial from-text-muted/10 to-transparent blur-xl transition-all duration-700 ${isExpanded ? 'scale-[1.5] from-accent/10' : 'scale-100'}`} />
-          <div className={`absolute inset-0 border border-surface-border-bright/20 rounded-full transition-all duration-700 ${isExpanded ? 'scale-[1.2] rotate-180 border-accent/10' : 'scale-[0.8] rotate-0'} `} style={{ borderStyle: 'dashed' }} />
-          <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 border border-text-muted/10 rounded-lg transition-all duration-700 ${isExpanded ? 'scale-110 rotate-45 border-accent/20 bg-accent/[0.02]' : 'scale-75 rotate-0'} shadow-sm`} />
-        </div>
-      </div>
-
-      {/* Top edge highlight */}
-      {result.triggered && !isStale && (
-        <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-accent/50 to-transparent" />
-      )}
-      {isStale && (
-        <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-warn/50 to-transparent" />
-      )}
-      {closeWatch && !result.triggered && !isStale && (
-        <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-warn/40 to-transparent" />
-      )}
-
       {/* Left strip for close-watch */}
       {closeWatch && (
         <div
           ref={borderRef}
-          className="absolute inset-y-0 left-0 w-[3px] bg-gradient-to-b from-warn/70 via-warn/30 to-warn/5"
+          className="absolute inset-y-0 left-0 w-[4px] bg-gradient-to-b from-warn/70 via-warn/30 to-warn/5 z-0"
         />
       )}
+
+      {/* Expanded active abstract visual (Elegant Glowing Accent Bar) */}
+      <div className={`absolute top-0 right-0 w-[4px] h-full transition-all duration-700 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] ${isExpanded ? 'opacity-100 z-0' : 'opacity-0 -z-10'}`}>
+        {result.triggered ? (
+          // BREAKOUT STATE: Bright pulsing green edge
+          <div className="absolute inset-0 bg-gradient-to-b from-accent/80 via-accent/30 to-transparent shadow-[-4px_0_15px_rgba(0,230,138,0.4)] animate-pulse" />
+        ) : isStale ? (
+          // STALE STATE: Subtle breathing orange edge
+          <div className="absolute inset-0 bg-gradient-to-b from-warn/40 via-warn/10 to-transparent shadow-[-4px_0_10px_rgba(245,166,35,0.1)]" style={{ animation: 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite' }} />
+        ) : closeWatch ? (
+          // CLOSE WATCH STATE: Steady medium orange edge
+          <div className="absolute inset-0 bg-gradient-to-b from-warn/60 via-warn/20 to-transparent shadow-[-4px_0_12px_rgba(245,166,35,0.2)]" />
+        ) : (
+          // DEFAULT STATE: Very faint neutral edge
+          <div className="absolute inset-0 bg-gradient-to-b from-surface-border-bright via-surface-border to-transparent" />
+        )}
+      </div>
 
       {/* Action buttons */}
       <div className="absolute right-4 top-4 flex items-center gap-1 z-20">

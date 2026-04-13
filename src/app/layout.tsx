@@ -3,9 +3,19 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Nifty Breakout Scanner",
+  metadataBase: new URL("https://tickzy.dev"),
+  title: "Tickzy — NSE Breakout Scanner",
   description:
-    "Scan Nifty 50 stocks for 5-day high and volume breakouts",
+    "Real-time breakout detection for NSE stocks. Monitor Nifty 50 and custom watchlists for price and volume breakouts.",
+  openGraph: {
+    title: "Tickzy — NSE Breakout Scanner",
+    description:
+      "Real-time breakout detection for NSE stocks. Monitor Nifty 50 and custom watchlists for price and volume breakouts.",
+    url: "https://tickzy.dev",
+    siteName: "Tickzy",
+    type: "website",
+  },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({

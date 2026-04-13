@@ -68,7 +68,7 @@ export function Dashboard({
         y: 0,
         opacity: 1,
         scale: 1,
-        duration: prefersReducedMotion ? 0.01 : 0.5,
+        duration: prefersReducedMotion ? 0.01 : 0.6,
         stagger: prefersReducedMotion ? 0 : 0.08,
         ease: "back.out(1.2)",
         delay: 0.3
@@ -499,7 +499,7 @@ export function Dashboard({
               {watchlist.map((stock, i) => {
                 const result = results.find((r) => r.symbol === stock.symbol);
                 return (
-                  <div key={stock.symbol} className="stock-card-wrapper h-full opacity-0 translate-y-6 scale-[0.96]">
+                  <div key={stock.symbol} className="stock-card-wrapper h-full opacity-0 translate-y-8 scale-[0.98]">
                     <StockCard
                       result={
                         result || {
@@ -582,7 +582,7 @@ function reportAction(action: string, label: string, opts?: { detail?: Record<st
   fetch("/api/activity", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ cat: "user", action, label, actor: "dad", ...opts }),
+    body: JSON.stringify({ cat: "user", action, label, actor: "user", ...opts }),
   }).catch(() => { });
 }
 

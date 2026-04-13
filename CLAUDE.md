@@ -26,7 +26,7 @@ npm run test:watch   # Vitest watch mode
 ### File Layout
 
 - `src/app/` — Next.js App Router pages and API route handlers
-- `src/app/api/` — REST endpoints: `scan/`, `state/`, `stocks/`, `ticker/`, `nifty50/`, `activity/`, `auth/`, `search/`, `index/`, `admin/`, `alert-requests/`
+- `src/app/api/` — REST endpoints: `scan/`, `state/`, `stocks/`, `ticker/`, `nifty50/`, `activity/`, `auth/`, `register/`, `search/`, `index/`, `admin/`, `alert-requests/`, `logs/`
 - `src/components/` — Client React components (`"use client"` directive)
 - `src/lib/` — Server-only utilities (every file starts with `import "server-only"`)
 - `docs/` — Architecture docs (read-only reference: `ARCHITECTURE.md`, `ALERTS.md`, `AI_CONSTRAINTS.md`, `api-capability-map.md`)
@@ -35,6 +35,10 @@ npm run test:watch   # Vitest watch mode
 ### Data Flow
 
 The dashboard (`dashboard.tsx`) polls `/api/state` for all UI state. Manual scans hit `/api/scan`, which runs `scanMultipleStocks()` → `analyzeBreakout()` per stock → fires alerts via `addAlert()` → logs via `addActivity()`.
+
+### AI Alert Builder
+
+`src/components/alert-builder.tsx` lets users describe an alert in plain English (e.g. "Alert me when any stock crosses its 52-week high on heavy volume"). The component POSTs to `/api/alert-requests`, which stores the request in Redis (`nse:alert-requests`) / `data/alert-requests.json` fallback. A Claude Code GitHub Actions workflow picks up the request, implements the alert logic, and opens a pull request. The feature is fully implemented and deployed.
 
 ### Persistence
 
@@ -45,6 +49,16 @@ Redis key (nse:watchlist, nse:alerts, nse:scanResults, nse:activity, etc.)
 ```
 In production (Vercel), filesystem is read-only — Redis is required.
 
+### Scan Lock
+
+A 30-second distributed lock (`acquireScanLock`, `releaseScanLock`, `getScanLockTTL` from `src/lib/store.ts`) prevents concurrent scans across Lambda instances. Two lock types: `"manual"` (user-triggered) and `"auto"` (close-watch). On lock contention, cached results are returned with `lockHeld: true`.
+
+### NSE Client
+
+`src/lib/nse-client.ts` maintains a per-Lambda singleton (`getNse()` / `resetNse()`) that reuses session cookies across calls. `withRetry()` wraps calls to reset and retry once on failure (handles stale cookies). Pattern: `await withRetry(() => getNse().method(...), "label")`.
+
+Baselines (5-day high, 10-day low, volumes) are computed once per symbol per IST calendar date and cached in-memory. `getBaseline(symbol)` / `getBaselines(symbols[])` handle batching (batch size 5). Historical data cache is keyed by `symbol + days` — same symbol with a different `days` parameter is a separate cache entry.
+
 ### Alert System
 
 8 alert types: `breakout`, `low-breakout`, `scan`, `week-high`, `ma200-touch`, `ma100-touch`, `ma50-touch`, `ma5-touch`.
@@ -52,9 +66,11 @@ In production (Vercel), filesystem is read-only — Redis is required.
 - `breakout`: Price breaks 5-day high AND volume exceeds 3× 5-day avg volume (bullish).
 - `low-breakout`: Price drops below 10-day low AND volume exceeds 10-day max volume (bearish). Uses `minLow10d` and `maxVolume10d` from baselines.
 
-Dedup: `symbol + alertType + date (YYYY-MM-DD)` — same combo on same day = skip.
+Dedup (two-tier): Primary is a Redis NX lock keyed `alert-lock:{symbol}:{alertType}:{date}:{30min-window}` (TTL 30 min) — prevents duplicates across Lambda instances. Falls back to in-memory dedup if Redis unavailable.
 
 Stale suppression: When `dataSource === "stale"` (live fetch failed during market hours), breakout triggers are suppressed to prevent false positives.
+
+MA touch alerts (`ma5-touch`, `ma50-touch`, `ma100-touch`, `ma200-touch`) each live in their own `src/lib/ma{N}-alert.ts` file. All follow the same shape: touch threshold is 1%, stale suppression applied, returns `null` if data insufficient. Use these as the template when adding a new MA alert type.
 
 ### Market Hours (IST)
 
@@ -64,7 +80,7 @@ Stale suppression: When `dataSource === "stale"` (live fetch failed during marke
 
 ### Auth
 
-Two tiers: Regular (`AUTH_USERNAME/PASSWORD`) and Admin (`ADMIN_USERNAME/PASSWORD` — can bypass lockdown). Sessions use HMAC-SHA256 cookies with epoch rotation.
+Two tiers: Regular (`AUTH_USERNAME/PASSWORD`) and Admin (`ADMIN_USERNAME/PASSWORD` — can bypass lockdown). Sessions use signed cookies with server-side epoch invalidation.
 
 ## Code Conventions
 
@@ -79,13 +95,16 @@ Two tiers: Regular (`AUTH_USERNAME/PASSWORD`) and Admin (`ADMIN_USERNAME/PASSWOR
 - API routes use `export const dynamic = "force-dynamic"` and return `NextResponse.json()`
 - Batch NSE API calls with `Promise.allSettled()` (batch size 5)
 
-## Do Not Modify
+## Core Infrastructure
+
+Changes to these files require full regression testing — they underpin auth, session management, and the build pipeline:
 
 - `src/middleware.ts` — Auth + lockdown validation
 - `src/lib/redis.ts` — Redis singleton
 - `src/lib/lockdown.ts` — Lockdown + session epoch
 - `src/app/api/auth/route.ts` — Login endpoint
 - `tailwind.config.ts`, `next.config.mjs`, `package.json`
+- `tsconfig.json`, `postcss.config.mjs`
 
 ## Adding a New Alert Type
 
@@ -102,9 +121,20 @@ See `docs/ALERTS.md` and `AGENTS.md` for full details.
 ## Testing
 
 - Framework: Vitest (node environment, `@` alias resolved, `server-only` stubbed)
-- Mock Redis: `vi.mock("./redis", () => ({ getRedis: () => null }))`
 - Test files: `src/lib/__tests__/*.test.ts` or co-located `*.test.ts`
 - Tests encouraged but not required for PRs
+
+To mock Redis with an in-memory store (preferred over returning `null`):
+```ts
+const { redisMap } = vi.hoisted(() => ({ redisMap: new Map<string, unknown>() }));
+vi.mock("./redis", () => ({
+  getRedis: () => ({
+    get: async <T,>(key: string) => (redisMap.get(key) as T | undefined) ?? null,
+    set: async (key: string, value: unknown) => { redisMap.set(key, value); return "OK"; },
+  }),
+}));
+```
+Use `vi.mock("./redis", () => ({ getRedis: () => null }))` only when you want the filesystem fallback path tested.
 
 ## Environment Setup
 
@@ -112,6 +142,7 @@ Copy `.env.example` → `.env` and fill in credentials. Redis is optional locall
 
 ## Gotchas
 
+- Client components run during SSR — guard browser APIs with `typeof window !== "undefined"` and use `useEffect` for browser-only code
 - `src/lib/market-hours.ts` is shared by both server (`src/lib/`) and client (`src/components/`) code — do NOT add async functions, Redis imports, or `import "server-only"` to it
 - `src/lib/nse-client.ts` lacks `import "server-only"` but is only imported from server code — safe to use `getRedis()` there
 - tsconfig does not enable `downlevelIteration` — use `Array.from(set)` instead of `[...set]` for Set/Map iteration
@@ -127,13 +158,3 @@ Copy `.env.example` → `.env` and fill in credentials. Redis is optional locall
 - `AGENTS.md` — Step-by-step checklist for implementing new alert types
 - `code-standards.md` — Client/server component rules, data fetching patterns
 - `Frontend-aesthetics.md` — UI design guidelines (typography, color, motion)
-
-## Installed Plugins
-
-User-scoped plugins (from `claude-plugins-official` marketplace):
-- `skill-creator` — `/skill-creator`: create, test, benchmark agent skills
-- `frontend-design` — auto-triggers on UI/component tasks
-- `commit-commands` — `/commit`: auto-generate commit messages; `/commit-push-pr`: commit + push + open PR
-- `code-review` — `/code-review`: parallel-agent PR review with confidence scoring
-- `claude-md-management` — `/revise-claude-md`: capture session learnings; `claude-md-improver`: audit CLAUDE.md quality
-- `feature-dev` — `/feature-dev`: structured 7-phase feature development workflow

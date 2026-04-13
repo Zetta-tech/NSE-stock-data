@@ -103,7 +103,7 @@ export interface NiftyIndex {
 
 export type ActivityCategory = "user" | "system" | "warning";
 
-export type ActivityActor = "dad" | "system" | "auto-check";
+export type ActivityActor = "user" | "system" | "auto-check";
 
 export interface ActivityChange {
   field: string;

@@ -22,7 +22,9 @@ src/
 │   │   ├── auth/           # Login/logout
 │   │   ├── alert-requests/ # AI alert builder (POST creates GitHub Issue)
 │   │   ├── index/          # Nifty 50 index value
+│   │   ├── logs/           # Application logs
 │   │   ├── nifty50/        # Nifty 50 table + discoveries
+│   │   ├── register/       # Waitlist email registration
 │   │   ├── scan/           # Breakout scanner
 │   │   ├── search/         # Stock symbol search
 │   │   ├── state/          # Dashboard state polling

@@ -33,7 +33,7 @@ export async function POST() {
     "system",
     "sessions-rotated",
     "All sessions invalidated — re-login required",
-    { actor: "dad", detail: { newEpoch } },
+    { actor: "user", detail: { newEpoch } },
   );
 
   // Re-issue session cookie for the admin who triggered rotation

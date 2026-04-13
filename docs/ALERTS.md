@@ -121,3 +121,48 @@ Same symbol + same alert type + same calendar date = duplicate → skipped.
    vi.mock("./redis", () => ({ getRedis: () => null }));
    // ... test detection logic with mock data
    ```
+
+---
+
+## AI Alert Builder
+
+Users can request new alert types in plain English from the dashboard. The system creates a GitHub Issue, which triggers a Claude Code agent to implement the alert automatically.
+
+### User Flow
+
+1. User types a request in the Alert Builder UI (e.g. *"Notify me when RELIANCE crosses its 52-week high on heavy volume"*)
+2. `POST /api/alert-requests` creates a GitHub Issue labeled `agent:create-alert`
+3. The `agent-create-alert.yml` GitHub Actions workflow fires — Claude Code reads `AGENTS.md` and implements the alert in a PR
+4. The `alert-request-sync.yml` workflow updates the request status as the issue/PR progresses
+5. Once merged and deployed, the new alert type chip appears automatically in the dashboard
+
+### Status Lifecycle
+
+```
+pending → issue_created → pr_created → implemented
+                                      → rejected
+```
+
+### API
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/alert-requests` | `GET` | List all requests |
+| `/api/alert-requests` | `POST` | Submit new request — body `{ text: string }` (15–500 chars, must start with `"Create Alert:"`) |
+| `/api/alert-requests/[id]` | `PATCH` | Update status — used by the sync workflow |
+
+### Storage
+
+- Redis key: `nse:alert-requests` (ring buffer, max 50)
+- Filesystem fallback: `data/alert-requests.json`
+- Functions: `getAlertRequests()`, `addAlertRequest()`, `updateAlertRequestStatus()` — all in `src/lib/alert-requests.ts`
+
+### Requirements
+
+- `GITHUB_TOKEN` env var must be set (with `issues: write` permission) for issue creation
+- The repo must have the `agent:create-alert` label created in GitHub Issues
+- `CLAUDE_CODE_OAUTH_TOKEN` secret must be set in GitHub Actions for the agent workflow
+
+### Dashboard Integration
+
+Once a request reaches `implemented` status, its `alertType` value is added to the `ALERT_TYPE_LABELS` map in `src/components/alerts-section.tsx` as part of the implementing PR. This makes the new type appear in the Alert Types popover automatically.
