@@ -1,0 +1,3 @@
+# Require review from repo owner for CI/CD workflow changes
+/.github/workflows/ @Zetta-tech
+/.github/CODEOWNERS @Zetta-tech
