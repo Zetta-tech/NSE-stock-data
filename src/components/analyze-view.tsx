@@ -27,14 +27,15 @@ export function AnalyzeView({
     "Finalizing technical verdict..."
   ];
 
+  const [expandedReasoning, setExpandedReasoning] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
   // Initialize TradingView Advanced Chart widget
   useEffect(() => {
     const container = chartContainerRef.current;
     if (!container) return;
 
-    // Clear any existing widget (React StrictMode / hot reload safety)
     container.innerHTML = '';
-
     const widgetContainer = document.createElement('div');
     widgetContainer.className = 'tradingview-widget-container';
     widgetContainer.style.height = '100%';
@@ -70,9 +71,7 @@ export function AnalyzeView({
     container.appendChild(widgetContainer);
 
     return () => {
-      if (container) {
-        container.innerHTML = '';
-      }
+      if (container) container.innerHTML = '';
     };
   }, [symbol]);
 
@@ -92,14 +91,11 @@ export function AnalyzeView({
       const data = await res.json();
 
       if (!res.ok) {
-        // Retry on timeout (408) or overload (529/503) — server already retried with backoff
         if ((res.status === 408 || res.status === 529 || res.status === 503) && retries < 2) {
           setRetryCount(retries + 1);
-          const delay = 3000 * (retries + 1); // 3s, 6s
-          setTimeout(() => fetchAnalysis(retries + 1), delay);
+          setTimeout(() => fetchAnalysis(retries + 1), 3000 * (retries + 1));
           return;
         }
-        
         throw new Error(data.error || "Analysis failed");
       }
 
@@ -109,8 +105,7 @@ export function AnalyzeView({
     } catch (err: any) {
       if (retries < 2) {
         setRetryCount(retries + 1);
-        const delay = 3000 * (retries + 1);
-        setTimeout(() => fetchAnalysis(retries + 1), delay);
+        setTimeout(() => fetchAnalysis(retries + 1), 3000 * (retries + 1));
         return;
       }
       setError(err.message || "An unexpected error occurred");
@@ -118,150 +113,158 @@ export function AnalyzeView({
     }
   };
 
-  // On Mount Cycle loading text
+  // Generate Narrative Sequencer Animations
   useEffect(() => {
-    let interval: any;
-    if (loading) {
-      interval = setInterval(() => {
-        setLoadingMsgIdx(prev => (prev + 1) % loadingMessages.length);
-        
-        // Slight pulse animation on text change
-        gsap.fromTo(".loading-text", 
-          { opacity: 0, y: 5 }, 
-          { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }
-        );
-      }, 3000);
-    }
+    if (!loading) return;
+    const interval = setInterval(() => {
+      setLoadingMsgIdx(prev => (prev + 1) % loadingMessages.length);
+      gsap.fromTo(".loading-text", 
+        { opacity: 0, y: 5 }, 
+        { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }
+      );
+    }, 3000);
     return () => clearInterval(interval);
   }, [loading]);
 
-  // Initial fetch trigger
+  // Stagger GSAP Entry Animations when data arrives
+  useEffect(() => {
+    if (analysis && !loading && wrapperRef.current) {
+      const ctx = gsap.context(() => {
+        gsap.fromTo(".gsap-reveal", 
+          { y: 20, opacity: 0 }, 
+          { y: 0, opacity: 1, duration: 0.6, stagger: 0.1, ease: "power2.out", delay: 0.1 }
+        );
+      }, wrapperRef);
+      return () => ctx.revert();
+    }
+  }, [analysis, loading]);
+
   useEffect(() => {
     fetchAnalysis();
   }, [symbol]);
 
-
-  const getVerdictStyle = (verdict?: string) => {
-    if (verdict === 'Bullish') return "bg-green-500/10 text-green-500 border-green-500/20";
-    if (verdict === 'Bearish') return "bg-red-500/10 text-red-500 border-red-500/20";
-    return "bg-zinc-500/10 text-zinc-400 border-zinc-500/20";
-  };
-
-  /** Format latency for display */
-  const formatLatency = (ms: number) => {
-    if (ms < 1000) return `${ms}ms`;
-    return `${(ms / 1000).toFixed(1)}s`;
-  };
+  const isBullish = analysis?.verdict === 'Bullish';
+  const isBearish = analysis?.verdict === 'Bearish';
+  const formatLatency = (ms: number) => ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
 
   return (
-    <div className="flex flex-col md:flex-row w-full h-full md:h-[100dvh]">
+    <div className="w-full h-full min-h-[100dvh] relative text-[#fafafa] bg-[#09090b] selection:bg-[#10b981]/30 font-[family-name:var(--font-inter)]" ref={wrapperRef}>
       
-      {/* 70% Chart Area */}
-      <div className="w-full md:w-[70%] h-[50vh] md:h-full relative border-b md:border-b-0 md:border-r border-surface-border">
+      {/* Chart Layer: Fixed Base */}
+      <div className="absolute inset-0 md:fixed md:inset-0 md:h-[100vh] h-[50vh] sticky top-0 z-0 border-b border-[#27272a] md:border-none">
         <div ref={chartContainerRef} className="absolute inset-0" />
       </div>
 
-      {/* 30% Fact Sheet Area */}
-      <div className="w-full md:w-[30%] h-[50vh] md:h-full bg-surface-background p-6 md:p-8 flex flex-col relative overflow-y-auto">
+      {/* Floating AI Panel Layer */}
+      <aside 
+        aria-label="AI Stock Analysis" 
+        className="relative z-10 md:absolute md:top-6 md:right-6 w-full md:w-[420px] md:max-h-[calc(100vh-3rem)] bg-[#09090b] md:bg-[#18181b]/65 md:backdrop-blur-2xl md:border md:border-[#27272a] md:rounded-2xl flex flex-col overflow-hidden md:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] min-h-[50vh] mt-[50vh] md:mt-0"
+      >
         
-        <h1 className="text-2xl font-bold tracking-tight mb-2 uppercase text-surface-text">{symbol}</h1>
-        <p className="text-surface-text-secondary mb-8 text-sm flex items-center gap-2">
-          AI Technical Evaluation <ChevronRight size={14} />
-        </p>
-        
-        <div className="flex-1 relative">
+        {/* HEADER */}
+        <header className="p-6 border-b border-[#27272a]/50">
+          <h1 className="text-xs uppercase tracking-widest text-[#a1a1aa] mb-2 font-[family-name:var(--font-jetbrains-mono)] flex items-center gap-2">
+            {symbol} <ChevronRight size={12} className="opacity-50" /> AI VERDICT
+          </h1>
+          
           {loading ? (
-            <div className="absolute inset-0 flex flex-col justify-center items-start">
+            <div className="flex flex-col gap-2 mt-4">
+              <div className="h-10 w-48 bg-[#27272a]/50 rounded animate-pulse" />
+            </div>
+          ) : error ? (
+            <div className="font-[family-name:var(--font-space-grotesk)] text-3xl font-bold text-[#ef4444] tracking-tight uppercase shadow-[#ef4444]/60 drop-shadow-md">
+              Analysis Failed
+            </div>
+          ) : (
+            <div className={`gsap-reveal font-[family-name:var(--font-space-grotesk)] text-5xl font-bold uppercase leading-none tracking-tight ${isBullish ? 'text-[#10b981] drop-shadow-[0_0_20px_rgba(16,185,129,0.3)]' : isBearish ? 'text-[#ef4444] drop-shadow-[0_0_20px_rgba(239,68,68,0.3)]' : 'text-white'}`}>
+              {analysis?.verdict}
+            </div>
+          )}
+        </header>
+
+        {/* BODY */}
+        <main className="p-6 overflow-y-auto flex-1 custom-scrollbar">
+          {loading ? (
+            <div className="flex flex-col justify-center items-start h-40">
               <div className="flex items-center gap-3 mb-4">
-                <div className="h-4 w-4 rounded-full border-2 border-accent border-r-transparent animate-spin" />
-                <span className="text-accent font-medium text-sm">Processing</span>
-                {retryCount > 0 && (
-                  <span className="text-xs px-2 py-1 bg-surface-border rounded text-surface-text-secondary ml-2">
-                    Try {retryCount} of 3
-                  </span>
-                )}
+                <div className="h-4 w-4 rounded-full border-2 border-[#10b981] border-r-transparent animate-spin" />
+                <span className="text-[#10b981] font-medium text-sm">Processing Model</span>
+                {retryCount > 0 && <span className="text-xs px-2 py-1 bg-[#27272a] rounded text-[#a1a1aa] ml-2">Try {retryCount} of 3</span>}
               </div>
-              <p className="loading-text text-xl font-medium text-surface-text">
+              <p className="loading-text text-lg text-[#fafafa]">
                 {loadingMessages[loadingMsgIdx]}
               </p>
             </div>
           ) : error ? (
-            <div className="absolute inset-0 flex flex-col justify-center items-start">
-              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg max-w-full">
-                <div className="flex items-center gap-2 text-red-500 mb-2">
+            <div className="flex flex-col items-start pt-2">
+              <div className="p-4 bg-[#ef4444]/10 border border-[#ef4444]/20 rounded-lg w-full mb-6">
+                <div className="flex items-center gap-2 text-[#ef4444] mb-2">
                   <AlertCircle size={18} />
-                  <span className="font-medium">Analysis Failed</span>
+                  <span className="font-medium text-sm">System Error</span>
                 </div>
-                <p className="text-surface-text-secondary text-sm leading-relaxed mb-4">
-                  {error}
-                </p>
-                <button 
-                  onClick={() => fetchAnalysis(0)}
-                  className="px-4 py-2 bg-surface-border hover:bg-surface-border/80 text-surface-text rounded-md text-sm transition-colors"
-                >
-                  Try Again
-                </button>
+                <p className="text-[#a1a1aa] text-sm leading-relaxed mb-4">{error}</p>
               </div>
+              <button 
+                onClick={() => fetchAnalysis(0)}
+                className="w-full min-h-[44px] bg-[#27272a] hover:bg-[#27272a]/80 text-[#fafafa] rounded-lg text-sm transition-colors uppercase tracking-widest font-semibold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#10b981]"
+              >
+                Retry Analysis
+              </button>
             </div>
           ) : analysis ? (
-            <div className="flex flex-col h-full animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="flex flex-col gap-6 pb-2">
               
-              {/* 1. Primary Focal Point: Verdict Badge */}
-              <div className="mb-6">
-                <h2 className="text-sm text-surface-text-secondary uppercase tracking-widest font-semibold mb-3">Verdict</h2>
-                <div className={`inline-flex items-center px-4 py-2 rounded-md border text-lg font-bold tracking-wide ${getVerdictStyle(analysis.verdict)}`}>
-                  <Activity size={18} className="mr-2" />
-                  {analysis.verdict}
-                </div>
-              </div>
-
-              {/* 2. Secondary Focal Point: Stop Loss */}
-              <div className="mb-8">
-                <h2 className="text-sm text-surface-text-secondary uppercase tracking-widest font-semibold mb-2">Recommended Invalid Level</h2>
-                <div className="text-3xl font-bold font-mono tracking-tight text-surface-text">
-                  {analysis.stop_loss_price ? `₹${analysis.stop_loss_price.toFixed(2)}` : 'N/A'}
-                </div>
-                <p className="text-xs text-surface-text-secondary mt-1">If price falls below this, the technical setup is aborted.</p>
-              </div>
-
-              {/* 3. Tertiary Focal Point: Reasoning */}
-              <div className="flex-1">
-                <h2 className="text-sm text-surface-text-secondary uppercase tracking-widest font-semibold mb-3">Technical Reasoning</h2>
-                <p className="text-surface-text-secondary leading-relaxed text-[15px]">
-                  {analysis.reasoning}
-                </p>
-              </div>
-
-              {/* 4. Model Diagnostics Footer */}
-              {metadata && (
-                <div 
-                  className="mt-6 pt-4 border-t border-surface-border animate-fade-in opacity-60 hover:opacity-100 transition-opacity duration-200"
-                  style={{ animationDelay: '300ms' }}
-                >
-                  <div className="flex items-center gap-4 text-xs text-surface-text-secondary">
-                    <span className="flex items-center gap-1.5">
-                      <Cpu size={12} />
-                      <span>{metadata.model}</span>
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <Zap size={12} />
-                      <span className="font-mono">{formatLatency(metadata.latencyMs)}</span>
-                    </span>
-                    {metadata.promptTokens != null && metadata.completionTokens != null && (
-                      <span className="flex items-center gap-1.5">
-                        <Database size={12} />
-                        <span className="font-mono">{metadata.promptTokens}/{metadata.completionTokens}</span>
-                      </span>
-                    )}
+              {/* KEY LIMITS GRID */}
+              <div className="gsap-reveal grid grid-cols-2 gap-3">
+                <div className="p-4 rounded-xl bg-white/5 border border-white/5">
+                  <div className="text-[10px] uppercase text-[#a1a1aa] mb-1 font-[family-name:var(--font-jetbrains-mono)] tracking-widest">Stop Loss</div>
+                  <div className="font-[family-name:var(--font-jetbrains-mono)] text-xl text-[#fafafa]">
+                    {analysis.stop_loss_price ? `₹${analysis.stop_loss_price.toFixed(2)}` : 'N/A'}
                   </div>
+                </div>
+                {(isBullish || analysis.target_price) && (
+                  <div className="p-4 rounded-xl bg-[#10b981]/10 border border-[#10b981]/20">
+                    <div className="text-[10px] uppercase text-[#10b981] mb-1 font-[family-name:var(--font-jetbrains-mono)] tracking-widest">Target Price</div>
+                    <div className="font-[family-name:var(--font-jetbrains-mono)] text-xl text-[#10b981]">
+                      {analysis.target_price ? `₹${analysis.target_price.toFixed(2)}` : 'N/A'}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* REASONING */}
+              <div className="gsap-reveal pt-2">
+                <div className="flex items-center justify-between mb-3 border-b border-white/10 pb-2">
+                  <h3 className="text-xs font-[family-name:var(--font-jetbrains-mono)] uppercase text-[#a1a1aa] tracking-widest">AI Reasoning</h3>
+                </div>
+                <article className={`text-[15px] text-[#a1a1aa] leading-relaxed font-[family-name:var(--font-inter)] relative ${expandedReasoning ? '' : 'max-h-24 overflow-hidden mask-fade-bottom'}`}>
+                  {analysis.reasoning}
+                  {!expandedReasoning && (
+                    <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#09090b] md:from-[#18181b] to-transparent pointer-events-none" />
+                  )}
+                </article>
+                
+                <button 
+                  onClick={() => setExpandedReasoning(!expandedReasoning)}
+                  className="gsap-reveal w-full min-h-[44px] rounded-lg border border-white/10 hover:bg-white/5 transition-colors text-xs font-[family-name:var(--font-jetbrains-mono)] tracking-widest text-[#fafafa] mt-4 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#10b981]"
+                >
+                  {expandedReasoning ? 'COLLAPSE TEXT' : 'READ FULL REPORT'}
+                </button>
+              </div>
+
+              {/* METADATA DIAGNOSTICS */}
+              {metadata && (
+                <div className="gsap-reveal mt-2 pt-4 border-t border-white/5 opacity-50 hover:opacity-100 transition-opacity flex items-center justify-between text-[11px] text-[#a1a1aa] font-[family-name:var(--font-jetbrains-mono)]">
+                  <span className="flex items-center gap-1"><Cpu size={12} /> {metadata.model}</span>
+                  <span className="flex items-center gap-1"><Zap size={12} /> {formatLatency(metadata.latencyMs)}</span>
+                  {metadata.promptTokens && <span className="flex items-center gap-1"><Database size={12} /> {metadata.promptTokens}t</span>}
                 </div>
               )}
 
             </div>
           ) : null}
-        </div>
-      </div>
-
+        </main>
+      </aside>
     </div>
   );
 }
