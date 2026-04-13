@@ -158,74 +158,75 @@ export function AnalyzeView({
       {/* Floating AI Panel Layer */}
       <aside 
         aria-label="AI Stock Analysis" 
-        className="relative z-10 md:absolute md:top-6 md:right-6 w-full md:w-[420px] md:max-h-[calc(100vh-3rem)] bg-[#09090b] md:bg-[#18181b]/65 md:backdrop-blur-2xl md:border md:border-[#27272a] md:rounded-2xl flex flex-col overflow-hidden md:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] min-h-[50vh] mt-[50vh] md:mt-0"
+        className="relative z-10 md:absolute md:top-8 md:right-8 w-full md:w-[420px] md:max-h-[calc(100vh-4rem)] bg-[#09090b] md:bg-[#121214]/75 md:backdrop-blur-3xl md:border md:border-white/[0.08] md:rounded-3xl flex flex-col overflow-hidden md:shadow-[0_30px_60px_-12px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.05)] min-h-[50vh] mt-[50vh] md:mt-0"
       >
         
         {/* HEADER */}
-        <header className="p-6 border-b border-[#27272a]/50">
-          <h1 className="text-xs uppercase tracking-widest text-[#a1a1aa] mb-2 font-[family-name:var(--font-jetbrains-mono)] flex items-center gap-2">
-            {symbol} <ChevronRight size={12} className="opacity-50" /> AI VERDICT
+        <header className="p-8 pb-6 border-b border-white/[0.04]">
+          <h1 className="text-[10px] uppercase tracking-[0.2em] text-[#8b92a5] mb-3 font-[family-name:var(--font-jetbrains-mono)] flex items-center gap-2">
+            {symbol} <ChevronRight size={10} className="opacity-40" /> AI VERDICT
           </h1>
           
           {loading ? (
             <div className="flex flex-col gap-2 mt-4">
-              <div className="h-10 w-48 bg-[#27272a]/50 rounded animate-pulse" />
+              <div className="h-10 w-48 bg-white/[0.04] rounded-md animate-pulse" />
             </div>
           ) : error ? (
             <div className="font-[family-name:var(--font-space-grotesk)] text-3xl font-bold text-[#ef4444] tracking-tight uppercase shadow-[#ef4444]/60 drop-shadow-md">
               Analysis Failed
             </div>
           ) : (
-            <div className={`gsap-reveal font-[family-name:var(--font-space-grotesk)] text-5xl font-bold uppercase leading-none tracking-tight ${isBullish ? 'text-[#10b981] drop-shadow-[0_0_20px_rgba(16,185,129,0.3)]' : isBearish ? 'text-[#ef4444] drop-shadow-[0_0_20px_rgba(239,68,68,0.3)]' : 'text-white'}`}>
+            <div className={`gsap-reveal font-[family-name:var(--font-space-grotesk)] text-6xl font-bold uppercase leading-none tracking-tighter mix-blend-screen ${isBullish ? 'text-[#00e68a] drop-shadow-[0_0_30px_rgba(0,230,138,0.4)]' : isBearish ? 'text-[#ff4757] drop-shadow-[0_0_30px_rgba(255,71,87,0.4)]' : 'text-[#f0f2f7]'}`}>
               {analysis?.verdict}
             </div>
           )}
         </header>
 
         {/* BODY */}
-        <main className="p-6 overflow-y-auto flex-1 custom-scrollbar">
+        <main className="p-8 pt-6 overflow-y-auto flex-1 custom-scrollbar">
           {loading ? (
             <div className="flex flex-col justify-center items-start h-40">
               <div className="flex items-center gap-3 mb-4">
-                <div className="h-4 w-4 rounded-full border-2 border-[#10b981] border-r-transparent animate-spin" />
-                <span className="text-[#10b981] font-medium text-sm">Processing Model</span>
-                {retryCount > 0 && <span className="text-xs px-2 py-1 bg-[#27272a] rounded text-[#a1a1aa] ml-2">Try {retryCount} of 3</span>}
+                <div className="h-4 w-4 rounded-full border-[2px] border-[#00e68a] border-r-transparent animate-spin" />
+                <span className="text-[#00e68a] font-medium text-xs tracking-wide uppercase">Processing Model</span>
+                {retryCount > 0 && <span className="text-[10px] px-2 py-1 bg-white/[0.04] rounded text-[#8b92a5] ml-2 uppercase tracking-wider">Try {retryCount} of 3</span>}
               </div>
-              <p className="loading-text text-lg text-[#fafafa]">
+              <p className="loading-text text-lg text-[#f0f2f7] font-[family-name:var(--font-space-grotesk)]">
                 {loadingMessages[loadingMsgIdx]}
               </p>
             </div>
           ) : error ? (
             <div className="flex flex-col items-start pt-2">
-              <div className="p-4 bg-[#ef4444]/10 border border-[#ef4444]/20 rounded-lg w-full mb-6">
-                <div className="flex items-center gap-2 text-[#ef4444] mb-2">
-                  <AlertCircle size={18} />
-                  <span className="font-medium text-sm">System Error</span>
+              <div className="p-5 bg-[#ff4757]/10 border border-[#ff4757]/20 rounded-2xl w-full mb-6 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-1 h-full bg-[#ff4757]" />
+                <div className="flex items-center gap-2 text-[#ff4757] mb-2">
+                  <AlertCircle size={16} />
+                  <span className="font-semibold text-xs uppercase tracking-wider">System Error</span>
                 </div>
-                <p className="text-[#a1a1aa] text-sm leading-relaxed mb-4">{error}</p>
+                <p className="text-[#8b92a5] text-sm leading-relaxed mb-4">{error}</p>
               </div>
               <button 
                 onClick={() => fetchAnalysis(0)}
-                className="w-full min-h-[44px] bg-[#27272a] hover:bg-[#27272a]/80 text-[#fafafa] rounded-lg text-sm transition-colors uppercase tracking-widest font-semibold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#10b981]"
+                className="w-full min-h-[48px] bg-white/[0.04] hover:bg-white/[0.08] text-[#f0f2f7] rounded-xl text-xs transition-colors uppercase tracking-[0.1em] font-semibold focus-visible:outline-none ring-1 ring-inset ring-white/[0.05]"
               >
                 Retry Analysis
               </button>
             </div>
           ) : analysis ? (
-            <div className="flex flex-col gap-6 pb-2">
+            <div className="flex flex-col gap-8 pb-2">
               
               {/* KEY LIMITS GRID */}
-              <div className="gsap-reveal grid grid-cols-2 gap-3">
-                <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                  <div className="text-[10px] uppercase text-[#a1a1aa] mb-1 font-[family-name:var(--font-jetbrains-mono)] tracking-widest">Stop Loss</div>
-                  <div className="font-[family-name:var(--font-jetbrains-mono)] text-xl text-[#fafafa]">
+              <div className="gsap-reveal grid grid-cols-2 gap-4">
+                <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.04] shadow-inner transition-colors hover:bg-white/[0.04]">
+                  <div className="text-[9px] uppercase text-[#8b92a5] mb-2 font-[family-name:var(--font-jetbrains-mono)] tracking-[0.15em]">Stop Loss</div>
+                  <div className="font-[family-name:var(--font-jetbrains-mono)] text-2xl text-[#f0f2f7] font-medium tracking-tight">
                     {analysis.stop_loss_price ? `₹${analysis.stop_loss_price.toFixed(2)}` : 'N/A'}
                   </div>
                 </div>
                 {(isBullish || analysis.target_price) && (
-                  <div className="p-4 rounded-xl bg-[#10b981]/10 border border-[#10b981]/20">
-                    <div className="text-[10px] uppercase text-[#10b981] mb-1 font-[family-name:var(--font-jetbrains-mono)] tracking-widest">Target Price</div>
-                    <div className="font-[family-name:var(--font-jetbrains-mono)] text-xl text-[#10b981]">
+                  <div className="p-5 rounded-2xl bg-[#00e68a]/[0.05] border border-[#00e68a]/10 shadow-inner transition-colors hover:bg-[#00e68a]/10">
+                    <div className="text-[9px] uppercase text-[#00e68a] mb-2 font-[family-name:var(--font-jetbrains-mono)] tracking-[0.15em]">Target Price</div>
+                    <div className="font-[family-name:var(--font-jetbrains-mono)] text-2xl text-[#00e68a] font-medium tracking-tight">
                       {analysis.target_price ? `₹${analysis.target_price.toFixed(2)}` : 'N/A'}
                     </div>
                   </div>
@@ -233,20 +234,20 @@ export function AnalyzeView({
               </div>
 
               {/* REASONING */}
-              <div className="gsap-reveal pt-2">
-                <div className="flex items-center justify-between mb-3 border-b border-white/10 pb-2">
-                  <h3 className="text-xs font-[family-name:var(--font-jetbrains-mono)] uppercase text-[#a1a1aa] tracking-widest">AI Reasoning</h3>
+              <div className="gsap-reveal">
+                <div className="flex items-center justify-between mb-4 border-b border-white/[0.04] pb-3">
+                  <h3 className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase text-[#8b92a5] tracking-[0.2em]">AI Reasoning</h3>
                 </div>
-                <article className={`text-[15px] text-[#a1a1aa] leading-relaxed font-[family-name:var(--font-inter)] relative ${expandedReasoning ? '' : 'max-h-24 overflow-hidden mask-fade-bottom'}`}>
+                <article className={`text-[14px] text-[#8b92a5] leading-[1.8] font-[family-name:var(--font-inter)] relative ${expandedReasoning ? '' : 'max-h-28 overflow-hidden'}`}>
                   {analysis.reasoning}
                   {!expandedReasoning && (
-                    <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#09090b] md:from-[#18181b] to-transparent pointer-events-none" />
+                    <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#09090b] md:from-[#121214] to-transparent pointer-events-none" />
                   )}
                 </article>
                 
                 <button 
                   onClick={() => setExpandedReasoning(!expandedReasoning)}
-                  className="gsap-reveal w-full min-h-[44px] rounded-lg border border-white/10 hover:bg-white/5 transition-colors text-xs font-[family-name:var(--font-jetbrains-mono)] tracking-widest text-[#fafafa] mt-4 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#10b981]"
+                  className="gsap-reveal w-full min-h-[44px] rounded-xl border border-white/[0.06] hover:bg-white/[0.04] hover:text-[#f0f2f7] transition-all duration-300 text-[10px] font-[family-name:var(--font-jetbrains-mono)] tracking-[0.2em] text-[#8b92a5] mt-5 focus-visible:outline-none"
                 >
                   {expandedReasoning ? 'COLLAPSE TEXT' : 'READ FULL REPORT'}
                 </button>
@@ -254,10 +255,10 @@ export function AnalyzeView({
 
               {/* METADATA DIAGNOSTICS */}
               {metadata && (
-                <div className="gsap-reveal mt-2 pt-4 border-t border-white/5 opacity-50 hover:opacity-100 transition-opacity flex items-center justify-between text-[11px] text-[#a1a1aa] font-[family-name:var(--font-jetbrains-mono)]">
-                  <span className="flex items-center gap-1"><Cpu size={12} /> {metadata.model}</span>
-                  <span className="flex items-center gap-1"><Zap size={12} /> {formatLatency(metadata.latencyMs)}</span>
-                  {metadata.promptTokens && <span className="flex items-center gap-1"><Database size={12} /> {metadata.promptTokens}t</span>}
+                <div className="gsap-reveal mt-2 pt-5 border-t border-white/[0.04] opacity-40 hover:opacity-100 transition-opacity flex items-center justify-between text-[10px] text-[#8b92a5] font-[family-name:var(--font-jetbrains-mono)] tracking-wider">
+                  <span className="flex items-center gap-1.5"><Cpu size={10} /> {metadata.model}</span>
+                  <span className="flex items-center gap-1.5"><Zap size={10} /> {formatLatency(metadata.latencyMs)}</span>
+                  {metadata.promptTokens && <span className="flex items-center gap-1.5"><Database size={10} /> {metadata.promptTokens}t</span>}
                 </div>
               )}
 
