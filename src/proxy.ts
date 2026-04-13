@@ -28,7 +28,7 @@ async function computeToken(epoch: number): Promise<string> {
 
 /* ── Middleware ─────────────────────────────────────────────────────── */
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public paths — no auth required

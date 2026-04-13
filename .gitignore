@@ -22,3 +22,6 @@ TODOS.md
 
 # Source video assets
 ProductVideoAssets/
+
+# gstack local artifacts
+.gstack/

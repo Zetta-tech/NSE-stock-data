@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { SemanticAnalysisResult, AIMetadata } from "@/lib/types";
-import { AlertCircle, Activity, ChevronRight, BarChart2, Cpu, Zap, Database } from "lucide-react";
+import { AlertCircle, Activity, ChevronRight, BarChart2, Cpu, Zap, Database, Minimize2, Maximize2, GripHorizontal } from "lucide-react";
 import gsap from "gsap";
 
 export function AnalyzeView({ 
@@ -29,6 +29,60 @@ export function AnalyzeView({
 
   const [expandedReasoning, setExpandedReasoning] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  
+  // Draggable & Minimized State
+  const [isMinimized, setIsMinimized] = useState(false);
+  const panelRef = useRef<HTMLElement>(null);
+  const dragPos = useRef({ x: 0, y: 0 });
+  const isDragging = useRef(false);
+  const dragStartPos = useRef({ x: 0, y: 0 });
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    // Only allow drag on desktop
+    if (window.innerWidth < 768) return; 
+    
+    // Ignore clicks on buttons inside header
+    if ((e.target as HTMLElement).closest('button')) return;
+    
+    isDragging.current = true;
+    dragStartPos.current = { 
+      x: e.clientX - dragPos.current.x, 
+      y: e.clientY - dragPos.current.y 
+    };
+    
+    const headerEl = e.currentTarget as HTMLElement;
+    headerEl.setPointerCapture(e.pointerId);
+    headerEl.style.cursor = 'grabbing';
+    
+    if (panelRef.current) {
+      panelRef.current.style.transition = 'width 0.4s cubic-bezier(0.16, 1, 0.3, 1)'; // preserve width transiton, drop transform transition
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging.current || !panelRef.current) return;
+    
+    const newX = e.clientX - dragStartPos.current.x;
+    const newY = e.clientY - dragStartPos.current.y;
+    
+    // Prevent dragging completely off screen
+    const maxX = window.innerWidth - 100;
+    const maxY = window.innerHeight - 100;
+    const clampedX = Math.min(Math.max(newX, -maxX), maxX);
+    const clampedY = Math.min(Math.max(newY, -maxY), maxY);
+    
+    dragPos.current = { x: clampedX, y: clampedY };
+    panelRef.current.style.transform = `translate3d(${clampedX}px, ${clampedY}px, 0)`;
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    
+    const headerEl = e.currentTarget as HTMLElement;
+    headerEl.releasePointerCapture(e.pointerId);
+    headerEl.style.cursor = 'grab';
+  };
 
   // Initialize TradingView Advanced Chart widget
   useEffect(() => {
@@ -157,15 +211,40 @@ export function AnalyzeView({
 
       {/* Floating AI Panel Layer */}
       <aside 
+        ref={panelRef}
         aria-label="AI Stock Analysis" 
-        className="relative z-10 md:absolute md:top-8 md:right-8 w-full md:w-[420px] md:max-h-[calc(100vh-4rem)] bg-[#09090b] md:bg-[#121214]/75 md:backdrop-blur-3xl md:border md:border-white/[0.08] md:rounded-3xl flex flex-col overflow-hidden md:shadow-[0_30px_60px_-12px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.05)] min-h-[50vh] mt-[50vh] md:mt-0"
+        className={`
+          relative z-10 md:absolute md:top-8 md:right-8 
+          w-full md:max-h-[calc(100vh-4rem)] 
+          bg-[#09090b] md:bg-[#121214]/75 md:backdrop-blur-3xl md:border md:border-white/[0.08] md:rounded-3xl 
+          flex flex-col overflow-hidden md:shadow-[0_30px_60px_-12px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.05)] 
+          min-h-[50vh] mt-[50vh] md:mt-0 md:min-h-0
+          transition-[width] duration-500 will-change-transform
+          ${isMinimized ? 'md:w-[280px]' : 'md:w-[420px]'}
+        `}
       >
         
-        {/* HEADER */}
-        <header className="p-8 pb-6 border-b border-white/[0.04]">
-          <h1 className="text-[10px] uppercase tracking-[0.2em] text-[#8b92a5] mb-3 font-[family-name:var(--font-jetbrains-mono)] flex items-center gap-2">
-            {symbol} <ChevronRight size={10} className="opacity-40" /> AI VERDICT
-          </h1>
+        {/* HEADER / DRAG HANDLE */}
+        <header 
+          className="p-6 md:p-8 md:pb-6 border-b border-white/[0.04] md:cursor-grab active:cursor-grabbing select-none relative group"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <h1 className="text-[10px] uppercase tracking-[0.2em] text-[#8b92a5] font-[family-name:var(--font-jetbrains-mono)] flex items-center gap-2">
+              <GripHorizontal size={12} className="opacity-20 hidden md:block group-hover:opacity-60 transition-opacity" />
+              {symbol} <ChevronRight size={10} className="opacity-40" /> AI VERDICT
+            </h1>
+            <button 
+              onClick={(e) => { e.stopPropagation(); setIsMinimized(!isMinimized); }}
+              className="text-[#8b92a5] hover:text-[#f0f2f7] transition-colors p-1.5 rounded-md hover:bg-white/[0.04] hidden md:block"
+              title={isMinimized ? "Expand Panel" : "Minimize to Pill"}
+            >
+              {isMinimized ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
+            </button>
+          </div>
           
           {loading ? (
             <div className="flex flex-col gap-2 mt-4">
@@ -176,14 +255,17 @@ export function AnalyzeView({
               Analysis Failed
             </div>
           ) : (
-            <div className={`gsap-reveal font-[family-name:var(--font-space-grotesk)] text-6xl font-bold uppercase leading-none tracking-tighter mix-blend-screen ${isBullish ? 'text-[#00e68a] drop-shadow-[0_0_30px_rgba(0,230,138,0.4)]' : isBearish ? 'text-[#ff4757] drop-shadow-[0_0_30px_rgba(255,71,87,0.4)]' : 'text-[#f0f2f7]'}`}>
+            <div className={`gsap-reveal font-[family-name:var(--font-space-grotesk)] font-bold uppercase leading-none mix-blend-screen transition-all duration-500
+              ${isBullish ? 'text-[#00e68a] drop-shadow-[0_0_30px_rgba(0,230,138,0.4)]' : isBearish ? 'text-[#ff4757] drop-shadow-[0_0_30px_rgba(255,71,87,0.4)]' : 'text-[#f0f2f7] drop-shadow-md'}
+              ${isMinimized ? 'text-4xl tracking-tight' : 'text-6xl tracking-tighter'}
+            `}>
               {analysis?.verdict}
             </div>
           )}
         </header>
 
         {/* BODY */}
-        <main className="p-8 pt-6 overflow-y-auto flex-1 custom-scrollbar">
+        <main className={`p-6 md:p-8 pt-6 overflow-y-auto flex-1 custom-scrollbar transition-opacity duration-300 ${isMinimized ? 'hidden md:opacity-0 md:h-0 md:p-0' : 'opacity-100'}`}>
           {loading ? (
             <div className="flex flex-col justify-center items-start h-40">
               <div className="flex items-center gap-3 mb-4">
