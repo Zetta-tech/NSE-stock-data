@@ -9,6 +9,9 @@ data/
 *.tsbuildinfo
 next-env.d.ts
 
+# Remotion video project
+Remotion/
+
 # Internal docs (kept locally, not in public repo)
 code-standards.md
 docs/system-design-ideas.md
