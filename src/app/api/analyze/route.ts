@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
         latencyMs,
       };
 
-      return NextResponse.json({ analysis: llmResult.payload, metadata });
+      return NextResponse.json({ analysis: llmResult.payload, metadata, chartData });
     } catch (error: any) {
       clearTimeout(timeoutId);
       if (error.name === "AbortError") {

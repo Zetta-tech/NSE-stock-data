@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { SemanticAnalysisResult, AIMetadata } from "@/lib/types";
+import { SemanticAnalysisResult, AIMetadata, DayData } from "@/lib/types";
 import { AlertCircle, Activity, ChevronRight, BarChart2, Cpu, Zap, Database, Minimize2, Maximize2, GripHorizontal } from "lucide-react";
 import gsap from "gsap";
 
@@ -84,50 +84,111 @@ export function AnalyzeView({
     headerEl.style.cursor = 'grab';
   };
 
-  // Initialize TradingView Advanced Chart widget
+  const [chartData, setChartData] = useState<DayData[]>([]);
+
+  // Initialize lightweight-charts with our own NSE data
   useEffect(() => {
     const container = chartContainerRef.current;
-    if (!container) return;
+    if (!container || chartData.length === 0) return;
 
-    container.innerHTML = '';
-    const widgetContainer = document.createElement('div');
-    widgetContainer.className = 'tradingview-widget-container';
-    widgetContainer.style.height = '100%';
-    widgetContainer.style.width = '100%';
+    // Load lightweight-charts from CDN if not already loaded
+    const LW_CDN = 'https://unpkg.com/lightweight-charts@4.1.7/dist/lightweight-charts.standalone.production.js';
+    const initChart = () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const LightweightCharts = (window as any).LightweightCharts;
+      if (!LightweightCharts) return;
 
-    const widgetInner = document.createElement('div');
-    widgetInner.className = 'tradingview-widget-container__widget';
-    widgetInner.style.height = 'calc(100% - 32px)';
-    widgetInner.style.width = '100%';
-    widgetContainer.appendChild(widgetInner);
+      container.innerHTML = '';
 
-    const script = document.createElement('script');
-    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-    script.async = true;
-    script.type = 'text/javascript';
-    script.textContent = JSON.stringify({
-      symbol: `NSE:${symbol}`,
-      width: "100%",
-      height: "100%",
-      autosize: true,
-      theme: "dark",
-      style: "1",
-      timezone: "Asia/Kolkata",
-      allow_symbol_change: true,
-      backgroundColor: "rgba(0,0,0,0)",
-      gridColor: "rgba(255, 255, 255, 0.05)",
-      hide_side_toolbar: false,
-      studies: [],
-      support_host: "https://www.tradingview.com"
-    });
+      const chart = LightweightCharts.createChart(container, {
+        layout: {
+          background: { type: 'solid', color: 'transparent' },
+          textColor: '#8b92a5',
+          fontFamily: 'Inter, system-ui, sans-serif',
+          fontSize: 11,
+        },
+        grid: {
+          vertLines: { color: 'rgba(255, 255, 255, 0.03)' },
+          horzLines: { color: 'rgba(255, 255, 255, 0.03)' },
+        },
+        crosshair: {
+          mode: 0,
+          vertLine: { color: 'rgba(255,255,255,0.1)', width: 1, style: 3 },
+          horzLine: { color: 'rgba(255,255,255,0.1)', width: 1, style: 3 },
+        },
+        rightPriceScale: {
+          borderColor: 'rgba(255, 255, 255, 0.06)',
+          scaleMargins: { top: 0.1, bottom: 0.2 },
+        },
+        timeScale: {
+          borderColor: 'rgba(255, 255, 255, 0.06)',
+          timeVisible: false,
+        },
+        handleScroll: { vertTouchDrag: false },
+      });
 
-    widgetContainer.appendChild(script);
-    container.appendChild(widgetContainer);
+      const candleSeries = chart.addCandlestickSeries({
+        upColor: '#00e68a',
+        downColor: '#ff4757',
+        borderDownColor: '#ff4757',
+        borderUpColor: '#00e68a',
+        wickDownColor: '#ff4757',
+        wickUpColor: '#00e68a',
+      });
 
-    return () => {
-      if (container) container.innerHTML = '';
+      const ohlcData = chartData.map(d => ({
+        time: d.date.split('T')[0].split(' ')[0],
+        open: d.open,
+        high: d.high,
+        low: d.low,
+        close: d.close,
+      }));
+      candleSeries.setData(ohlcData);
+
+      const volumeSeries = chart.addHistogramSeries({
+        color: 'rgba(0, 230, 138, 0.15)',
+        priceFormat: { type: 'volume' },
+        priceScaleId: '',
+      });
+      chart.priceScale('').applyOptions({
+        scaleMargins: { top: 0.85, bottom: 0 },
+      });
+      volumeSeries.setData(
+        chartData.map(d => ({
+          time: d.date.split('T')[0].split(' ')[0],
+          value: d.volume,
+          color: d.close >= d.open ? 'rgba(0, 230, 138, 0.2)' : 'rgba(255, 71, 87, 0.2)',
+        }))
+      );
+
+      chart.timeScale().fitContent();
+
+      const ro = new ResizeObserver(() => {
+        chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
+      });
+      ro.observe(container);
+
+      return () => { ro.disconnect(); chart.remove(); };
     };
-  }, [symbol]);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((window as any).LightweightCharts) {
+      const cleanup = initChart();
+      return cleanup;
+    }
+
+    // Load script from CDN
+    const existing = document.querySelector(`script[src="${LW_CDN}"]`);
+    if (existing) {
+      existing.addEventListener('load', () => initChart());
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = LW_CDN;
+    script.async = true;
+    script.onload = () => initChart();
+    document.head.appendChild(script);
+  }, [chartData]);
 
   // Perform Analysis Fetch
   const fetchAnalysis = async (retries = 0) => {
@@ -155,6 +216,7 @@ export function AnalyzeView({
 
       setAnalysis(data.analysis);
       setMetadata(data.metadata ?? null);
+      if (data.chartData) setChartData(data.chartData);
       setLoading(false);
     } catch (err: any) {
       if (retries < 2) {
