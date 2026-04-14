@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { SemanticAnalysisResult, AIMetadata } from "@/lib/types";
-import { AlertCircle, Activity, ChevronRight, BarChart2, Cpu, Zap, Database } from "lucide-react";
+import { SemanticAnalysisResult, AIMetadata, DayData } from "@/lib/types";
+import { AlertCircle, Activity, ChevronRight, BarChart2, Cpu, Zap, Database, Minimize2, Maximize2, GripHorizontal } from "lucide-react";
 import gsap from "gsap";
 
 export function AnalyzeView({ 
@@ -19,6 +19,13 @@ export function AnalyzeView({
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const [retryCount, setRetryCount] = useState(0);
 
+  // New Decoupled Chart States
+  const [range, setRange] = useState("1Y");
+  const [interval, setChartInterval] = useState("1D");
+  const [chartStatus, setChartStatus] = useState<"loading" | "error" | "empty" | "success">("loading");
+  const [chartData, setChartData] = useState<DayData[]>([]);
+  const [lastSynced, setLastSynced] = useState<string | null>(null);
+
   const loadingMessages = [
     "Evaluating Technical Action...",
     "Reviewing 30-day price action...",
@@ -27,54 +34,193 @@ export function AnalyzeView({
     "Finalizing technical verdict..."
   ];
 
-  // Initialize TradingView Advanced Chart widget
+  const [expandedReasoning, setExpandedReasoning] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  
+  // Draggable & Minimized State
+  const [isMinimized, setIsMinimized] = useState(false);
+  const panelRef = useRef<HTMLElement>(null);
+  const dragPos = useRef({ x: 0, y: 0 });
+  const isDragging = useRef(false);
+  const dragStartPos = useRef({ x: 0, y: 0 });
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    // Only allow drag on desktop
+    if (window.innerWidth < 768) return; 
+    
+    // Ignore clicks on buttons inside header
+    if ((e.target as HTMLElement).closest('button')) return;
+    
+    isDragging.current = true;
+    dragStartPos.current = { 
+      x: e.clientX - dragPos.current.x, 
+      y: e.clientY - dragPos.current.y 
+    };
+    
+    const headerEl = e.currentTarget as HTMLElement;
+    headerEl.setPointerCapture(e.pointerId);
+    headerEl.style.cursor = 'grabbing';
+    
+    if (panelRef.current) {
+      panelRef.current.style.transition = 'width 0.4s cubic-bezier(0.16, 1, 0.3, 1)'; // preserve width transiton, drop transform transition
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging.current || !panelRef.current) return;
+    
+    const newX = e.clientX - dragStartPos.current.x;
+    const newY = e.clientY - dragStartPos.current.y;
+    
+    // Prevent dragging completely off screen
+    const maxX = window.innerWidth - 100;
+    const maxY = window.innerHeight - 100;
+    const clampedX = Math.min(Math.max(newX, -maxX), maxX);
+    const clampedY = Math.min(Math.max(newY, -maxY), maxY);
+    
+    dragPos.current = { x: clampedX, y: clampedY };
+    panelRef.current.style.transform = `translate3d(${clampedX}px, ${clampedY}px, 0)`;
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    
+    const headerEl = e.currentTarget as HTMLElement;
+    headerEl.releasePointerCapture(e.pointerId);
+    headerEl.style.cursor = 'grab';
+  };
+
+  // Fetch Decoupled Chart Data
   useEffect(() => {
-    const container = chartContainerRef.current;
-    if (!container) return;
-
-    // Clear any existing widget (React StrictMode / hot reload safety)
-    container.innerHTML = '';
-
-    const widgetContainer = document.createElement('div');
-    widgetContainer.className = 'tradingview-widget-container';
-    widgetContainer.style.height = '100%';
-    widgetContainer.style.width = '100%';
-
-    const widgetInner = document.createElement('div');
-    widgetInner.className = 'tradingview-widget-container__widget';
-    widgetInner.style.height = 'calc(100% - 32px)';
-    widgetInner.style.width = '100%';
-    widgetContainer.appendChild(widgetInner);
-
-    const script = document.createElement('script');
-    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-    script.async = true;
-    script.type = 'text/javascript';
-    script.textContent = JSON.stringify({
-      symbol: `NSE:${symbol}`,
-      width: "100%",
-      height: "100%",
-      autosize: true,
-      theme: "dark",
-      style: "1",
-      timezone: "Asia/Kolkata",
-      allow_symbol_change: true,
-      backgroundColor: "rgba(0,0,0,0)",
-      gridColor: "rgba(255, 255, 255, 0.05)",
-      hide_side_toolbar: false,
-      studies: [],
-      support_host: "https://www.tradingview.com"
-    });
-
-    widgetContainer.appendChild(script);
-    container.appendChild(widgetContainer);
-
-    return () => {
-      if (container) {
-        container.innerHTML = '';
+    let active = true;
+    const fetchChart = async () => {
+      setChartStatus("loading");
+      try {
+        const res = await fetch(`/api/candles?symbol=${symbol}&range=${range}&interval=${interval}`);
+        if (!res.ok) throw new Error("Data unavailable");
+        const data = await res.json();
+        if (!active) return;
+        if (data.length === 0) {
+           setChartStatus("empty");
+           setChartData([]);
+        } else {
+           setChartData(data);
+           if (data.length < 50 && range !== "1M") setChartStatus("empty");
+           else setChartStatus("success");
+           setLastSynced(new Date().toLocaleTimeString());
+        }
+      } catch (err) {
+        if (active) setChartStatus("error");
       }
     };
-  }, [symbol]);
+    fetchChart();
+    return () => { active = false; };
+  }, [symbol, range, interval]);
+
+  // Initialize lightweight-charts with our own NSE data
+  useEffect(() => {
+    const container = chartContainerRef.current;
+    if (!container || chartData.length === 0) return;
+
+    // Load lightweight-charts from CDN if not already loaded
+    const LW_CDN = 'https://unpkg.com/lightweight-charts@4.1.7/dist/lightweight-charts.standalone.production.js';
+    const initChart = () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const LightweightCharts = (window as any).LightweightCharts;
+      if (!LightweightCharts) return;
+
+      container.innerHTML = '';
+
+      const chart = LightweightCharts.createChart(container, {
+        layout: {
+          background: { type: 'solid', color: 'transparent' },
+          textColor: '#8b92a5',
+          fontFamily: 'Inter, system-ui, sans-serif',
+          fontSize: 11,
+        },
+        grid: {
+          vertLines: { color: 'rgba(255, 255, 255, 0.03)' },
+          horzLines: { color: 'rgba(255, 255, 255, 0.03)' },
+        },
+        crosshair: {
+          mode: 0,
+          vertLine: { color: 'rgba(255,255,255,0.1)', width: 1, style: 3 },
+          horzLine: { color: 'rgba(255,255,255,0.1)', width: 1, style: 3 },
+        },
+        rightPriceScale: {
+          borderColor: 'rgba(255, 255, 255, 0.06)',
+          scaleMargins: { top: 0.1, bottom: 0.2 },
+        },
+        timeScale: {
+          borderColor: 'rgba(255, 255, 255, 0.06)',
+          timeVisible: false,
+        },
+        handleScroll: { vertTouchDrag: false },
+      });
+
+      const candleSeries = chart.addCandlestickSeries({
+        upColor: '#00e68a',
+        downColor: '#ff4757',
+        borderDownColor: '#ff4757',
+        borderUpColor: '#00e68a',
+        wickDownColor: '#ff4757',
+        wickUpColor: '#00e68a',
+      });
+
+      const ohlcData = chartData.map(d => ({
+        time: d.date.split('T')[0].split(' ')[0],
+        open: d.open,
+        high: d.high,
+        low: d.low,
+        close: d.close,
+      }));
+      candleSeries.setData(ohlcData);
+
+      const volumeSeries = chart.addHistogramSeries({
+        color: 'rgba(0, 230, 138, 0.15)',
+        priceFormat: { type: 'volume' },
+        priceScaleId: '',
+      });
+      chart.priceScale('').applyOptions({
+        scaleMargins: { top: 0.85, bottom: 0 },
+      });
+      volumeSeries.setData(
+        chartData.map(d => ({
+          time: d.date.split('T')[0].split(' ')[0],
+          value: d.volume,
+          color: d.close >= d.open ? 'rgba(0, 230, 138, 0.2)' : 'rgba(255, 71, 87, 0.2)',
+        }))
+      );
+
+      chart.timeScale().fitContent();
+
+      const ro = new ResizeObserver(() => {
+        chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
+      });
+      ro.observe(container);
+
+      return () => { ro.disconnect(); chart.remove(); };
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((window as any).LightweightCharts) {
+      const cleanup = initChart();
+      return cleanup;
+    }
+
+    // Load script from CDN
+    const existing = document.querySelector(`script[src="${LW_CDN}"]`);
+    if (existing) {
+      existing.addEventListener('load', () => initChart());
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = LW_CDN;
+    script.async = true;
+    script.onload = () => initChart();
+    document.head.appendChild(script);
+  }, [chartData]);
 
   // Perform Analysis Fetch
   const fetchAnalysis = async (retries = 0) => {
@@ -92,14 +238,11 @@ export function AnalyzeView({
       const data = await res.json();
 
       if (!res.ok) {
-        // Retry on timeout (408) or overload (529/503) — server already retried with backoff
         if ((res.status === 408 || res.status === 529 || res.status === 503) && retries < 2) {
           setRetryCount(retries + 1);
-          const delay = 3000 * (retries + 1); // 3s, 6s
-          setTimeout(() => fetchAnalysis(retries + 1), delay);
+          setTimeout(() => fetchAnalysis(retries + 1), 3000 * (retries + 1));
           return;
         }
-        
         throw new Error(data.error || "Analysis failed");
       }
 
@@ -109,8 +252,7 @@ export function AnalyzeView({
     } catch (err: any) {
       if (retries < 2) {
         setRetryCount(retries + 1);
-        const delay = 3000 * (retries + 1);
-        setTimeout(() => fetchAnalysis(retries + 1), delay);
+        setTimeout(() => fetchAnalysis(retries + 1), 3000 * (retries + 1));
         return;
       }
       setError(err.message || "An unexpected error occurred");
@@ -118,150 +260,274 @@ export function AnalyzeView({
     }
   };
 
-  // On Mount Cycle loading text
+  // Generate Narrative Sequencer Animations
   useEffect(() => {
-    let interval: any;
-    if (loading) {
-      interval = setInterval(() => {
-        setLoadingMsgIdx(prev => (prev + 1) % loadingMessages.length);
-        
-        // Slight pulse animation on text change
-        gsap.fromTo(".loading-text", 
-          { opacity: 0, y: 5 }, 
-          { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }
-        );
-      }, 3000);
-    }
+    if (!loading) return;
+    const interval = setInterval(() => {
+      setLoadingMsgIdx(prev => (prev + 1) % loadingMessages.length);
+      gsap.fromTo(".loading-text", 
+        { opacity: 0, y: 5 }, 
+        { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }
+      );
+    }, 3000);
     return () => clearInterval(interval);
   }, [loading]);
 
-  // Initial fetch trigger
+  // Stagger GSAP Entry Animations when data arrives
+  useEffect(() => {
+    if (analysis && !loading && wrapperRef.current) {
+      const ctx = gsap.context(() => {
+        gsap.fromTo(".gsap-reveal", 
+          { y: 20, opacity: 0 }, 
+          { y: 0, opacity: 1, duration: 0.6, stagger: 0.1, ease: "power2.out", delay: 0.1 }
+        );
+      }, wrapperRef);
+      return () => ctx.revert();
+    }
+  }, [analysis, loading]);
+
   useEffect(() => {
     fetchAnalysis();
   }, [symbol]);
 
-
-  const getVerdictStyle = (verdict?: string) => {
-    if (verdict === 'Bullish') return "bg-green-500/10 text-green-500 border-green-500/20";
-    if (verdict === 'Bearish') return "bg-red-500/10 text-red-500 border-red-500/20";
-    return "bg-zinc-500/10 text-zinc-400 border-zinc-500/20";
-  };
-
-  /** Format latency for display */
-  const formatLatency = (ms: number) => {
-    if (ms < 1000) return `${ms}ms`;
-    return `${(ms / 1000).toFixed(1)}s`;
-  };
+  const isBullish = analysis?.verdict === 'Bullish';
+  const isBearish = analysis?.verdict === 'Bearish';
+  const formatLatency = (ms: number) => ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
 
   return (
-    <div className="flex flex-col md:flex-row w-full h-full md:h-[100dvh]">
+    <div className="w-full h-full min-h-[100dvh] relative text-[#fafafa] bg-[#09090b] selection:bg-[#10b981]/30 font-[family-name:var(--font-inter)]" ref={wrapperRef}>
       
-      {/* 70% Chart Area */}
-      <div className="w-full md:w-[70%] h-[50vh] md:h-full relative border-b md:border-b-0 md:border-r border-surface-border">
-        <div ref={chartContainerRef} className="absolute inset-0" />
+      {/* Chart Layer: Fixed Base */}
+      <div className="absolute inset-0 md:fixed md:inset-0 md:h-[100vh] h-[50vh] flex flex-col sticky top-0 z-0 border-b border-[#27272a] md:border-none">
+        <div ref={chartContainerRef} className="absolute inset-0 z-0" />
+        
+        {/* Chart Interaction States */}
+        {chartStatus === 'loading' && (
+            <div className="absolute inset-0 z-[15] backdrop-blur-sm bg-[#09090b]/50 flex flex-col items-center justify-center transition-all">
+              <div className="h-8 w-8 rounded-full border-[3px] border-white/20 border-r-white animate-spin" />
+            </div>
+        )}
+        {chartStatus === 'error' && (
+            <div className="absolute inset-0 z-[15] flex flex-col items-center justify-center bg-[#09090b]/80">
+              <AlertCircle className="text-[#ff4757] mb-2 animate-pulse" size={32} />
+              <span className="text-white font-medium bg-[#121214] border border-white/10 px-4 py-2 rounded-lg shadow-lg">Data unavailable</span>
+            </div>
+        )}
+        {chartStatus === 'empty' && (
+            <div className="absolute inset-0 z-[15] pointer-events-none flex items-start justify-center pt-24">
+              <span className="bg-zinc-950/80 backdrop-blur-md border border-zinc-800 text-zinc-300 font-medium text-xs px-3 py-1.5 rounded-full">Limited history available</span>
+            </div>
+        )}
+
+        {/* Top-Right Badges */}
+        <div className="absolute top-4 right-4 z-[20] flex gap-2">
+           <span className="px-2 py-1 bg-[#121214]/60 backdrop-blur border border-white/5 rounded text-[10px] uppercase font-semibold tracking-wider text-white/40">Canonical Data</span>
+           {lastSynced && <span className="hidden sm:inline-block px-2 py-1 bg-[#121214]/60 backdrop-blur border border-white/5 rounded text-[10px] uppercase tracking-wider text-[#00e68a]/80">Synced: {lastSynced}</span>}
+        </div>
+
+        {/* Floating Controls (Top-Left Z-indexed) */}
+        <div className="absolute top-[80px] left-4 md:top-[88px] md:left-6 z-[20] flex flex-col sm:flex-row sm:items-center gap-2 mt-safe">
+          <div className="flex bg-[#121214]/80 backdrop-blur-xl border border-white/10 rounded-xl p-1.5 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
+            
+            {/* Mobile Native Dropdown for Interval */}
+            <div className="flex border-r border-white/10 pr-2 mr-2 sm:hidden">
+              <select 
+                className="bg-transparent text-[#8b92a5] font-[family-name:var(--font-jetbrains-mono)] font-medium text-xs py-1 px-2 focus:outline-none min-h-[44px]" 
+                value={interval} 
+                onChange={e => setChartInterval(e.target.value)} 
+                tabIndex={0}
+                aria-label="Chart Interval"
+              >
+                <option value="1D" className="bg-[#121214] text-white">1D</option>
+                <option value="1W" className="bg-[#121214] text-white">1W</option>
+                <option value="1M" className="bg-[#121214] text-white">1M</option>
+              </select>
+            </div>
+
+            {/* Desktop Native Buttons for Interval */}
+            <div className="hidden sm:flex border-r border-white/10 pr-2 mr-2 gap-1">
+              {['1D', '1W', '1M'].map(i => (
+                <button 
+                  key={i} 
+                  onClick={() => setChartInterval(i)} 
+                  tabIndex={0} 
+                  className={`min-h-[36px] px-4 font-[family-name:var(--font-jetbrains-mono)] tracking-wider font-medium text-[10px] rounded transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 ${interval === i ? 'bg-white/[0.08] text-white shadow-inner border border-white/5' : 'text-[#8b92a5] hover:text-[#f0f2f7] hover:bg-white/[0.04] border border-transparent'}`}
+                >
+                  {i}
+                </button>
+              ))}
+            </div>
+
+            {/* Desktop Range */}
+            <div className="hidden sm:flex gap-1">
+              {['1M', '3M', '1Y', '5Y', 'MAX'].map(r => (
+                <button 
+                  key={r} 
+                  onClick={() => setRange(r)} 
+                  tabIndex={0} 
+                  className={`min-h-[36px] px-4 font-[family-name:var(--font-jetbrains-mono)] tracking-wider font-medium text-[10px] rounded transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 ${range === r ? 'bg-white/[0.08] text-white shadow-inner border border-white/5' : 'text-[#8b92a5] hover:text-[#f0f2f7] hover:bg-white/[0.04] border border-transparent'}`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Range (Bottom Fixed per rules) */}
+        <div className="sm:hidden absolute bottom-4 left-4 right-4 z-[20] flex justify-between bg-[#121214]/80 backdrop-blur-xl border border-white/10 rounded-xl p-1.5 shadow-lg">
+          {['1M', '3M', '1Y', '5Y', 'MAX'].map(r => (
+                <button 
+                  key={r} 
+                  onClick={() => setRange(r)} 
+                  tabIndex={0} 
+                  className={`flex-1 min-h-[44px] font-[family-name:var(--font-jetbrains-mono)] tracking-wider font-medium text-[11px] rounded-lg transition-all focus-visible:outline-none ${range === r ? 'bg-white/[0.08] text-white shadow-inner border-white/5' : 'text-[#8b92a5] hover:text-[#f0f2f7]'}`}
+                >
+                  {r}
+                </button>
+          ))}
+        </div>
       </div>
 
-      {/* 30% Fact Sheet Area */}
-      <div className="w-full md:w-[30%] h-[50vh] md:h-full bg-surface-background p-6 md:p-8 flex flex-col relative overflow-y-auto">
+      {/* Floating AI Panel Layer */}
+      <aside 
+        ref={panelRef}
+        aria-label="AI Stock Analysis" 
+        className={`
+          relative z-10 md:absolute md:top-8 md:right-8 
+          w-full md:max-h-[calc(100vh-4rem)] 
+          bg-[#09090b] md:bg-[#121214]/75 md:backdrop-blur-3xl md:border md:border-white/[0.08] md:rounded-3xl 
+          flex flex-col overflow-hidden md:shadow-[0_30px_60px_-12px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.05)] 
+          min-h-[50vh] mt-[50vh] md:mt-0 md:min-h-0
+          transition-[width] duration-500 will-change-transform
+          ${isMinimized ? 'md:w-[280px]' : 'md:w-[420px]'}
+        `}
+      >
         
-        <h1 className="text-2xl font-bold tracking-tight mb-2 uppercase text-surface-text">{symbol}</h1>
-        <p className="text-surface-text-secondary mb-8 text-sm flex items-center gap-2">
-          AI Technical Evaluation <ChevronRight size={14} />
-        </p>
-        
-        <div className="flex-1 relative">
+        {/* HEADER / DRAG HANDLE */}
+        <header 
+          className="p-6 md:p-8 md:pb-6 border-b border-white/[0.04] md:cursor-grab active:cursor-grabbing select-none relative group"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <h1 className="text-[10px] uppercase tracking-[0.2em] text-[#8b92a5] font-[family-name:var(--font-jetbrains-mono)] flex items-center gap-2">
+              <GripHorizontal size={12} className="opacity-20 hidden md:block group-hover:opacity-60 transition-opacity" />
+              {symbol} <ChevronRight size={10} className="opacity-40" /> AI VERDICT
+            </h1>
+            <button 
+              onClick={(e) => { e.stopPropagation(); setIsMinimized(!isMinimized); }}
+              className="text-[#8b92a5] hover:text-[#f0f2f7] transition-colors p-1.5 rounded-md hover:bg-white/[0.04] hidden md:block"
+              title={isMinimized ? "Expand Panel" : "Minimize to Pill"}
+            >
+              {isMinimized ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
+            </button>
+          </div>
+          
           {loading ? (
-            <div className="absolute inset-0 flex flex-col justify-center items-start">
+            <div className="flex flex-col gap-2 mt-4">
+              <div className="h-10 w-48 bg-white/[0.04] rounded-md animate-pulse" />
+            </div>
+          ) : error ? (
+            <div className="font-[family-name:var(--font-space-grotesk)] text-3xl font-bold text-[#ef4444] tracking-tight uppercase shadow-[#ef4444]/60 drop-shadow-md">
+              Analysis Failed
+            </div>
+          ) : (
+            <div className={`gsap-reveal font-[family-name:var(--font-space-grotesk)] font-bold uppercase leading-none mix-blend-screen transition-all duration-500
+              ${isBullish ? 'text-[#00e68a] drop-shadow-[0_0_30px_rgba(0,230,138,0.4)]' : isBearish ? 'text-[#ff4757] drop-shadow-[0_0_30px_rgba(255,71,87,0.4)]' : 'text-[#f0f2f7] drop-shadow-md'}
+              ${isMinimized ? 'text-4xl tracking-tight' : 'text-6xl tracking-tighter'}
+            `}>
+              {analysis?.verdict}
+            </div>
+          )}
+        </header>
+
+        {/* BODY */}
+        <main className={`p-6 md:p-8 pt-6 overflow-y-auto flex-1 custom-scrollbar transition-opacity duration-300 ${isMinimized ? 'hidden md:opacity-0 md:h-0 md:p-0' : 'opacity-100'}`}>
+          {loading ? (
+            <div className="flex flex-col justify-center items-start h-40">
               <div className="flex items-center gap-3 mb-4">
-                <div className="h-4 w-4 rounded-full border-2 border-accent border-r-transparent animate-spin" />
-                <span className="text-accent font-medium text-sm">Processing</span>
-                {retryCount > 0 && (
-                  <span className="text-xs px-2 py-1 bg-surface-border rounded text-surface-text-secondary ml-2">
-                    Try {retryCount} of 3
-                  </span>
-                )}
+                <div className="h-4 w-4 rounded-full border-[2px] border-[#00e68a] border-r-transparent animate-spin" />
+                <span className="text-[#00e68a] font-medium text-xs tracking-wide uppercase">Processing Model</span>
+                {retryCount > 0 && <span className="text-[10px] px-2 py-1 bg-white/[0.04] rounded text-[#8b92a5] ml-2 uppercase tracking-wider">Try {retryCount} of 3</span>}
               </div>
-              <p className="loading-text text-xl font-medium text-surface-text">
+              <p className="loading-text text-lg text-[#f0f2f7] font-[family-name:var(--font-space-grotesk)]">
                 {loadingMessages[loadingMsgIdx]}
               </p>
             </div>
           ) : error ? (
-            <div className="absolute inset-0 flex flex-col justify-center items-start">
-              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg max-w-full">
-                <div className="flex items-center gap-2 text-red-500 mb-2">
-                  <AlertCircle size={18} />
-                  <span className="font-medium">Analysis Failed</span>
+            <div className="flex flex-col items-start pt-2">
+              <div className="p-5 bg-[#ff4757]/10 border border-[#ff4757]/20 rounded-2xl w-full mb-6 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-1 h-full bg-[#ff4757]" />
+                <div className="flex items-center gap-2 text-[#ff4757] mb-2">
+                  <AlertCircle size={16} />
+                  <span className="font-semibold text-xs uppercase tracking-wider">System Error</span>
                 </div>
-                <p className="text-surface-text-secondary text-sm leading-relaxed mb-4">
-                  {error}
-                </p>
-                <button 
-                  onClick={() => fetchAnalysis(0)}
-                  className="px-4 py-2 bg-surface-border hover:bg-surface-border/80 text-surface-text rounded-md text-sm transition-colors"
-                >
-                  Try Again
-                </button>
+                <p className="text-[#8b92a5] text-sm leading-relaxed mb-4">{error}</p>
               </div>
+              <button 
+                onClick={() => fetchAnalysis(0)}
+                className="w-full min-h-[48px] bg-white/[0.04] hover:bg-white/[0.08] text-[#f0f2f7] rounded-xl text-xs transition-colors uppercase tracking-[0.1em] font-semibold focus-visible:outline-none ring-1 ring-inset ring-white/[0.05]"
+              >
+                Retry Analysis
+              </button>
             </div>
           ) : analysis ? (
-            <div className="flex flex-col h-full animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="flex flex-col gap-8 pb-2">
               
-              {/* 1. Primary Focal Point: Verdict Badge */}
-              <div className="mb-6">
-                <h2 className="text-sm text-surface-text-secondary uppercase tracking-widest font-semibold mb-3">Verdict</h2>
-                <div className={`inline-flex items-center px-4 py-2 rounded-md border text-lg font-bold tracking-wide ${getVerdictStyle(analysis.verdict)}`}>
-                  <Activity size={18} className="mr-2" />
-                  {analysis.verdict}
-                </div>
-              </div>
-
-              {/* 2. Secondary Focal Point: Stop Loss */}
-              <div className="mb-8">
-                <h2 className="text-sm text-surface-text-secondary uppercase tracking-widest font-semibold mb-2">Recommended Invalid Level</h2>
-                <div className="text-3xl font-bold font-mono tracking-tight text-surface-text">
-                  {analysis.stop_loss_price ? `₹${analysis.stop_loss_price.toFixed(2)}` : 'N/A'}
-                </div>
-                <p className="text-xs text-surface-text-secondary mt-1">If price falls below this, the technical setup is aborted.</p>
-              </div>
-
-              {/* 3. Tertiary Focal Point: Reasoning */}
-              <div className="flex-1">
-                <h2 className="text-sm text-surface-text-secondary uppercase tracking-widest font-semibold mb-3">Technical Reasoning</h2>
-                <p className="text-surface-text-secondary leading-relaxed text-[15px]">
-                  {analysis.reasoning}
-                </p>
-              </div>
-
-              {/* 4. Model Diagnostics Footer */}
-              {metadata && (
-                <div 
-                  className="mt-6 pt-4 border-t border-surface-border animate-fade-in opacity-60 hover:opacity-100 transition-opacity duration-200"
-                  style={{ animationDelay: '300ms' }}
-                >
-                  <div className="flex items-center gap-4 text-xs text-surface-text-secondary">
-                    <span className="flex items-center gap-1.5">
-                      <Cpu size={12} />
-                      <span>{metadata.model}</span>
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <Zap size={12} />
-                      <span className="font-mono">{formatLatency(metadata.latencyMs)}</span>
-                    </span>
-                    {metadata.promptTokens != null && metadata.completionTokens != null && (
-                      <span className="flex items-center gap-1.5">
-                        <Database size={12} />
-                        <span className="font-mono">{metadata.promptTokens}/{metadata.completionTokens}</span>
-                      </span>
-                    )}
+              {/* KEY LIMITS GRID */}
+              <div className="gsap-reveal grid grid-cols-2 gap-4">
+                <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.04] shadow-inner transition-colors hover:bg-white/[0.04]">
+                  <div className="text-[9px] uppercase text-[#8b92a5] mb-2 font-[family-name:var(--font-jetbrains-mono)] tracking-[0.15em]">Stop Loss</div>
+                  <div className="font-[family-name:var(--font-jetbrains-mono)] text-2xl text-[#f0f2f7] font-medium tracking-tight">
+                    {analysis.stop_loss_price ? `₹${analysis.stop_loss_price.toFixed(2)}` : 'N/A'}
                   </div>
+                </div>
+                {(isBullish || analysis.target_price) && (
+                  <div className="p-5 rounded-2xl bg-[#00e68a]/[0.05] border border-[#00e68a]/10 shadow-inner transition-colors hover:bg-[#00e68a]/10">
+                    <div className="text-[9px] uppercase text-[#00e68a] mb-2 font-[family-name:var(--font-jetbrains-mono)] tracking-[0.15em]">Target Price</div>
+                    <div className="font-[family-name:var(--font-jetbrains-mono)] text-2xl text-[#00e68a] font-medium tracking-tight">
+                      {analysis.target_price ? `₹${analysis.target_price.toFixed(2)}` : 'N/A'}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* REASONING */}
+              <div className="gsap-reveal">
+                <div className="flex items-center justify-between mb-4 border-b border-white/[0.04] pb-3">
+                  <h3 className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase text-[#8b92a5] tracking-[0.2em]">AI Reasoning</h3>
+                </div>
+                <article className={`text-[14px] text-[#8b92a5] leading-[1.8] font-[family-name:var(--font-inter)] relative ${expandedReasoning ? '' : 'max-h-28 overflow-hidden'}`}>
+                  {analysis.reasoning}
+                  {!expandedReasoning && (
+                    <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#09090b] md:from-[#121214] to-transparent pointer-events-none" />
+                  )}
+                </article>
+                
+                <button 
+                  onClick={() => setExpandedReasoning(!expandedReasoning)}
+                  className="gsap-reveal w-full min-h-[44px] rounded-xl border border-white/[0.06] hover:bg-white/[0.04] hover:text-[#f0f2f7] transition-all duration-300 text-[10px] font-[family-name:var(--font-jetbrains-mono)] tracking-[0.2em] text-[#8b92a5] mt-5 focus-visible:outline-none"
+                >
+                  {expandedReasoning ? 'COLLAPSE TEXT' : 'READ FULL REPORT'}
+                </button>
+              </div>
+
+              {/* METADATA DIAGNOSTICS */}
+              {metadata && (
+                <div className="gsap-reveal mt-2 pt-5 border-t border-white/[0.04] opacity-40 hover:opacity-100 transition-opacity flex items-center justify-between text-[10px] text-[#8b92a5] font-[family-name:var(--font-jetbrains-mono)] tracking-wider">
+                  <span className="flex items-center gap-1.5"><Cpu size={10} /> {metadata.model}</span>
+                  <span className="flex items-center gap-1.5"><Zap size={10} /> {formatLatency(metadata.latencyMs)}</span>
+                  {metadata.promptTokens && <span className="flex items-center gap-1.5"><Database size={10} /> {metadata.promptTokens}t</span>}
                 </div>
               )}
 
             </div>
           ) : null}
-        </div>
-      </div>
-
+        </main>
+      </aside>
     </div>
   );
 }

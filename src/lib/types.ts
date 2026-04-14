@@ -259,6 +259,7 @@ export interface AlertRequest {
 export interface SemanticAnalysisResult {
   verdict: 'Bullish' | 'Bearish' | 'Neutral';
   stop_loss_price: number | null;
+  target_price: number | null;
   reasoning: string;
 }
 

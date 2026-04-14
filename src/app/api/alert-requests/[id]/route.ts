@@ -14,7 +14,7 @@ const PatchSchema = z.object({
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json();
@@ -27,7 +27,7 @@ export async function PATCH(
     }
 
     const { status } = parsed.data;
-    const { id } = params;
+    const { id } = await params;
 
     await updateAlertRequestStatus(id, status as AlertRequestStatus);
 
