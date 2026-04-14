@@ -19,6 +19,13 @@ export function AnalyzeView({
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const [retryCount, setRetryCount] = useState(0);
 
+  // New Decoupled Chart States
+  const [range, setRange] = useState("1Y");
+  const [interval, setChartInterval] = useState("1D");
+  const [chartStatus, setChartStatus] = useState<"loading" | "error" | "empty" | "success">("loading");
+  const [chartData, setChartData] = useState<DayData[]>([]);
+  const [lastSynced, setLastSynced] = useState<string | null>(null);
+
   const loadingMessages = [
     "Evaluating Technical Action...",
     "Reviewing 30-day price action...",
@@ -84,7 +91,32 @@ export function AnalyzeView({
     headerEl.style.cursor = 'grab';
   };
 
-  const [chartData, setChartData] = useState<DayData[]>([]);
+  // Fetch Decoupled Chart Data
+  useEffect(() => {
+    let active = true;
+    const fetchChart = async () => {
+      setChartStatus("loading");
+      try {
+        const res = await fetch(`/api/candles?symbol=${symbol}&range=${range}&interval=${interval}`);
+        if (!res.ok) throw new Error("Data unavailable");
+        const data = await res.json();
+        if (!active) return;
+        if (data.length === 0) {
+           setChartStatus("empty");
+           setChartData([]);
+        } else {
+           setChartData(data);
+           if (data.length < 50 && range !== "1M") setChartStatus("empty");
+           else setChartStatus("success");
+           setLastSynced(new Date().toLocaleTimeString());
+        }
+      } catch (err) {
+        if (active) setChartStatus("error");
+      }
+    };
+    fetchChart();
+    return () => { active = false; };
+  }, [symbol, range, interval]);
 
   // Initialize lightweight-charts with our own NSE data
   useEffect(() => {
@@ -216,7 +248,6 @@ export function AnalyzeView({
 
       setAnalysis(data.analysis);
       setMetadata(data.metadata ?? null);
-      if (data.chartData) setChartData(data.chartData);
       setLoading(false);
     } catch (err: any) {
       if (retries < 2) {
@@ -267,8 +298,95 @@ export function AnalyzeView({
     <div className="w-full h-full min-h-[100dvh] relative text-[#fafafa] bg-[#09090b] selection:bg-[#10b981]/30 font-[family-name:var(--font-inter)]" ref={wrapperRef}>
       
       {/* Chart Layer: Fixed Base */}
-      <div className="absolute inset-0 md:fixed md:inset-0 md:h-[100vh] h-[50vh] sticky top-0 z-0 border-b border-[#27272a] md:border-none">
-        <div ref={chartContainerRef} className="absolute inset-0" />
+      <div className="absolute inset-0 md:fixed md:inset-0 md:h-[100vh] h-[50vh] flex flex-col sticky top-0 z-0 border-b border-[#27272a] md:border-none">
+        <div ref={chartContainerRef} className="absolute inset-0 z-0" />
+        
+        {/* Chart Interaction States */}
+        {chartStatus === 'loading' && (
+            <div className="absolute inset-0 z-[15] backdrop-blur-sm bg-[#09090b]/50 flex flex-col items-center justify-center transition-all">
+              <div className="h-8 w-8 rounded-full border-[3px] border-white/20 border-r-white animate-spin" />
+            </div>
+        )}
+        {chartStatus === 'error' && (
+            <div className="absolute inset-0 z-[15] flex flex-col items-center justify-center bg-[#09090b]/80">
+              <AlertCircle className="text-[#ff4757] mb-2 animate-pulse" size={32} />
+              <span className="text-white font-medium bg-[#121214] border border-white/10 px-4 py-2 rounded-lg shadow-lg">Data unavailable</span>
+            </div>
+        )}
+        {chartStatus === 'empty' && (
+            <div className="absolute inset-0 z-[15] pointer-events-none flex items-start justify-center pt-24">
+              <span className="bg-zinc-950/80 backdrop-blur-md border border-zinc-800 text-zinc-300 font-medium text-xs px-3 py-1.5 rounded-full">Limited history available</span>
+            </div>
+        )}
+
+        {/* Top-Right Badges */}
+        <div className="absolute top-4 right-4 z-[20] flex gap-2">
+           <span className="px-2 py-1 bg-[#121214]/60 backdrop-blur border border-white/5 rounded text-[10px] uppercase font-semibold tracking-wider text-white/40">Canonical Data</span>
+           {lastSynced && <span className="hidden sm:inline-block px-2 py-1 bg-[#121214]/60 backdrop-blur border border-white/5 rounded text-[10px] uppercase tracking-wider text-[#00e68a]/80">Synced: {lastSynced}</span>}
+        </div>
+
+        {/* Floating Controls (Top-Left Z-indexed) */}
+        <div className="absolute top-[80px] left-4 md:top-[88px] md:left-6 z-[20] flex flex-col sm:flex-row sm:items-center gap-2 mt-safe">
+          <div className="flex bg-[#121214]/80 backdrop-blur-xl border border-white/10 rounded-xl p-1.5 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
+            
+            {/* Mobile Native Dropdown for Interval */}
+            <div className="flex border-r border-white/10 pr-2 mr-2 sm:hidden">
+              <select 
+                className="bg-transparent text-[#8b92a5] font-[family-name:var(--font-jetbrains-mono)] font-medium text-xs py-1 px-2 focus:outline-none min-h-[44px]" 
+                value={interval} 
+                onChange={e => setChartInterval(e.target.value)} 
+                tabIndex={0}
+                aria-label="Chart Interval"
+              >
+                <option value="1D" className="bg-[#121214] text-white">1D</option>
+                <option value="1W" className="bg-[#121214] text-white">1W</option>
+                <option value="1M" className="bg-[#121214] text-white">1M</option>
+              </select>
+            </div>
+
+            {/* Desktop Native Buttons for Interval */}
+            <div className="hidden sm:flex border-r border-white/10 pr-2 mr-2 gap-1">
+              {['1D', '1W', '1M'].map(i => (
+                <button 
+                  key={i} 
+                  onClick={() => setChartInterval(i)} 
+                  tabIndex={0} 
+                  className={`min-h-[36px] px-4 font-[family-name:var(--font-jetbrains-mono)] tracking-wider font-medium text-[10px] rounded transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 ${interval === i ? 'bg-white/[0.08] text-white shadow-inner border border-white/5' : 'text-[#8b92a5] hover:text-[#f0f2f7] hover:bg-white/[0.04] border border-transparent'}`}
+                >
+                  {i}
+                </button>
+              ))}
+            </div>
+
+            {/* Desktop Range */}
+            <div className="hidden sm:flex gap-1">
+              {['1M', '3M', '1Y', '5Y', 'MAX'].map(r => (
+                <button 
+                  key={r} 
+                  onClick={() => setRange(r)} 
+                  tabIndex={0} 
+                  className={`min-h-[36px] px-4 font-[family-name:var(--font-jetbrains-mono)] tracking-wider font-medium text-[10px] rounded transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 ${range === r ? 'bg-white/[0.08] text-white shadow-inner border border-white/5' : 'text-[#8b92a5] hover:text-[#f0f2f7] hover:bg-white/[0.04] border border-transparent'}`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Range (Bottom Fixed per rules) */}
+        <div className="sm:hidden absolute bottom-4 left-4 right-4 z-[20] flex justify-between bg-[#121214]/80 backdrop-blur-xl border border-white/10 rounded-xl p-1.5 shadow-lg">
+          {['1M', '3M', '1Y', '5Y', 'MAX'].map(r => (
+                <button 
+                  key={r} 
+                  onClick={() => setRange(r)} 
+                  tabIndex={0} 
+                  className={`flex-1 min-h-[44px] font-[family-name:var(--font-jetbrains-mono)] tracking-wider font-medium text-[11px] rounded-lg transition-all focus-visible:outline-none ${range === r ? 'bg-white/[0.08] text-white shadow-inner border-white/5' : 'text-[#8b92a5] hover:text-[#f0f2f7]'}`}
+                >
+                  {r}
+                </button>
+          ))}
+        </div>
       </div>
 
       {/* Floating AI Panel Layer */}
