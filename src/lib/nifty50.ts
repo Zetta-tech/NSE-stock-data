@@ -42,7 +42,7 @@ export const NIFTY_50_STOCKS: WatchlistStock[] = ([
   { symbol: "SUNPHARMA", name: "Sun Pharma" },
   { symbol: "TCS", name: "Tata Consultancy Services" },
   { symbol: "TATACONSUM", name: "Tata Consumer Products" },
-  { symbol: "TATAMOTORS", name: "Tata Motors" },
+  { symbol: "TMPV", name: "Tata Motors Passenger Vehicles" },
   { symbol: "TATASTEEL", name: "Tata Steel" },
   { symbol: "TECHM", name: "Tech Mahindra" },
   { symbol: "TITAN", name: "Titan Company" },

@@ -136,9 +136,14 @@ export interface ScanMeta {
   alertsFired: string[];
 }
 
-/* ── Nifty 50 Table (snapshot from getEquityStockIndices) ─────────── */
+/* ── Nifty 50 Table (snapshot from NSE live data) ─────────────────── */
 
-/** A single stock row returned by NSE's getEquityStockIndices("NIFTY 50") */
+export type Nifty50SnapshotSource =
+  | "nse-index"
+  | "nse-charting-intraday"
+  | "unavailable";
+
+/** A single Nifty 50 stock row from NSE live index or quote APIs */
 export interface Nifty50StockRow {
   symbol: string;
   name: string;
@@ -161,6 +166,7 @@ export interface Nifty50Snapshot {
   fetchedAt: string;
   fetchSuccess: boolean;
   stale: boolean;
+  source: Nifty50SnapshotSource;
 }
 
 export interface StockBaseline {
@@ -186,7 +192,7 @@ export interface BreakoutDiscovery {
   volumeBreakPercent: number;
   /** true = baseline data is unreliable or missing */
   baselineUnavailable: boolean;
-  /** true = live price data fetch failed; breakout is possible but unconfirmed */
+  /** true = freshness/source trust is degraded; breakout is possible but unconfirmed */
   possibleBreakout: boolean;
 }
 
@@ -240,6 +246,7 @@ export interface Nifty50PersistentStats {
   snapshotFetchSuccess: boolean;
   snapshotFetchCount: number;
   snapshotFailCount: number;
+  snapshotSource: Nifty50SnapshotSource;
 }
 
 export type AlertRequestStatus = "pending" | "issue_created" | "pr_created" | "implemented" | "rejected";

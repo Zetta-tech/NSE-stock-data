@@ -261,6 +261,7 @@ const DEFAULT_NIFTY50_STATS: Nifty50PersistentStats = {
   snapshotFetchSuccess: false,
   snapshotFetchCount: 0,
   snapshotFailCount: 0,
+  snapshotSource: "unavailable",
 };
 
 let memNifty50Stats: Nifty50PersistentStats | null = null;
@@ -269,7 +270,7 @@ export async function getNifty50PersistentStats(): Promise<Nifty50PersistentStat
   const r = getRedis();
   if (r) {
     const data = await r.get<Nifty50PersistentStats>(NIFTY50_STATS_KEY);
-    return data ?? { ...DEFAULT_NIFTY50_STATS };
+    return data ? { ...DEFAULT_NIFTY50_STATS, ...data } : { ...DEFAULT_NIFTY50_STATS };
   }
   return memNifty50Stats ?? { ...DEFAULT_NIFTY50_STATS };
 }
