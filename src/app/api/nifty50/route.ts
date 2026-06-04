@@ -8,10 +8,15 @@ import type {
   BreakoutDiscovery,
   Nifty50TableResponse,
   Alert,
+  Nifty50StockRow,
+  StockBaseline,
 } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
+
+const PRIMARY_SOURCE_BASELINE_FETCH_LIMIT = 5;
+const FALLBACK_SOURCE_BASELINE_FETCH_LIMIT = 0;
 
 function todayIST(): string {
   return new Date(
@@ -19,6 +24,14 @@ function todayIST(): string {
   )
     .toISOString()
     .slice(0, 10);
+}
+
+function isPotentialSignal(stock: Nifty50StockRow, baseline: StockBaseline): boolean {
+  const highBreak = stock.dayHigh > baseline.maxHigh5d;
+  const volumeBreak = stock.totalTradedVolume >= baseline.maxVolume5d * 3;
+  const lowBreak = stock.dayLow < baseline.minLow10d;
+  const lowVolumeBreak = stock.totalTradedVolume > baseline.maxVolume10d;
+  return (highBreak && volumeBreak) || (lowBreak && lowVolumeBreak);
 }
 
 export async function GET() {
@@ -34,10 +47,16 @@ export async function GET() {
     const watchlistSymbols = watchlist.map((s) => s.symbol);
     const closeWatchSymbols = closeWatchStocks.map((s) => s.symbol);
     const watchlistSet = new Set(watchlistSymbols);
+    const isPrimarySource = snapshot.source === "nse-index";
 
-    // Compute baselines for all snapshot symbols
+    // Use cached baselines for fallback sources and hydrate only a small slice for
+    // the primary path. Cold-starting all 50 can exceed production duration.
     const snapshotSymbols = snapshot.stocks.map((s) => s.symbol);
-    const baselines = await getBaselines(snapshotSymbols);
+    const baselineFetchLimit =
+      snapshot.source === "nse-index"
+        ? PRIMARY_SOURCE_BASELINE_FETCH_LIMIT
+        : FALLBACK_SOURCE_BASELINE_FETCH_LIMIT;
+    const baselines = await getBaselines(snapshotSymbols, { maxToFetch: baselineFetchLimit });
     const baseStats = getBaselineStats();
 
     // Build breakout discoveries for stocks NOT in the watchlist
@@ -50,7 +69,7 @@ export async function GET() {
       if (watchlistSet.has(stock.symbol)) continue;
 
       // 52-week high alert (no baseline required — data comes from snapshot)
-      if (snapshot.fetchSuccess && stock.yearHigh > 0 && stock.dayHigh >= stock.yearHigh) {
+      if (isPrimarySource && snapshot.fetchSuccess && stock.yearHigh > 0 && stock.dayHigh >= stock.yearHigh) {
         const weekHighAlert: Alert = {
           id: `${stock.symbol}-nifty50-week-high-${today}`,
           symbol: stock.symbol,
@@ -103,7 +122,8 @@ export async function GET() {
         continue;
       }
 
-      // If snapshot fetch failed (stale data), mark as possibleBreakout
+      // If snapshot freshness/source trust is degraded, only surface plausible
+      // candidates as possible; never mark them as confirmed signals.
       if (!snapshot.fetchSuccess) {
         discoveries.push({
           symbol: stock.symbol,
@@ -114,7 +134,22 @@ export async function GET() {
           highBreakPercent: 0,
           volumeBreakPercent: 0,
           baselineUnavailable: false,
-          possibleBreakout: true,
+          possibleBreakout: isPotentialSignal(stock, baseline),
+        });
+        continue;
+      }
+
+      if (!isPrimarySource) {
+        discoveries.push({
+          symbol: stock.symbol,
+          name: stock.name,
+          breakout: false,
+          highBreak: false,
+          volumeBreak: false,
+          highBreakPercent: 0,
+          volumeBreakPercent: 0,
+          baselineUnavailable: false,
+          possibleBreakout: isPotentialSignal(stock, baseline),
         });
         continue;
       }
@@ -144,7 +179,7 @@ export async function GET() {
       });
 
       // Fire alert for confirmed breakouts (dedup by symbol + alertType + date)
-      if (breakout) {
+      if (isPrimarySource && breakout) {
         const alertId = `${stock.symbol}-nifty50-breakout-${today}`;
         const alert: Alert = {
           id: alertId,
@@ -193,7 +228,7 @@ export async function GET() {
       const lowBreak = stock.dayLow < baseline.minLow10d;
       const volumeBreak10d = stock.totalTradedVolume > baseline.maxVolume10d;
 
-      if (lowBreak && volumeBreak10d) {
+      if (isPrimarySource && lowBreak && volumeBreak10d) {
         const lowBreakPct = baseline.minLow10d > 0
           ? Math.round(((baseline.minLow10d - stock.dayLow) / baseline.minLow10d) * 10000) / 100
           : 0;
@@ -277,6 +312,7 @@ export async function GET() {
             highBreakSymbols,
             volBreakSymbols,
             snapshotStale: snapshot.stale,
+            snapshotSource: snapshot.source,
             alertsCreated: newAlerts.length,
           },
         },
@@ -290,6 +326,7 @@ export async function GET() {
       snapshotFetchSuccess: snapshot.fetchSuccess,
       snapshotFetchCount: prevStats.snapshotFetchCount + (snapshot.fetchSuccess ? 1 : 0),
       snapshotFailCount: prevStats.snapshotFailCount + (snapshot.fetchSuccess ? 0 : 1),
+      snapshotSource: snapshot.source,
     });
 
     const response: Nifty50TableResponse = {
@@ -314,6 +351,8 @@ export async function GET() {
         breakoutCount,
         fetchSuccess: snapshot.fetchSuccess,
         stale: snapshot.stale,
+        source: snapshot.source,
+        baselineFetchLimit,
       },
       "Nifty50 Table API",
     );

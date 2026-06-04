@@ -37,6 +37,7 @@ export function makeSnapshot(
     fetchedAt: "2025-01-06T10:30:00.000Z",
     fetchSuccess: true,
     stale: false,
+    source: "nse-index",
     ...overrides,
   };
 }

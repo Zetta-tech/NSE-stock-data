@@ -63,6 +63,7 @@ describe("Nifty50 route contracts", () => {
       snapshotFetchSuccess: true,
       snapshotFetchCount: 1,
       snapshotFailCount: 0,
+      snapshotSource: "nse-index",
     });
     mocks.updateNifty50PersistentStats.mockResolvedValue(undefined);
     mocks.getBaselineStats.mockReturnValue({
@@ -176,6 +177,109 @@ describe("Nifty50 route contracts", () => {
     expect(stale.baselineUnavailable).toBe(false);
     expect(stale.possibleBreakout).toBe(true);
 
+    expect(mocks.addAlert).not.toHaveBeenCalled();
+  });
+
+  test("uses cached baselines only for live intraday fallback snapshots", async () => {
+    // Contract: live intraday fallback must return the table without cold-starting
+    // 50 historical baseline requests inside the production route budget.
+    mocks.getNifty50Snapshot.mockResolvedValue(
+      makeSnapshot({
+        source: "nse-charting-intraday",
+        stocks: [
+          makeSnapshotStock({ symbol: "TCS", name: "TCS", lastPrice: 100 }),
+          makeSnapshotStock({ symbol: "ITC", name: "ITC", lastPrice: 200 }),
+        ],
+      }),
+    );
+    mocks.getBaselines.mockResolvedValue(new Map());
+
+    const response = await GET();
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json.snapshot.source).toBe("nse-charting-intraday");
+    expect(mocks.getBaselines).toHaveBeenCalledWith(["TCS", "ITC"], { maxToFetch: 0 });
+    expect(json.discoveries).toHaveLength(2);
+    expect(json.discoveries.every((d: { baselineUnavailable: boolean }) => d.baselineUnavailable)).toBe(true);
+    expect(mocks.addAlert).not.toHaveBeenCalled();
+  });
+
+  test("does not confirm breakout signals from cached baselines on fallback snapshots", async () => {
+    mocks.getNifty50Snapshot.mockResolvedValue(
+      makeSnapshot({
+        source: "nse-charting-intraday",
+        stocks: [
+          makeSnapshotStock({
+            symbol: "TCS",
+            name: "TCS",
+            dayHigh: 120,
+            totalTradedVolume: 3100,
+            lastPrice: 118,
+          }),
+        ],
+      }),
+    );
+    mocks.getBaselines.mockResolvedValue(
+      new Map([["TCS", makeBaseline("TCS", { maxHigh5d: 100, maxVolume5d: 1000 })]]),
+    );
+
+    const response = await GET();
+    const json = await response.json();
+    const tcs = json.discoveries.find((d: { symbol: string }) => d.symbol === "TCS");
+
+    expect(response.status).toBe(200);
+    expect(tcs.breakout).toBe(false);
+    expect(tcs.highBreak).toBe(false);
+    expect(tcs.volumeBreak).toBe(false);
+    expect(tcs.baselineUnavailable).toBe(false);
+    expect(tcs.possibleBreakout).toBe(true);
+    expect(mocks.addAlert).not.toHaveBeenCalled();
+    expect(mocks.addActivity).not.toHaveBeenCalledWith(
+      "system",
+      "nifty50-discovery",
+      expect.any(String),
+      expect.any(Object),
+    );
+  });
+
+  test("does not mark ordinary fallback rows as possible breakouts", async () => {
+    mocks.getNifty50Snapshot.mockResolvedValue(
+      makeSnapshot({
+        source: "nse-charting-intraday",
+        stocks: [
+          makeSnapshotStock({
+            symbol: "ITC",
+            name: "ITC",
+            dayHigh: 95,
+            dayLow: 91,
+            totalTradedVolume: 100,
+            lastPrice: 94,
+          }),
+        ],
+      }),
+    );
+    mocks.getBaselines.mockResolvedValue(
+      new Map([
+        [
+          "ITC",
+          makeBaseline("ITC", {
+            maxHigh5d: 100,
+            maxVolume5d: 1000,
+            minLow10d: 90,
+            maxVolume10d: 2000,
+          }),
+        ],
+      ]),
+    );
+
+    const response = await GET();
+    const json = await response.json();
+    const itc = json.discoveries.find((d: { symbol: string }) => d.symbol === "ITC");
+
+    expect(response.status).toBe(200);
+    expect(itc.breakout).toBe(false);
+    expect(itc.possibleBreakout).toBe(false);
     expect(mocks.addAlert).not.toHaveBeenCalled();
   });
 });

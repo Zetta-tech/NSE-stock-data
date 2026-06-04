@@ -5,7 +5,7 @@
 - **Framework**: Next.js 14 (App Router) + React 18
 - **Styling**: Tailwind CSS 3.4 + GSAP animations
 - **Persistence**: Upstash Redis (primary) + filesystem JSON fallback (local dev)
-- **NSE Data**: `stock-nse-india` v1.3.0 NPM package
+- **NSE Data**: `stock-nse-india` v1.4.0 NPM package (Node.js 20+)
 - **Auth**: HMAC-SHA256 session cookies
 - **Validation**: Zod
 - **Testing**: Vitest + Testing Library
@@ -52,7 +52,7 @@ src/
     ├── activity.ts         # Audit trail (ring buffer, max 200 events)
     ├── alert-requests.ts   # AI alert request storage (ring buffer, max 50)
     ├── api-stats.ts        # API call tracking + Redis persistence
-    ├── baselines.ts        # 5-day rolling baselines (in-memory cache)
+    ├── baselines.ts        # 5-day rolling baselines (in-memory + Redis cache)
     ├── github.ts           # GitHub Issue creation (for alert builder)
     ├── lockdown.ts         # Lockdown + session epoch (edge-compatible)
     ├── logger.ts           # Structured logger
@@ -93,6 +93,9 @@ All stores follow the same pattern: Redis primary, filesystem JSON fallback.
 | `nse:api-stats` | api-stats.ts | Hash — apiCalls, cacheHits, method breakdowns |
 | `nse:security` | lockdown.ts | SecurityState (epoch + lockdown) |
 | `nse:alert-requests` | alert-requests.ts | AlertRequest[] (ring buffer, max 50) |
+| `nse:nifty50Snapshot` | nse-client.ts | Fresh shared Nifty 50 snapshot (15-minute TTL) |
+| `nse:nifty50Snapshot:lastGood` | nse-client.ts | Bounded last-good Nifty 50 snapshot fallback (5-day TTL, returned stale) |
+| `nse:baseline:{date}:{symbol}` | baselines.ts | Shared per-symbol baseline cache (36-hour TTL) |
 
 Filesystem fallback files (under `data/`):
 - `data/state.json` — watchlist, alerts, scan results
@@ -104,10 +107,10 @@ Filesystem fallback files (under `data/`):
 | Data | TTL | Scope |
 |------|-----|-------|
 | Historical prices | 1 day (IST date) | Per-instance (in-memory Map) |
-| Nifty 50 snapshot | 3 minutes | Per-instance |
+| Nifty 50 snapshot | 3 minutes in-memory, 15 minutes shared Redis, 5 days last-good Redis | Per-instance + Redis shared on Upstash; last-good reuse is returned stale |
 | Nifty 50 index | 15 seconds | Per-instance |
 | Market status | 1 minute | Per-instance |
-| 5-day baselines | 1 day (IST date) | Per-instance |
+| 5-day baselines | 1 day (IST date) in-memory, 36 hours shared Redis | Per-instance + Redis shared on Upstash |
 | API stats | Flushed on each /api/state poll | Redis (cross-instance) |
 
 Outside extended hours (before 09:00 or after 16:00 IST), NSE API calls are skipped entirely — cached data is served.

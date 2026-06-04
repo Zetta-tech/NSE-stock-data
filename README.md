@@ -99,7 +99,7 @@ Browser notifications fire the instant an alert triggers, with a 5-minute cooldo
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 20+
 - npm
 
 ### Setup

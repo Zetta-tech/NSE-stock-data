@@ -89,6 +89,7 @@ describe("Dev state route contracts", () => {
       snapshotFetchSuccess: true,
       snapshotFetchCount: 7,
       snapshotFailCount: 1,
+      snapshotSource: "nse-charting-intraday",
     });
     mocks.getBaselineStats.mockReturnValue({
       available: 48,
@@ -120,6 +121,7 @@ describe("Dev state route contracts", () => {
       snapshotFetchSuccess: true,
       snapshotFetchCount: 7,
       snapshotFailCount: 1,
+      snapshotSource: "nse-charting-intraday",
     });
     expect(json.nifty50Stats.baselines).toMatchObject({
       available: 48,

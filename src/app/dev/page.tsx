@@ -26,6 +26,7 @@ interface Nifty50StatsData {
   snapshotFetchSuccess: boolean;
   snapshotFetchCount: number;
   snapshotFailCount: number;
+  snapshotSource: "nse-index" | "nse-charting-intraday" | "unavailable";
   baselines: {
     available: number;
     missing: number;
@@ -41,6 +42,7 @@ interface CacheLayersData {
     snapshotFetchSuccess: boolean;
     snapshotFetchCount: number;
     snapshotFailCount: number;
+    snapshotSource: "nse-index" | "nse-charting-intraday" | "unavailable";
     scope?: string;
   };
   apiThrottle: {
@@ -885,6 +887,11 @@ export default function DevDashboard() {
                 const fetchOk = n.snapshotFetchSuccess;
                 const totalFetches = n.snapshotFetchCount + n.snapshotFailCount;
                 const successRate = totalFetches > 0 ? Math.round((n.snapshotFetchCount / totalFetches) * 100) : 0;
+                const sourceLabel = n.snapshotSource === 'nse-index'
+                  ? 'NSE index'
+                  : n.snapshotSource === 'nse-charting-intraday'
+                    ? 'Charting fallback'
+                    : 'Unavailable';
                 return (
                   <CollapsibleSection
                     title="Nifty 50 Table"
@@ -906,7 +913,7 @@ export default function DevDashboard() {
                           <span className="text-xs font-bold tabular-nums text-red-400">{n.snapshotFailCount}</span>
                           <span className="text-[8px] text-text-muted">fail</span>
                         </div>
-                        <p className="text-[8px] text-text-muted/40 mt-0.5">{successRate}% success</p>
+                        <p className="text-[8px] text-text-muted/40 mt-0.5">{successRate}% success - {sourceLabel}</p>
                       </div>
                       <div>
                         <p className="text-[9px] text-text-muted font-semibold mb-1">Baselines</p>
@@ -956,6 +963,9 @@ export default function DevDashboard() {
                           <span className={`h-1.5 w-1.5 rounded-full ${cl.snapshot.snapshotFetchSuccess ? 'bg-emerald-400' : 'bg-amber-400'}`} />
                           <span className="text-[10px] font-semibold text-emerald-400">Snapshot</span>
                           <ScopeBadge scope={cl.snapshot.scope} />
+                          {cl.snapshot.snapshotSource === 'nse-charting-intraday' && (
+                            <span className="rounded bg-amber-500/10 px-1 text-[8px] font-semibold text-amber-400">Fallback</span>
+                          )}
                         </div>
                         <div className="flex items-baseline gap-1.5">
                           <span className="text-xs font-bold tabular-nums">{cl.snapshot.snapshotFetchCount}</span>

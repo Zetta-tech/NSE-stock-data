@@ -1,6 +1,6 @@
 # NSE API Capability Map
 
-Data source: `stock-nse-india` v1.3.0 (NPM package wrapping NSE India's unofficial API).
+Data source: `stock-nse-india` v1.4.0 (NPM package wrapping NSE India's unofficial API; requires Node.js 20+).
 
 ## Currently Used Methods
 

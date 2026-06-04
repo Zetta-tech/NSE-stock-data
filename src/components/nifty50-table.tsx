@@ -220,6 +220,8 @@ export function Nifty50Table() {
   const baselineUnavailableCount = discoveries.filter((d) => d.baselineUnavailable).length;
   const isStale = data?.snapshot.stale ?? false;
   const fetchSuccess = data?.snapshot.fetchSuccess ?? true;
+  const snapshotSource = data?.snapshot.source ?? "nse-index";
+  const liveLabel = snapshotSource === "nse-charting-intraday" ? "Live intraday" : "Live";
 
   const gainers = data ? data.snapshot.stocks.filter((s) => s.pChange > 0).length : 0;
   const losers = data ? data.snapshot.stocks.filter((s) => s.pChange < 0).length : 0;
@@ -294,7 +296,7 @@ export function Nifty50Table() {
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
                     <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
                   </span>
-                  Live
+                  {liveLabel}
                 </span>
               )}
               {!marketLive && hasFetchedRef.current && (
@@ -407,7 +409,7 @@ export function Nifty50Table() {
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M12 9v4M12 17h.01" />
                 </svg>
-                {possibleCount} possible (stale data)
+                {possibleCount} possible (unconfirmed)
               </span>
             )}
             {baselineUnavailableCount > 0 && (
