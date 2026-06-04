@@ -826,8 +826,10 @@ export async function getNifty50Snapshot(): Promise<Nifty50Snapshot> {
           stale: !fetchSuccess,
           source: "nse-charting-intraday",
         };
-        snapshotCache = { data: snapshot, fetchedAt: Date.now() };
-        await writeSharedNifty50Snapshot(snapshot);
+        if (fetchSuccess) {
+          snapshotCache = { data: snapshot, fetchedAt: Date.now() };
+          await writeSharedNifty50Snapshot(snapshot);
+        }
         logger[fetchSuccess ? "info" : "warn"](
           `Nifty 50 charting fallback: ${fallbackRows.length}/${NIFTY_50_STOCKS.length} stocks`,
           { stockCount: fallbackRows.length, fetchSuccess },

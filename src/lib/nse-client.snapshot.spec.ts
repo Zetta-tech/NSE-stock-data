@@ -283,6 +283,13 @@ describe("Nifty 50 snapshot parsing contracts", () => {
       "nse:nifty50Snapshot:lastGood",
       expect.anything(),
     );
+
+    getEquityStockIndicesMock.mockClear();
+    getEquityChartHistoricalDataMock.mockClear();
+    await getNifty50Snapshot();
+
+    expect(getEquityStockIndicesMock).toHaveBeenCalledWith("NIFTY 50");
+    expect(getEquityChartHistoricalDataMock).toHaveBeenCalled();
   });
 
   test("waits for a shared snapshot when another request owns the refresh lock", async () => {
