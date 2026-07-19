@@ -4,6 +4,12 @@ import {
   isLockdownExpired,
   setSecurityState,
 } from "@/lib/lockdown";
+import {
+  getMaintenanceDisposition,
+  MAINTENANCE_MESSAGE,
+  MAINTENANCE_PATH,
+  MAINTENANCE_RETRY_AFTER_SECONDS,
+} from "@/maintenance";
 
 /* ── Token generation (must match auth route) ──────────────────────── */
 
@@ -30,6 +36,33 @@ async function computeToken(epoch: number): Promise<string> {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const maintenanceDisposition = getMaintenanceDisposition(pathname);
+
+  if (maintenanceDisposition !== null) {
+    if (maintenanceDisposition === "allow-maintenance-page") {
+      return NextResponse.next();
+    }
+
+    if (maintenanceDisposition === "service-unavailable") {
+      return NextResponse.json(
+        { error: MAINTENANCE_MESSAGE },
+        {
+          status: 503,
+          headers: {
+            "Cache-Control": "no-store, max-age=0",
+            "Retry-After": String(MAINTENANCE_RETRY_AFTER_SECONDS),
+          },
+        },
+      );
+    }
+
+    const maintenanceResponse = NextResponse.redirect(
+      new URL(MAINTENANCE_PATH, request.url),
+    );
+    maintenanceResponse.headers.set("Cache-Control", "no-store, max-age=0");
+    maintenanceResponse.headers.set("X-Robots-Tag", "noindex, nofollow");
+    return maintenanceResponse;
+  }
 
   // Public paths — no auth required
   if (
